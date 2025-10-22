@@ -28,6 +28,8 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.time.LocalDate;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -35,6 +37,8 @@ import java.time.LocalDate;
  */
 @WebServlet(name = "HomeServlet", urlPatterns = {"/home"})
 public class HomeServlet extends HttpServlet {
+
+    private static final Logger LOGGER = Logger.getLogger(HomeServlet.class.getName());
 
     /**
      * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
@@ -79,12 +83,12 @@ public class HomeServlet extends HttpServlet {
         
         // Kiểm tra đăng nhập - nếu chưa đăng nhập thì redirect về trang login
         if (user == null) {
-            System.out.println("DEBUG - User not logged in, redirecting to Login.jsp");
+            LOGGER.log(Level.INFO, "User not logged in, redirecting to Login.jsp");
             response.sendRedirect("Login.jsp");
             return;
         }
         
-        System.out.println("DEBUG - User logged in: " + user.getUsername() + ", role: " + user.getRoleId());
+        LOGGER.log(Level.INFO, "User logged in: " + user.getUsername() + ", role: " + user.getRoleId());
         
         // Lấy thống kê cơ bản
         MaterialDAO dao = new MaterialDAO();
@@ -121,11 +125,10 @@ public class HomeServlet extends HttpServlet {
         int pendingRepairRequestCount = 0;
         try {
             pendingRepairRequestCount = repairRequestDAO.getTotalRepairRequestCount(null, "Pending", null, null);
-            System.out.println("DEBUG - Pending repair requests count: " + pendingRepairRequestCount);
+            LOGGER.log(Level.INFO, "Pending repair requests count: " + pendingRepairRequestCount);
         } catch (Exception e) {
             pendingRepairRequestCount = 0;
-            System.err.println("ERROR - Failed to get pending repair requests: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Failed to get pending repair requests: " + e.getMessage(), e);
         }
         request.setAttribute("pendingRepairRequestCount", pendingRepairRequestCount);
 
@@ -163,7 +166,7 @@ public class HomeServlet extends HttpServlet {
             lowStockCount = stats.getOrDefault("lowStockCount", 0);
             outOfStockCount = stats.getOrDefault("outOfStockCount", 0);
         } catch (SQLException e) {
-            // ignore
+            LOGGER.log(Level.WARNING, "Error getting inventory statistics: " + e.getMessage(), e);
         }
         request.setAttribute("totalStock", totalStock);
         request.setAttribute("lowStockCount", lowStockCount);
@@ -181,11 +184,13 @@ public class HomeServlet extends HttpServlet {
             totalImported = importDAO.getTotalImportedQuantity();
         } catch (Exception e) {
             totalImported = 0;
+            LOGGER.log(Level.SEVERE, "Error getting total imported quantity: " + e.getMessage(), e);
         }
         try {
             totalExported = exportDAO.getTotalExportedQuantity();
         } catch (Exception e) {
             totalExported = 0;
+            LOGGER.log(Level.SEVERE, "Error getting total exported quantity: " + e.getMessage(), e);
         }
         request.setAttribute("totalImported", totalImported);
         request.setAttribute("totalExported", totalExported);
@@ -202,7 +207,7 @@ public class HomeServlet extends HttpServlet {
 
         // TODO: Lấy thêm các số liệu dashboard khác nếu cần (yêu cầu mua, sửa chữa, ...)
 
-        System.out.println("DEBUG - Forwarding to HomePage.jsp");
+        LOGGER.log(Level.INFO, "Forwarding to HomePage.jsp");
         request.getRequestDispatcher("HomePage.jsp").forward(request, response);
     }
 
@@ -217,7 +222,7 @@ public class HomeServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        processRequest(request, response);
+        doGet(request, response);
     }
 
     /**

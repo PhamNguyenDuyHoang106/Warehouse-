@@ -27,10 +27,13 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @WebServlet(name = "RepairRequestServlet", urlPatterns = {"/repairrequest"})
 public class RepairRequestServlet extends HttpServlet {
 
+    private static final Logger LOGGER = Logger.getLogger(RepairRequestServlet.class.getName());
     private RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
 
     @Override
@@ -54,9 +57,9 @@ public class RepairRequestServlet extends HttpServlet {
         List<Material> materialList = materialDAO.searchMaterials("", "damaged", 1, Integer.MAX_VALUE, "code_asc");
         
         // Debug log
-        System.out.println("[DEBUG] Found " + materialList.size() + " damaged materials:");
+        LOGGER.log(Level.INFO, "Found " + materialList.size() + " damaged materials:");
         for (Material m : materialList) {
-            System.out.println("[DEBUG] - " + m.getMaterialName() + " (ID: " + m.getMaterialId() + ", Status: " + m.getMaterialStatus() + ")");
+            LOGGER.log(Level.INFO, "- " + m.getMaterialName() + " (ID: " + m.getMaterialId() + ", Status: " + m.getMaterialStatus() + ")");
         }
 
         SupplierDAO supplierDAO = new SupplierDAO();
@@ -98,9 +101,9 @@ public class RepairRequestServlet extends HttpServlet {
 
             String supplierIdStr = request.getParameter("supplierId");
             String reason = request.getParameter("reason");
-            String[] materialNames = request.getParameterValues("materialName");
-            String[] quantities = request.getParameterValues("quantity");
-            String[] damageDescriptions = request.getParameterValues("damageDescription");
+            String[] materialNames = request.getParameterValues("materialName[]");
+            String[] quantities = request.getParameterValues("quantity[]");
+            String[] damageDescriptions = request.getParameterValues("damageDescription[]");
             Timestamp now = Timestamp.valueOf(LocalDateTime.now());
 
             // Validate form data
@@ -167,16 +170,16 @@ public class RepairRequestServlet extends HttpServlet {
                     trimmedMaterialName = trimmedMaterialName.substring(0, trimmedMaterialName.length() - 10); // Bỏ "(damaged)"
                 }
                 
-                System.out.println("[DEBUG] Processing material: '" + materialName.trim() + "' -> trimmed: '" + trimmedMaterialName + "'");
+                LOGGER.log(Level.FINE, "Processing material: '" + materialName.trim() + "' -> trimmed: '" + trimmedMaterialName + "'");
                 
                 Material material = materialDAO.getInformationByNameAndStatus(trimmedMaterialName, "damaged");
                 
                 if (material == null) {
-                    System.out.println("[DEBUG] Material not found: '" + trimmedMaterialName + "' with status 'damaged'");
+                    LOGGER.log(Level.WARNING, "Material not found: '" + trimmedMaterialName + "' with status 'damaged'");
                     continue; // Already validated above
                 }
                 
-                System.out.println("[DEBUG] Found material: " + material.getMaterialName() + " (ID: " + material.getMaterialId() + ")");
+                LOGGER.log(Level.FINE, "Found material: " + material.getMaterialName() + " (ID: " + material.getMaterialId() + ")");
                 
                 int quantity = Integer.parseInt(quantities[i]);
                 String damageDescription = damageDescriptions[i];
@@ -193,7 +196,7 @@ public class RepairRequestServlet extends HttpServlet {
             }
 
             boolean success = new RepairRequestDAO().createRepairRequest(requestObj, detailList);
-            System.out.println("[DEBUG] [doPost] Kết quả lưu yêu cầu vào DB: " + success);
+            LOGGER.log(Level.INFO, "[doPost] Kết quả lưu yêu cầu vào DB: " + success);
 
             if (success) {
                 UserDAO userDAO = new UserDAO();
@@ -293,25 +296,23 @@ public class RepairRequestServlet extends HttpServlet {
                             try {
                                 EmailUtils.sendEmail(manager.getEmail(), subject, htmlContent.toString());
                             } catch (Exception e) {
-                                System.out.println("[DEBUG] [MAIL] Error sending email to manager: " + manager.getEmail());
-                                e.printStackTrace();
+                                LOGGER.log(Level.SEVERE, "Error sending email to manager: " + manager.getEmail(), e);
                             }
                         } else {
-                            System.out.println("[DEBUG] [MAIL] Manager has no valid email: " + manager.getFullName());
+                            LOGGER.log(Level.INFO, "Manager has no valid email: " + manager.getFullName());
                         }
                     }
 
                     if (user.getEmail() != null && !user.getEmail().trim().isEmpty()) {
                         try {
-                            System.out.println("[DEBUG] [MAIL] Sending email to user: " + user.getEmail());
-                            System.out.println("[DEBUG] [MAIL] Subject: " + subject);
+                            LOGGER.log(Level.INFO, "Sending email to user: " + user.getEmail());
+                            LOGGER.log(Level.INFO, "Subject: " + subject);
                             EmailUtils.sendEmail(user.getEmail(), subject, htmlContent.toString());
                         } catch (Exception e) {
-                            System.out.println("[DEBUG] [MAIL] Error sending email to user: " + user.getEmail());
-                            e.printStackTrace();
+                            LOGGER.log(Level.SEVERE, "Error sending email to user: " + user.getEmail(), e);
                         }
                     } else {
-                        System.out.println("[DEBUG] [MAIL] User has no valid email: " + user.getFullName());
+                        LOGGER.log(Level.INFO, "User has no valid email: " + user.getFullName());
                     }
                 }
             }
@@ -319,7 +320,7 @@ public class RepairRequestServlet extends HttpServlet {
             response.sendRedirect("repairrequestlist");
 
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error when sending repair request: " + e.getMessage(), e);
             request.setAttribute("errorMessage", "Error when sending repair request: " + e.getMessage());
             request.getRequestDispatcher("CreateRepairRequest.jsp").forward(request, response);
         }

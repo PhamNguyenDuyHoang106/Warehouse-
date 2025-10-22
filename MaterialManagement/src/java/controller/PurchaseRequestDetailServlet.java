@@ -18,8 +18,12 @@ import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 @WebServlet(name="PurchaseRequestDetailServlet", urlPatterns={"/PurchaseRequestDetail"})
 public class PurchaseRequestDetailServlet extends HttpServlet {
+
+    private static final Logger LOGGER = Logger.getLogger(PurchaseRequestDetailServlet.class.getName());
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -52,6 +56,7 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
             PurchaseRequest purchaseRequest = purchaseRequestDAO.getPurchaseRequestById(purchaseRequestId);
             
             if (purchaseRequest == null) {
+                LOGGER.log(Level.WARNING, "Purchase request not found for ID: " + purchaseRequestId);
                 request.setAttribute("error", "Purchase request not found.");
                 request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
                 return;
@@ -66,6 +71,7 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
                     currentPage = Integer.parseInt(pageParam);
                     if (currentPage < 1) currentPage = 1;
                 } catch (NumberFormatException e) {
+                    LOGGER.log(Level.WARNING, "Invalid page parameter: " + pageParam, e);
                     currentPage = 1;
                 }
             }
@@ -113,7 +119,8 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
             request.getRequestDispatcher("PurchaseRequestDetail.jsp").forward(request, response);
 
         } catch (Exception ex) {
-            request.setAttribute("error", "An error occurred while processing your request: " + ex.getMessage());
+            LOGGER.log(Level.SEVERE, "Error in doGet for PurchaseRequestDetailServlet for ID: " + request.getParameter("id"), ex);
+            request.setAttribute("error", "An error occurred while processing your request. Please try again later.");
             request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
         }
     } 
@@ -157,14 +164,21 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
             }
             
             if (success) {
+                LOGGER.log(Level.INFO, "Purchase request ID " + purchaseRequestId + " successfully " + modalStatus);
                 request.setAttribute("success", "The request has been " + ("approved".equals(modalStatus) ? "approved" : "rejected") + " successfully!");
                 doGet(request, response);
             } else {
+                LOGGER.log(Level.WARNING, "Failed to " + modalStatus + " purchase request ID " + purchaseRequestId + ".");
                 request.setAttribute("error", "Could not " + ("approved".equals(modalStatus) ? "approve" : "reject") + " the request. Please try again.");
                 doGet(request, response);
             }
             
+        } catch (NumberFormatException e) {
+            LOGGER.log(Level.WARNING, "Invalid purchase request ID or status format in doPost.", e);
+            request.setAttribute("error", "Invalid input for purchase request. Please try again.");
+            doGet(request, response);
         } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, "Error in doPost for PurchaseRequestDetailServlet for ID: " + request.getParameter("id"), ex);
             request.setAttribute("error", "An error occurred while processing the request: " + ex.getMessage());
             doGet(request, response);
         }

@@ -10,56 +10,55 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class PurchaseRequestDAO extends DBContext {
 
+    private static final Logger LOGGER = Logger.getLogger(PurchaseRequestDAO.class.getName());
 
 
 
 
     public PurchaseRequest getPurchaseRequestById(int purchaseRequestId) {
-        try {
-            String sql = "SELECT pr.*, u.full_name, u.email, u.phone_number "
-                    + "FROM material_management.purchase_requests pr "
-                    + "LEFT JOIN material_management.users u ON pr.user_id = u.user_id "
-                    + "WHERE pr.purchase_request_id = ? AND pr.disable = 0";
+        String sql = "SELECT pr.*, u.full_name, u.email, u.phone_number "
+                + "FROM material_management.purchase_requests pr "
+                + "LEFT JOIN material_management.users u ON pr.user_id = u.user_id "
+                + "WHERE pr.purchase_request_id = ? AND pr.disable = 0";
 
-            PreparedStatement ps = connection.prepareStatement(sql);
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, purchaseRequestId);
 
-            ResultSet rs = ps.executeQuery();
-            PurchaseRequestDetailDAO prdd = new PurchaseRequestDetailDAO();
+            try (ResultSet rs = ps.executeQuery()) {
+                PurchaseRequestDetailDAO prdd = new PurchaseRequestDetailDAO();
 
-            if (rs.next()) {
-                PurchaseRequest pr = new PurchaseRequest();
-                pr.setPurchaseRequestId(rs.getInt("purchase_request_id"));
-                pr.setRequestCode(rs.getString("request_code"));
-                pr.setUserId(rs.getInt("user_id"));
-                pr.setRequestDate(rs.getTimestamp("request_date"));
-                pr.setStatus(rs.getString("status"));
-                pr.setReason(rs.getString("reason"));
+                if (rs.next()) {
+                    PurchaseRequest pr = new PurchaseRequest();
+                    pr.setPurchaseRequestId(rs.getInt("purchase_request_id"));
+                    pr.setRequestCode(rs.getString("request_code"));
+                    pr.setUserId(rs.getInt("user_id"));
+                    pr.setRequestDate(rs.getTimestamp("request_date"));
+                    pr.setStatus(rs.getString("status"));
+                    pr.setReason(rs.getString("reason"));
 
-                int approvedBy = rs.getInt("approved_by");
-                if (!rs.wasNull()) {
+                    Integer approvedBy = rs.getObject("approved_by", Integer.class);
                     pr.setApprovedBy(approvedBy);
-                } else {
-                    pr.setApprovedBy(null);
+
+                    pr.setApprovalReason(rs.getString("approval_reason"));
+                    pr.setApprovedAt(rs.getTimestamp("approved_at"));
+                    pr.setRejectionReason(rs.getString("rejection_reason"));
+                    pr.setCreatedAt(rs.getTimestamp("created_at"));
+                    pr.setUpdatedAt(rs.getTimestamp("updated_at"));
+                    pr.setDisable(rs.getBoolean("disable"));
+
+                    List<PurchaseRequestDetail> details = prdd.paginationOfDetails(pr.getPurchaseRequestId(), 1, Integer.MAX_VALUE);
+                    pr.setDetails(details);
+
+                    return pr;
                 }
-
-                pr.setApprovalReason(rs.getString("approval_reason"));
-                pr.setApprovedAt(rs.getTimestamp("approved_at"));
-                pr.setRejectionReason(rs.getString("rejection_reason"));
-                pr.setCreatedAt(rs.getTimestamp("created_at"));
-                pr.setUpdatedAt(rs.getTimestamp("updated_at"));
-                pr.setDisable(rs.getBoolean("disable"));
-
-                List<PurchaseRequestDetail> details = prdd.paginationOfDetails(pr.getPurchaseRequestId(), 1, Integer.MAX_VALUE);
-                pr.setDetails(details);
-
-                return pr;
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting purchase request by ID: " + purchaseRequestId, ex);
         }
         return null;
     }
@@ -98,7 +97,7 @@ public class PurchaseRequestDAO extends DBContext {
             int rowsAffected = ps.executeUpdate();
             return rowsAffected > 0;
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error updating purchase request status for request ID: " + requestId, ex);
             return false;
         }
     }
@@ -156,18 +155,18 @@ public class PurchaseRequestDAO extends DBContext {
             }
 
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error creating purchase request with details.", ex);
             try {
                 connection.rollback();
             } catch (SQLException e) {
-                e.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Error rolling back transaction after createPurchaseRequestWithDetails failure.", e);
             }
             return false;
         } finally {
             try {
                 connection.setAutoCommit(true);
             } catch (SQLException e) {
-                e.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Error resetting auto-commit after createPurchaseRequestWithDetails operation.", e);
             }
         }
     }
@@ -175,48 +174,44 @@ public class PurchaseRequestDAO extends DBContext {
     // Lấy danh sách Purchase Requests đã được approved
     public List<PurchaseRequest> getApprovedPurchaseRequests() {
         List<PurchaseRequest> list = new ArrayList<>();
-        try {
-            String sql = "SELECT pr.*, u.full_name, u.email, u.phone_number "
-                    + "FROM material_management.purchase_requests pr "
-                    + "LEFT JOIN material_management.users u ON pr.user_id = u.user_id "
-                    + "WHERE (pr.status = 'APPROVED' OR pr.status = 'approved') AND pr.disable = 0 "
-                    + "ORDER BY pr.request_date DESC";
+        String sql = "SELECT pr.*, u.full_name, u.email, u.phone_number "
+                + "FROM material_management.purchase_requests pr "
+                + "LEFT JOIN material_management.users u ON pr.user_id = u.user_id "
+                + "WHERE (pr.status = 'APPROVED' OR pr.status = 'approved') AND pr.disable = 0 "
+                + "ORDER BY pr.request_date DESC";
 
-            PreparedStatement ps = connection.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-            PurchaseRequestDetailDAO prdd = new PurchaseRequestDetailDAO();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            try (ResultSet rs = ps.executeQuery()) {
+                PurchaseRequestDetailDAO prdd = new PurchaseRequestDetailDAO();
 
-            while (rs.next()) {
-                PurchaseRequest pr = new PurchaseRequest();
-                pr.setPurchaseRequestId(rs.getInt("purchase_request_id"));
-                pr.setRequestCode(rs.getString("request_code"));
-                pr.setUserId(rs.getInt("user_id"));
-                pr.setRequestDate(rs.getTimestamp("request_date"));
-                pr.setStatus(rs.getString("status"));
-                pr.setReason(rs.getString("reason"));
+                while (rs.next()) {
+                    PurchaseRequest pr = new PurchaseRequest();
+                    pr.setPurchaseRequestId(rs.getInt("purchase_request_id"));
+                    pr.setRequestCode(rs.getString("request_code"));
+                    pr.setUserId(rs.getInt("user_id"));
+                    pr.setRequestDate(rs.getTimestamp("request_date"));
+                    pr.setStatus(rs.getString("status"));
+                    pr.setReason(rs.getString("reason"));
 
-                int approvedBy = rs.getInt("approved_by");
-                if (!rs.wasNull()) {
+                    Integer approvedBy = rs.getObject("approved_by", Integer.class);
                     pr.setApprovedBy(approvedBy);
-                } else {
-                    pr.setApprovedBy(null);
+
+                    pr.setApprovalReason(rs.getString("approval_reason"));
+                    pr.setApprovedAt(rs.getTimestamp("approved_at"));
+                    pr.setRejectionReason(rs.getString("rejection_reason"));
+                    pr.setCreatedAt(rs.getTimestamp("created_at"));
+                    pr.setUpdatedAt(rs.getTimestamp("updated_at"));
+                    pr.setDisable(rs.getBoolean("disable"));
+
+                    // Load details for each purchase request
+                    List<PurchaseRequestDetail> details = prdd.paginationOfDetails(pr.getPurchaseRequestId(), 1, Integer.MAX_VALUE);
+                    pr.setDetails(details);
+
+                    list.add(pr);
                 }
-
-                pr.setApprovalReason(rs.getString("approval_reason"));
-                pr.setApprovedAt(rs.getTimestamp("approved_at"));
-                pr.setRejectionReason(rs.getString("rejection_reason"));
-                pr.setCreatedAt(rs.getTimestamp("created_at"));
-                pr.setUpdatedAt(rs.getTimestamp("updated_at"));
-                pr.setDisable(rs.getBoolean("disable"));
-
-                // Load details for each purchase request
-                List<PurchaseRequestDetail> details = prdd.paginationOfDetails(pr.getPurchaseRequestId(), 1, Integer.MAX_VALUE);
-                pr.setDetails(details);
-
-                list.add(pr);
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting approved purchase requests.", ex);
         }
         return list;
     }
@@ -227,8 +222,8 @@ public class PurchaseRequestDAO extends DBContext {
         String sql = "SELECT request_code FROM purchase_requests WHERE request_code LIKE ?";
         String likePattern = prefix + "%";
         
-        System.out.println("=== DEBUG: Generating next request code ===");
-        System.out.println("Looking for codes like: " + likePattern);
+        LOGGER.log(Level.INFO, "Generating next request code.");
+        LOGGER.log(Level.INFO, "Looking for codes like: " + likePattern);
         
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, likePattern);
@@ -240,7 +235,7 @@ public class PurchaseRequestDAO extends DBContext {
                     allCodes.add(rs.getString("request_code"));
                 }
                 
-                System.out.println("Found " + allCodes.size() + " existing codes: " + allCodes);
+                LOGGER.log(Level.INFO, "Found " + allCodes.size() + " existing codes: " + allCodes);
                 
                 if (!allCodes.isEmpty()) {
                     // Sort codes numerically
@@ -264,11 +259,11 @@ public class PurchaseRequestDAO extends DBContext {
                 }
                 
                 String newCode = prefix + nextSeq;
-                System.out.println("Generated new code: " + newCode);
+                LOGGER.log(Level.INFO, "Generated new code: " + newCode);
                 return newCode;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error generating next request code.", e);
             return prefix + "1";
         }
     }
@@ -276,7 +271,7 @@ public class PurchaseRequestDAO extends DBContext {
     // Debug method to show all request codes
     public void debugAllRequestCodes() {
         String sql = "SELECT request_code FROM purchase_requests ORDER BY request_code";
-        System.out.println("=== DEBUG: All request codes in database ===");
+        LOGGER.log(Level.INFO, "Debugging: All request codes in database.");
         
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             try (ResultSet rs = ps.executeQuery()) {
@@ -284,11 +279,11 @@ public class PurchaseRequestDAO extends DBContext {
                 while (rs.next()) {
                     codes.add(rs.getString("request_code"));
                 }
-                System.out.println("Total codes: " + codes.size());
-                System.out.println("All codes: " + codes);
+                LOGGER.log(Level.INFO, "Total codes: " + codes.size());
+                LOGGER.log(Level.INFO, "All codes: " + codes);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error debugging all request codes.", e);
         }
     }
 
@@ -335,42 +330,38 @@ public class PurchaseRequestDAO extends DBContext {
             params.add(pageSize);
             params.add((pageIndex - 1) * pageSize);
 
-            PreparedStatement ps = connection.prepareStatement(sql.toString());
-            for (int i = 0; i < params.size(); i++) {
-                ps.setObject(i + 1, params.get(i));
-            }
-
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                PurchaseRequest pr = new PurchaseRequest();
-                pr.setPurchaseRequestId(rs.getInt("purchase_request_id"));
-                pr.setRequestCode(rs.getString("request_code"));
-                pr.setUserId(rs.getInt("user_id"));
-                pr.setRequestDate(rs.getTimestamp("request_date"));
-                pr.setStatus(rs.getString("status"));
-                pr.setReason(rs.getString("reason"));
-
-                int approvedBy = rs.getInt("approved_by");
-                if (!rs.wasNull()) {
-                    pr.setApprovedBy(approvedBy);
-                } else {
-                    pr.setApprovedBy(null);
+            try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+                for (int i = 0; i < params.size(); i++) {
+                    ps.setObject(i + 1, params.get(i));
                 }
 
-                pr.setApprovalReason(rs.getString("approval_reason"));
-                pr.setApprovedAt(rs.getTimestamp("approved_at"));
-                pr.setRejectionReason(rs.getString("rejection_reason"));
-                pr.setCreatedAt(rs.getTimestamp("created_at"));
-                pr.setUpdatedAt(rs.getTimestamp("updated_at"));
-                pr.setDisable(rs.getBoolean("disable"));
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        PurchaseRequest pr = new PurchaseRequest();
+                        pr.setPurchaseRequestId(rs.getInt("purchase_request_id"));
+                        pr.setRequestCode(rs.getString("request_code"));
+                        pr.setUserId(rs.getInt("user_id"));
+                        pr.setRequestDate(rs.getTimestamp("request_date"));
+                        pr.setStatus(rs.getString("status"));
+                        pr.setReason(rs.getString("reason"));
 
-                list.add(pr);
+                        Integer approvedBy = rs.getObject("approved_by", Integer.class);
+                        pr.setApprovedBy(approvedBy);
+
+                        pr.setApprovalReason(rs.getString("approval_reason"));
+                        pr.setApprovedAt(rs.getTimestamp("approved_at"));
+                        pr.setRejectionReason(rs.getString("rejection_reason"));
+                        pr.setCreatedAt(rs.getTimestamp("created_at"));
+                        pr.setUpdatedAt(rs.getTimestamp("updated_at"));
+                        pr.setDisable(rs.getBoolean("disable"));
+
+                        list.add(pr);
+                    }
+                }
+
             }
-
-
-
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error searching purchase requests.", ex);
         }
         return list;
     }
@@ -405,17 +396,19 @@ public class PurchaseRequestDAO extends DBContext {
                 params.add(endDate);
             }
 
-            PreparedStatement ps = connection.prepareStatement(sql.toString());
-            for (int i = 0; i < params.size(); i++) {
-                ps.setObject(i + 1, params.get(i));
-            }
+            try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+                for (int i = 0; i < params.size(); i++) {
+                    ps.setObject(i + 1, params.get(i));
+                }
 
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                total = rs.getInt(1);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        total = rs.getInt(1);
+                    }
+                }
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error counting purchase requests.", ex);
         }
         return total;
     }

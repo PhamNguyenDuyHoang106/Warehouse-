@@ -25,10 +25,14 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.UUID;
 import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import utils.ImportValidator;
 
 @WebServlet(name = "ImportMaterialServlet", urlPatterns = {"/ImportMaterial"})
 public class ImportMaterialServlet extends HttpServlet {
+
+    private static final Logger LOGGER = Logger.getLogger(ImportMaterialServlet.class.getName());
     private ImportDAO importDAO;
     private SupplierDAO supplierDAO;
     private MaterialDAO materialDAO;
@@ -117,6 +121,7 @@ public class ImportMaterialServlet extends HttpServlet {
                     break;
             }
         } catch (NumberFormatException e) {
+            LOGGER.log(Level.WARNING, "Invalid number format provided for action: " + action, e);
             request.setAttribute("error", "Invalid number format provided.");
             safeLoadDataAndForward(request, response);
         }
@@ -203,10 +208,12 @@ public class ImportMaterialServlet extends HttpServlet {
                 }
                 
             } catch (SQLException e) {
+                LOGGER.log(Level.SEVERE, "Database error loading materials from purchase order with ID: " + purchaseOrderId, e);
                 request.setAttribute("error", "Database error: " + e.getMessage());
             }
 
         } catch (NumberFormatException e) {
+            LOGGER.log(Level.WARNING, "Invalid purchase order ID format provided: " + request.getParameter("purchaseOrderId"), e);
             request.setAttribute("error", "Invalid purchase order ID.");
         }
 
@@ -251,6 +258,7 @@ public class ImportMaterialServlet extends HttpServlet {
             session.setAttribute("usingManualInput", true);
             
         } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Database error adding material to import list.", e);
             request.setAttribute("error", "Database error: " + e.getMessage());
         }
         
@@ -277,6 +285,7 @@ public class ImportMaterialServlet extends HttpServlet {
                 request.setAttribute("error", "No import list found to remove material from.");
             }
         } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Database error removing material from import list.", e);
             request.setAttribute("error", "Database error: " + e.getMessage());
         }
         
@@ -308,6 +317,7 @@ public class ImportMaterialServlet extends HttpServlet {
                 request.setAttribute("error", "No import list found to update.");
             }
         } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Database error updating material quantity in import list.", e);
             request.setAttribute("error", "Database error: " + e.getMessage());
         }
         
@@ -340,6 +350,7 @@ public class ImportMaterialServlet extends HttpServlet {
                 request.setAttribute("error", "No import list found to update.");
             }
         } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Database error updating material price in import list.", e);
             request.setAttribute("error", "Database error: " + e.getMessage());
         }
         
@@ -362,6 +373,7 @@ public class ImportMaterialServlet extends HttpServlet {
             
             request.setAttribute("success", "Import form has been reset. You can start over.");
         } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Database error resetting import form.", e);
             request.setAttribute("error", "Database error: " + e.getMessage());
         }
         
@@ -438,9 +450,11 @@ public class ImportMaterialServlet extends HttpServlet {
             safeLoadDataAndForward(request, response);
             
         } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Database error during import process.", e);
             request.setAttribute("error", "Database error: " + e.getMessage());
             safeLoadDataAndForward(request, response);
         } catch (NumberFormatException e) {
+            LOGGER.log(Level.WARNING, "Invalid supplier ID format during import process: " + request.getParameter("supplierId"), e);
             request.setAttribute("error", "Invalid supplier ID format.");
             safeLoadDataAndForward(request, response);
         }
@@ -507,7 +521,7 @@ public class ImportMaterialServlet extends HttpServlet {
                     int stock = inventoryDAO.getStockByMaterialId(detail.getMaterialId());
                     stockMap.put(detail.getMaterialId(), stock);
                 } catch (SQLException e) {
-                    // If we can't get stock, set it to 0
+                    LOGGER.log(Level.WARNING, "Error getting stock for material ID: " + detail.getMaterialId() + ". Setting stock to 0.", e);
                     stockMap.put(detail.getMaterialId(), 0);
                 }
             }
@@ -529,6 +543,7 @@ public class ImportMaterialServlet extends HttpServlet {
             request.getRequestDispatcher("/ImportMaterial.jsp").forward(request, response);
             
         } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Database error in loadDataAndForward.", e);
             throw new ServletException("Database error: " + e.getMessage(), e);
         }
     }
@@ -537,11 +552,12 @@ public class ImportMaterialServlet extends HttpServlet {
         try {
             loadDataAndForward(request, response);
         } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error in safeLoadDataAndForward, forwarding to error page.", e);
             request.setAttribute("error", "Error processing request: " + e.getMessage());
             try {
                 request.getRequestDispatcher("/error.jsp").forward(request, response);
             } catch (Exception ex) {
-                // Log the error but can't do much more
+                LOGGER.log(Level.SEVERE, "Critical error: Could not forward to error page.", ex);
             }
         }
     }

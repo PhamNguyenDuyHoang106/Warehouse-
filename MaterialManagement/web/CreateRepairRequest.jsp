@@ -92,21 +92,21 @@
                                             <div class="row material-row align-items-end gy-3">
                                                 <div class="col-md-3">
                                                     <label class="form-label text-muted">Material</label>
-                                                    <input type="text" class="form-control material-autocomplete" name="materialName" placeholder="Type material name or code" autocomplete="off">
+                                                    <input type="text" class="form-control material-autocomplete" name="materialName[]" placeholder="Type material name or code" autocomplete="off">
                                                     <c:if test="${not empty errors.material_0}">
                                                         <div class="text-danger small mt-1">${errors.material_0}</div>
                                                     </c:if>
                                                 </div>
                                                 <div class="col-md-2">
                                                     <label class="form-label text-muted">Quantity</label>
-                                                    <input type="number" class="form-control" name="quantity" min="1" step="1" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Enter quantity" value="1">
+                                                    <input type="number" class="form-control" name="quantity[]" min="1" step="1" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Enter quantity" value="1">
                                                     <c:if test="${not empty errors.quantity_0}">
                                                         <div class="text-danger small mt-1">${errors.quantity_0}</div>
                                                     </c:if>
                                                 </div>
                                                 <div class="col-md-4">
                                                     <label class="form-label text-muted">Damage Description</label>
-                                                    <input type="text" class="form-control" name="damageDescription" placeholder="Describe the damage">
+                                                    <input type="text" class="form-control" name="damageDescription[]" placeholder="Describe the damage">
                                                     <c:if test="${not empty errors.damageDescription_0}">
                                                         <div class="text-danger small mt-1">${errors.damageDescription_0}</div>
                                                     </c:if>
@@ -173,15 +173,15 @@
                 newRow.innerHTML = `
                     <div class="col-md-3">
                         <label class="form-label text-muted">Material</label>
-                        <input type="text" class="form-control material-autocomplete" name="materialName" placeholder="Type material name or code" autocomplete="off">
+                        <input type="text" class="form-control material-autocomplete" name="materialName[]" placeholder="Type material name or code" autocomplete="off">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label text-muted">Quantity</label>
-                        <input type="number" class="form-control" name="quantity" min="1" step="1" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Enter quantity" value="1">
+                        <input type="number" class="form-control" name="quantity[]" min="1" step="1" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Enter quantity" value="1">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-muted">Damage Description</label>
-                        <input type="text" class="form-control" name="damageDescription" placeholder="Describe the damage">
+                        <input type="text" class="form-control" name="damageDescription[]" placeholder="Describe the damage">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label text-muted">Repairer</label>
@@ -237,9 +237,9 @@
                 if (i < existingRows.length) {
                     // Use existing row
                     const row = existingRows[i];
-                    row.querySelector('input[name="materialName"]').value = submittedMaterialNames[i];
-                    row.querySelector('input[name="quantity"]').value = submittedQuantities[i];
-                    row.querySelector('input[name="damageDescription"]').value = submittedDamageDescriptions[i];
+                    row.querySelector('input[name="materialName[]"]').value = submittedMaterialNames[i];
+                    row.querySelector('input[name="quantity[]"]').value = submittedQuantities[i];
+                    row.querySelector('input[name="damageDescription[]"]').value = submittedDamageDescriptions[i];
                 } else {
                     // Create new rows if needed
                     const newRow = document.createElement('div');
@@ -247,15 +247,15 @@
                     newRow.innerHTML = `
                             <div class="col-md-3">
                                 <label class="form-label text-muted">Material</label>
-                                <input type="text" class="form-control material-autocomplete" name="materialName" placeholder="Type material name or code" autocomplete="off">
+                                <input type="text" class="form-control material-autocomplete" name="materialName[]" placeholder="Type material name or code" autocomplete="off">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label text-muted">Quantity</label>
-                                <input type="number" class="form-control" name="quantity" min="1" step="1" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Enter quantity" value="1">
+                                <input type="number" class="form-control" name="quantity[]" min="1" step="1" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Enter quantity" value="1">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label text-muted">Damage Description</label>
-                                <input type="text" class="form-control" name="damageDescription" placeholder="Describe the damage">
+                                <input type="text" class="form-control" name="damageDescription[]" placeholder="Describe the damage">
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label text-muted">Repairer</label>
@@ -273,9 +273,9 @@
                     materialList.appendChild(newRow);
 
                     // Set values
-                    newRow.querySelector('input[name="materialName"]').value = submittedMaterialNames[i];
-                    newRow.querySelector('input[name="quantity"]').value = submittedQuantities[i];
-                    newRow.querySelector('input[name="damageDescription"]').value = submittedDamageDescriptions[i];
+                    newRow.querySelector('input[name="materialName[]"]').value = submittedMaterialNames[i];
+                    newRow.querySelector('input[name="quantity[]"]').value = submittedQuantities[i];
+                    newRow.querySelector('input[name="damageDescription[]"]').value = submittedDamageDescriptions[i];
 
                     // Setup autocomplete
                     setupAutocomplete(newRow.querySelector('.material-autocomplete'));

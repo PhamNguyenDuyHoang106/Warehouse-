@@ -21,6 +21,8 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import utils.PurchaseRequestValidator;
 
 /**
@@ -28,6 +30,8 @@ import utils.PurchaseRequestValidator;
  */
 @WebServlet(name = "CreatePurchaseRequestServlet", urlPatterns = {"/CreatePurchaseRequest"})
 public class CreatePurchaseRequestServlet extends HttpServlet {
+
+    private static final Logger LOGGER = Logger.getLogger(CreatePurchaseRequestServlet.class.getName());
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -107,9 +111,9 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
         try {
             String reason = request.getParameter("reason");
 
-            String[] materialNames = request.getParameterValues("materialName");
+            String[] materialNames = request.getParameterValues("materialName[]");
             String[] materialIds = request.getParameterValues("materialId");
-            String[] quantities = request.getParameterValues("quantity");
+            String[] quantities = request.getParameterValues("quantity[]");
             String[] notes = request.getParameterValues("note");
             
             // Debug: Check if reason is being read correctly
@@ -118,7 +122,7 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
             while (paramNames.hasMoreElements()) {
                 String paramName = paramNames.nextElement();
                 String[] paramValues = request.getParameterValues(paramName);
-                
+                LOGGER.log(Level.FINE, "Parameter: " + paramName + ", Value: " + String.join(", ", paramValues));
             }
             
             
@@ -302,14 +306,14 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
                                 utils.EmailUtils.sendEmail(manager.getEmail(), subject, content.toString());
                                 
                             } catch (Exception e) {
-                                
-                                e.printStackTrace();
+                                LOGGER.log(Level.SEVERE, "Error sending email to manager: " + manager.getEmail(), e);
                             }
                         }
                     }
                 }
                 response.sendRedirect("ListPurchaseRequests?success=created");
             } else {
+                LOGGER.log(Level.WARNING, "Could not create purchase request. Database operation failed or returned false.");
                 request.setAttribute("error", "Could not create purchase request. Please try again.");
                 List<Category> categories = categoryDAO.getAllCategories();
                 List<entity.Material> materials = materialDAO.getAllProducts();
@@ -320,6 +324,7 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
             }
 
         } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "An error occurred while processing the request to create purchase request.", e);
             request.setAttribute("error", "An error occurred while processing the request: " + e.getMessage());
             List<Category> categories = categoryDAO.getAllCategories();
             List<entity.Material> materials = materialDAO.getAllProducts();

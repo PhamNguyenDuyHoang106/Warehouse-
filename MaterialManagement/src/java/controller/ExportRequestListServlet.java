@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @WebServlet(name = "ExportRequestListServlet", urlPatterns = {"/ExportRequestList"})
@@ -36,6 +37,7 @@ public class ExportRequestListServlet extends HttpServlet {
         boolean canView = rolePermissionDAO.hasPermission(user.getRoleId(), "VIEW_EXPORT_REQUEST_LIST");
         request.setAttribute("canViewExportRequest", canView);
         if (!canView) {
+            LOGGER.log(Level.WARNING, "User {0} attempted to access ExportRequestList without permission.", user.getUsername());
             request.setAttribute("error", "You do not have permission to view export requests.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
@@ -60,6 +62,7 @@ public class ExportRequestListServlet extends HttpServlet {
                     page = 1;
                 }
             } catch (NumberFormatException e) {
+                LOGGER.log(Level.WARNING, "Invalid page number format: {0}", request.getParameter("page"));
                 page = 1;
             }
         }
@@ -84,7 +87,8 @@ public class ExportRequestListServlet extends HttpServlet {
             request.setAttribute("currentPage", page);
             request.setAttribute("totalPages", totalPages);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error retrieving export request list: " + e.getMessage(), e);
+
             request.setAttribute("error", "Error retrieving export request list!");
         }
 

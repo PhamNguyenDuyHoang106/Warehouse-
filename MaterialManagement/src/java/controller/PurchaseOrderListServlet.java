@@ -17,11 +17,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import utils.EmailUtils;
 
 @WebServlet(name = "PurchaseOrderListServlet", urlPatterns = {"/PurchaseOrderList"})
 public class PurchaseOrderListServlet extends HttpServlet {
 
+    private static final Logger LOGGER = Logger.getLogger(PurchaseOrderListServlet.class.getName());
     private final PurchaseOrderDAO purchaseOrderDAO = new PurchaseOrderDAO();
     private final RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
     
@@ -44,6 +47,7 @@ public class PurchaseOrderListServlet extends HttpServlet {
             boolean hasPermission = rolePermissionDAO.hasPermission(user.getRoleId(), "VIEW_PURCHASE_ORDER_LIST");
             request.setAttribute("hasViewPurchaseOrderListPermission", hasPermission);
             if (!hasPermission) {
+                LOGGER.log(Level.WARNING, "User {0} attempted to access PurchaseOrderList without permission.", user.getUsername());
                 response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
                 return;
             }
@@ -74,6 +78,7 @@ public class PurchaseOrderListServlet extends HttpServlet {
                     if (itemsPerPage > MAX_ITEMS_PER_PAGE) itemsPerPage = MAX_ITEMS_PER_PAGE;
                 }
             } catch (NumberFormatException e) {
+                LOGGER.log(Level.WARNING, "Invalid number format for page or itemsPerPage: " + e.getMessage(), e);
             }
             
             LocalDate startDate = null;
@@ -84,6 +89,7 @@ public class PurchaseOrderListServlet extends HttpServlet {
                 try {
                     startDate = LocalDate.parse(startDateStr, formatter);
                 } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "Invalid start date format: " + startDateStr, e);
                 }
             }
             
@@ -91,6 +97,7 @@ public class PurchaseOrderListServlet extends HttpServlet {
                 try {
                     endDate = LocalDate.parse(endDateStr, formatter);
                 } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "Invalid end date format: " + endDateStr, e);
                 }
             }
 
@@ -99,6 +106,7 @@ public class PurchaseOrderListServlet extends HttpServlet {
             int totalPages = (int) Math.ceil((double) totalItems / itemsPerPage);
 
             if (purchaseOrders == null) {
+                LOGGER.log(Level.SEVERE, "Purchase orders list is null after fetching from DAO.");
                 request.setAttribute("error", "An error occurred while loading data. Please try again later.");
             }
 
@@ -116,10 +124,12 @@ public class PurchaseOrderListServlet extends HttpServlet {
             request.getRequestDispatcher("PurchaseOrderList.jsp").forward(request, response);
             
         } catch (Exception e) {
-            request.setAttribute("error", "An error occurred: " + e.getMessage());
+            LOGGER.log(Level.SEVERE, "Error in doGet for PurchaseOrderListServlet.", e);
+            request.setAttribute("error", "An unexpected error occurred. Please try again later.");
             try {
                 request.getRequestDispatcher("PurchaseOrderList.jsp").forward(request, response);
             } catch (Exception ex) {
+                LOGGER.log(Level.SEVERE, "Critical error: Could not forward to error page from doGet.", ex);
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal Server Error");
             }
         }
@@ -161,7 +171,9 @@ public class PurchaseOrderListServlet extends HttpServlet {
                             Set<Integer> supplierIds = new HashSet<>();
                             if (po != null && po.getDetails() != null) {
                                 for (entity.PurchaseOrderDetail detail : po.getDetails()) {
-                                    supplierIds.add(detail.getSupplierId());
+                                    if (detail.getSupplierId() != null) {
+                                        supplierIds.add(detail.getSupplierId());
+                                    }
                                 }
                             }
                             for (Integer supplierId : supplierIds) {
@@ -172,27 +184,33 @@ public class PurchaseOrderListServlet extends HttpServlet {
                                     try {
                                         EmailUtils.sendEmail(supplier.getEmail(), subject, content);
                                     } catch (Exception e) {
-                                        System.err.println("[MAIL] Failed to send email to supplier: " + supplier.getEmail());
-                                        e.printStackTrace();
+                                        LOGGER.log(Level.SEVERE, "[MAIL] Failed to send email to supplier {0}: {1}", new Object[]{supplier.getEmail(), e.getMessage()});
                                     }
+                                } else {
+                                    LOGGER.log(Level.WARNING, "[MAIL] Supplier {0} has no valid email for PO {1}.", new Object[]{supplier != null ? supplier.getSupplierName() : "N/A", po.getPoCode()});
                                 }
                             }
                         } catch (Exception e) {
-                            System.err.println("[MAIL] Error when sending email to suppliers: " + e.getMessage());
-                            e.printStackTrace();
+                            LOGGER.log(Level.SEVERE, "[MAIL] Error when sending email to suppliers for PO {0}: {1}", new Object[]{poId, e.getMessage()});
                         }
                     }
                     response.sendRedirect(request.getContextPath() + "/PurchaseOrderList?message=Status updated successfully");
                     return;
                 } else {
+                    LOGGER.log(Level.WARNING, "Failed to update status for purchase order ID: " + poId + " to " + status);
                     response.sendRedirect(request.getContextPath() + "/PurchaseOrderList?message=Error updating status");
                     return;
                 }
             } else {
+                LOGGER.log(Level.WARNING, "Unknown action: " + action);
                 doGet(request, response);
             }
+        } catch (NumberFormatException e) {
+            LOGGER.log(Level.WARNING, "Invalid PO ID or other number format in doPost: " + e.getMessage(), e);
+            response.sendRedirect(request.getContextPath() + "/PurchaseOrderList?message=Error: Invalid input format");
         } catch (Exception e) {
-            response.sendRedirect(request.getContextPath() + "/PurchaseOrderList?message=Error: " + e.getMessage());
+            LOGGER.log(Level.SEVERE, "Error in doPost for PurchaseOrderListServlet.", e);
+            response.sendRedirect(request.getContextPath() + "/PurchaseOrderList?message=Error: An unexpected error occurred");
         }
     }
 

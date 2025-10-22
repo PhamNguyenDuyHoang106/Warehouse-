@@ -3,9 +3,12 @@ package entity;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class DBContext {
 
+    private static final Logger LOGGER = Logger.getLogger(DBContext.class.getName());
     private static final String URL = "jdbc:mysql://127.0.0.1:3306/material_management?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
     private static final String USERNAME = "root";
     private static final String PASSWORD = "Hoang1062004";
@@ -21,10 +24,10 @@ public class DBContext {
             if (connection == null || connection.isClosed()) {
                 Class.forName("com.mysql.cj.jdbc.Driver");
                 connection = DriverManager.getConnection(URL, USERNAME, PASSWORD);
-                System.out.println("✅ Kết nối thành công tới MySQL!");
+                LOGGER.log(Level.INFO, "✅ Kết nối thành công tới MySQL!");
             }
         } catch (ClassNotFoundException | SQLException ex) {
-            System.err.println("❌ Lỗi kết nối MySQL: " + ex.getMessage());
+            LOGGER.log(Level.SEVERE, "❌ Lỗi kết nối MySQL: " + ex.getMessage(), ex);
         }
     }
 
@@ -34,7 +37,7 @@ public class DBContext {
                 connect();
             }
         } catch (SQLException e) {
-            System.err.println("❌ Lỗi khi kiểm tra kết nối: " + e.getMessage());
+            LOGGER.log(Level.SEVERE, "❌ Lỗi khi kiểm tra kết nối: " + e.getMessage(), e);
         }
         return connection;
     }

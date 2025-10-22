@@ -133,7 +133,7 @@
                                                         <div class="row material-row align-items-center gy-2">
                                                             <div class="col-md-3">
                                                                 <label class="form-label text-muted">Material</label>
-                                                                <input type="text" class="form-control material-name-input" name="materialName" placeholder="Type material name or code" autocomplete="off">
+                                                                <input type="text" class="form-control material-name-input" name="materialName[]" placeholder="Type material name or code" autocomplete="off">
                                                                 <input type="hidden" name="materialId" class="material-id-input">
                                                                 <c:if test="${not empty errors.material_0}">
                                                                     <div class="text-danger small mt-1">${errors.material_0}</div>
@@ -141,7 +141,7 @@
                                                             </div>
                                                             <div class="col-md-2">
                                                                 <label class="form-label text-muted">Quantity</label>
-                                                                <input type="number" class="form-control" name="quantity" min="1" step="1" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Enter quantity">
+                                                                <input type="number" class="form-control" name="quantity[]" min="1" step="1" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Enter quantity">
                                                                 <c:if test="${not empty errors['quantity_0']}">
                                                                     <div class="text-danger small mt-1">${errors['quantity_0']}</div>
                                                                 </c:if>
@@ -282,12 +282,12 @@
                             <div class="row material-row align-items-center gy-2">
                                 <div class="col-md-3">
                                     <label class="form-label text-muted">Material</label>
-                                    <input type="text" class="form-control material-name-input" name="materialName" placeholder="Type material name or code" autocomplete="off">
+                                    <input type="text" class="form-control material-name-input" name="materialName[]" placeholder="Type material name or code" autocomplete="off">
                                     <input type="hidden" name="materialId" class="material-id-input">
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label text-muted">Quantity</label>
-                                    <input type="number" class="form-control" name="quantity" min="1" step="1" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Enter quantity">
+                                    <input type="number" class="form-control" name="quantity[]" min="1" step="1" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Enter quantity">
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label text-muted">Notes</label>
@@ -340,7 +340,7 @@
             const newRow = firstRow.cloneNode(true);
             newRow.querySelector('.material-name-input').value = '';
             newRow.querySelector('.material-id-input').value = '';
-            newRow.querySelector('input[name="quantity"]').value = '';
+            newRow.querySelector('input[name="quantity[]"]').value = '';
             newRow.querySelector('input[name="note"]').value = '';
             newRow.querySelector('.material-image').src = 'images/material/default.jpg';
             materialList.appendChild(newRow);

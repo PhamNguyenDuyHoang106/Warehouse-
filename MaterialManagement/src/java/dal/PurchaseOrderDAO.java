@@ -80,10 +80,11 @@ public class PurchaseOrderDAO extends DBContext {
                 ps.setObject(i + 1, params.get(i));
             }
             
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                PurchaseOrder order = mapResultSetToPurchaseOrder(rs);
-                orders.add(order);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    PurchaseOrder order = mapResultSetToPurchaseOrder(rs);
+                    orders.add(order);
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error fetching purchase orders: " + e.getMessage(), e);
@@ -127,9 +128,10 @@ public class PurchaseOrderDAO extends DBContext {
             for (int i = 0; i < params.size(); i++) {
                 ps.setObject(i + 1, params.get(i));
             }
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                count = rs.getInt(1);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    count = rs.getInt(1);
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error counting purchase orders: " + e.getMessage(), e);
@@ -156,11 +158,12 @@ public class PurchaseOrderDAO extends DBContext {
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, poId);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                PurchaseOrder order = mapResultSetToPurchaseOrder(rs);
-                order.setDetails(getPurchaseOrderDetails(poId));
-                return order;
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    PurchaseOrder order = mapResultSetToPurchaseOrder(rs);
+                    order.setDetails(getPurchaseOrderDetails(poId));
+                    return order;
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error fetching purchase order by ID: " + e.getMessage(), e);
@@ -185,10 +188,11 @@ public class PurchaseOrderDAO extends DBContext {
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, poId);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                PurchaseOrderDetail detail = mapResultSetToPurchaseOrderDetail(rs);
-                details.add(detail);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    PurchaseOrderDetail detail = mapResultSetToPurchaseOrderDetail(rs);
+                    details.add(detail);
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error fetching purchase order details: " + e.getMessage(), e);
@@ -337,7 +341,7 @@ public class PurchaseOrderDAO extends DBContext {
             return false;
         } finally {
             if (conn != null) {
-                try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { LOGGER.log(Level.SEVERE, "Error closing connection", e); }
+                try { conn.setAutoCommit(true); } catch (SQLException e) { LOGGER.log(Level.SEVERE, "Error resetting auto-commit for connection", e); }
             }
         }
     }
@@ -365,10 +369,11 @@ public class PurchaseOrderDAO extends DBContext {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, status);
             
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                PurchaseOrder order = mapResultSetToPurchaseOrder(rs);
-                orders.add(order);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    PurchaseOrder order = mapResultSetToPurchaseOrder(rs);
+                    orders.add(order);
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error fetching purchase orders by status: " + e.getMessage(), e);
@@ -389,9 +394,10 @@ public class PurchaseOrderDAO extends DBContext {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, searchTerm);
             ps.setString(2, searchTerm);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                poId = rs.getInt("po_id");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    poId = rs.getInt("po_id");
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error fetching purchase order ID by code or request: " + e.getMessage(), e);

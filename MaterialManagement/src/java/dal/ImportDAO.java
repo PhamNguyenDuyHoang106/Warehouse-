@@ -8,8 +8,12 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ImportDAO extends DBContext {
+
+    private static final Logger LOGGER = Logger.getLogger(ImportDAO.class.getName());
 
     public int createImport(Import importData) throws SQLException {
         String sql = "INSERT INTO Imports (import_code, import_date, imported_by, supplier_id, actual_arrival, note) VALUES (?, ?, ?, ?, ?, ?)";
@@ -286,8 +290,8 @@ public class ImportDAO extends DBContext {
                     return importData;
                 }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting import by ID: " + importId, e);
         }
         return null;
     }
@@ -426,8 +430,8 @@ public class ImportDAO extends DBContext {
                 imp.setTotalValue(rs.getDouble("totalValue"));
                 list.add(imp);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting import history advanced: ", e);
         }
         return list;
     }
@@ -460,8 +464,8 @@ public class ImportDAO extends DBContext {
             if (rs.next()) {
                 count = rs.getInt(1);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error counting import history advanced: ", e);
         }
         return count;
     }

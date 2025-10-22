@@ -9,8 +9,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class RepairRequestDAO extends DBContext {
+
+    private static final Logger LOGGER = Logger.getLogger(RepairRequestDAO.class.getName());
 
     public boolean createRepairRequest(RepairRequest request, List<RepairRequestDetail> details) throws SQLException {
         String requestSql = "INSERT INTO Repair_Requests (request_code, user_id, reason, status, request_date, created_at, updated_at, disable) "
@@ -311,10 +315,10 @@ public class RepairRequestDAO extends DBContext {
         // Example: Get repair requests with pagination
         List<RepairRequest> requests = dao.getRepairRequestsWithPagination(0, 5, "equipment", "pending", "asc", "2025-01-01", "2025-12-31");
         for (RepairRequest req : requests) {
-            System.out.println("Request ID: " + req.getRepairRequestId() + ", Code: " + req.getRequestCode() + ", Status: " + req.getStatus());
+            LOGGER.log(Level.INFO, "Request ID: " + req.getRepairRequestId() + ", Code: " + req.getRequestCode() + ", Status: " + req.getStatus());
         }
     } catch (SQLException e) {
-        e.printStackTrace();
+        LOGGER.log(Level.SEVERE, "Error in main method: ", e);
     }
 }
 
@@ -352,7 +356,7 @@ public class RepairRequestDAO extends DBContext {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error generating next request code: " + e.getMessage());
+            LOGGER.log(Level.SEVERE, "Error generating next request code: " + e.getMessage(), e);
         }
         return nextCode;
     }
