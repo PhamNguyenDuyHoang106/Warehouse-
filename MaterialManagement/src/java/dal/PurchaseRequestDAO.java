@@ -131,7 +131,7 @@ public class PurchaseRequestDAO extends DBContext {
                                 for (PurchaseRequestDetail detail : details) {
                                     psDetail.setInt(1, purchaseRequestId);
                                     psDetail.setInt(2, detail.getMaterialId());
-                                    psDetail.setInt(3, detail.getQuantity());
+                                    psDetail.setBigDecimal(3, detail.getQuantity());
                                     
                                     if (detail.getNotes() != null) {
                                         psDetail.setString(4, detail.getNotes());

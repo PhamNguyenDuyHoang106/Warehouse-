@@ -10,7 +10,7 @@ public class PurchaseOrderDetail {
     private String materialName;
     private int categoryId;
     private String categoryName;
-    private int quantity;
+    private BigDecimal quantity;
     private BigDecimal unitPrice;
     private Integer supplierId;
     private String supplierName;
@@ -64,11 +64,11 @@ public class PurchaseOrderDetail {
         this.categoryName = categoryName;
     }
 
-    public int getQuantity() {
+    public BigDecimal getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(int quantity) {
+    public void setQuantity(BigDecimal quantity) {
         this.quantity = quantity;
     }
 
@@ -121,8 +121,8 @@ public class PurchaseOrderDetail {
     }
 
     public BigDecimal getTotalPrice() {
-        if (unitPrice != null && quantity > 0) {
-            return unitPrice.multiply(BigDecimal.valueOf(quantity));
+        if (unitPrice != null && quantity != null && quantity.compareTo(BigDecimal.ZERO) > 0) {
+            return unitPrice.multiply(quantity);
         }
         return BigDecimal.ZERO;
     }

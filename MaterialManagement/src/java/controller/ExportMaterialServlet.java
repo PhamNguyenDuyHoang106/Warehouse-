@@ -1,72 +1,100 @@
 package controller;
 
-import dal.DepartmentDAO;
 import dal.ExportDAO;
-import dal.InventoryDAO;
-import dal.RolePermissionDAO;
-import entity.Department;
+import dal.ExportDetailDAO;
+import dal.ExportRequestDAO;
+import dal.MaterialDAO;
+import dal.RecipientDAO;
+import dal.VehicleDAO;
+import dal.WarehouseRackDAO;
 import entity.Export;
-import entity.ExportDetail;
+import entity.ExportRequest;
 import entity.Material;
+import entity.Recipient;
 import entity.User;
+import entity.Vehicle;
+import entity.WarehouseRack;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-
 import java.io.IOException;
-import java.sql.SQLException;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @WebServlet(name = "ExportMaterialServlet", urlPatterns = {"/ExportMaterial"})
 public class ExportMaterialServlet extends HttpServlet {
 
-    private ExportDAO exportDAO;
-    private DepartmentDAO departmentDAO;
-    private InventoryDAO inventoryDAO;
-    private RolePermissionDAO rolePermissionDAO;
-    private static final int PAGE_SIZE = 3;
-
-    @Override
-    public void init() throws ServletException {
-        exportDAO = new ExportDAO();
-        departmentDAO = new DepartmentDAO();
-        inventoryDAO = new InventoryDAO();
-        rolePermissionDAO = new RolePermissionDAO();
-    }
+    private static final Logger LOGGER = Logger.getLogger(ExportMaterialServlet.class.getName());
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         HttpSession session = request.getSession();
         User user = (User) session.getAttribute("user");
+
         if (user == null) {
-            request.setAttribute("error", "Please log in to access this page.");
-            request.getRequestDispatcher("/error.jsp").forward(request, response);
+            response.sendRedirect("Login.jsp");
             return;
         }
 
-        boolean hasPermission = rolePermissionDAO.hasPermission(user.getRoleId(), "EXPORT_MATERIAL");
-        request.setAttribute("hasExportMaterialPermission", hasPermission);
-        if (!hasPermission) {
-            request.setAttribute("error", "You do not have permission to export materials.");
-            request.getRequestDispatcher("/error.jsp").forward(request, response);
-            return;
-        }
+        ExportDAO exportDAO = null;
+        ExportRequestDAO exportRequestDAO = null;
+        MaterialDAO materialDAO = null;
+        RecipientDAO recipientDAO = null;
+        VehicleDAO vehicleDAO = null;
+        WarehouseRackDAO rackDAO = null;
 
         try {
-            int currentPage = getCurrentPage(request);
-            loadDataAndForward(request, response, currentPage);
+            exportDAO = new ExportDAO();
+            exportRequestDAO = new ExportRequestDAO();
+            materialDAO = new MaterialDAO();
+            recipientDAO = new RecipientDAO();
+            vehicleDAO = new VehicleDAO();
+            rackDAO = new WarehouseRackDAO();
+
+            // Generate next export code
+            String nextExportCode = exportDAO.generateNextExportCode();
+            request.setAttribute("nextExportCode", nextExportCode);
+
+            // Get approved export requests (that haven't been exported yet)
+            List<ExportRequest> approvedRequests = exportRequestDAO.getAllRequestsByStatus("approved");
+            request.setAttribute("exportRequests", approvedRequests);
+
+            // Get all materials for autocomplete
+            List<Material> materials = materialDAO.getAllProducts();
+            request.setAttribute("materials", materials);
+
+            // Get all recipients
+            List<Recipient> recipients = recipientDAO.getAllRecipients();
+            request.setAttribute("recipients", recipients);
+
+            // Get available vehicles
+            List<Vehicle> vehicles = vehicleDAO.getAllVehicles();
+            request.setAttribute("vehicles", vehicles);
+
+            // Get active warehouse racks
+            List<WarehouseRack> racks = rackDAO.getAllRacks();
+            request.setAttribute("racks", racks);
+
+            request.getRequestDispatcher("ExportMaterialForm.jsp").forward(request, response);
+
         } catch (Exception e) {
-            request.setAttribute("error", "Error retrieving data: " + e.getMessage());
-            e.printStackTrace();
-            request.getRequestDispatcher("/ExportMaterial.jsp").forward(request, response);
+            LOGGER.log(Level.SEVERE, "Error in doGet for ExportMaterialServlet", e);
+            request.setAttribute("error", "Error loading export form: " + e.getMessage());
+            request.getRequestDispatcher("error.jsp").forward(request, response);
+        } finally {
+            if (exportDAO != null) exportDAO.close();
+            if (exportRequestDAO != null) exportRequestDAO.close();
+            if (materialDAO != null) materialDAO.close();
+            if (recipientDAO != null) recipientDAO.close();
+            if (vehicleDAO != null) vehicleDAO.close();
+            if (rackDAO != null) rackDAO.close();
         }
     }
 
@@ -75,317 +103,126 @@ public class ExportMaterialServlet extends HttpServlet {
             throws ServletException, IOException {
         HttpSession session = request.getSession();
         User user = (User) session.getAttribute("user");
+
         if (user == null) {
-            request.setAttribute("error", "Please log in to access this page.");
-            request.getRequestDispatcher("/error.jsp").forward(request, response);
+            response.sendRedirect("Login.jsp");
             return;
         }
 
-        boolean hasPermission = rolePermissionDAO.hasPermission(user.getRoleId(), "EXPORT_MATERIAL");
-        request.setAttribute("hasExportMaterialPermission", hasPermission);
-        if (!hasPermission) {
-            request.setAttribute("error", "You do not have permission to export materials.");
-            request.getRequestDispatcher("/error.jsp").forward(request, response);
-            return;
-        }
-
-        int currentPage = getCurrentPage(request);
-        String action = request.getParameter("action");
-        try {
-            if ("add".equals(action)) {
-                handleAddMaterial(request, response, session, user, currentPage);
-            } else if ("export".equals(action)) {
-                handleExport(request, response, session, user, currentPage);
-            } else if ("remove".equals(action)) {
-                handleRemoveMaterial(request, response, session, currentPage);
-            } else if ("updateQuantity".equals(action)) {
-                handleUpdateQuantity(request, response, session, currentPage);
-            } else {
-                request.setAttribute("error", "Invalid action.");
-                loadDataAndForward(request, response, currentPage);
-            }
-        } catch (SQLException e) {
-            request.setAttribute("error", "Database error: " + e.getMessage());
-            loadDataAndForward(request, response, currentPage);
-        } catch (NumberFormatException e) {
-            request.setAttribute("error", "Invalid input data: " + e.getMessage());
-            loadDataAndForward(request, response, currentPage);
-        }
-    }
-
-    private int getCurrentPage(HttpServletRequest request) {
-        String pageStr = request.getParameter("page");
-        int currentPage = 1;
-        if (pageStr != null && !pageStr.isEmpty()) {
-            try {
-                currentPage = Integer.parseInt(pageStr);
-                if (currentPage < 1) {
-                    currentPage = 1;
-                }
-            } catch (NumberFormatException e) {
-                currentPage = 1;
-            }
-        }
-        return currentPage;
-    }
-
-    private void handleAddMaterial(HttpServletRequest request, HttpServletResponse response, HttpSession session, User user, int currentPage)
-            throws ServletException, IOException, SQLException {
-        String materialIdStr = request.getParameter("materialId");
-        String quantityStr = request.getParameter("quantity");
-        List<ExportDetail> detailsToAdd = new ArrayList<>();
-        List<Material> materials = departmentDAO.getMaterials();
-        Map<Integer, Material> materialMap = new HashMap<>();
-        for (Material material : materials) {
-            materialMap.put(material.getMaterialId(), material);
-        }
-
-        if (materialIdStr == null || materialIdStr.isEmpty() || 
-            quantityStr == null || quantityStr.isEmpty()) {
-            request.setAttribute("error", "Please fill in all fields.");
-            loadDataAndForward(request, response, currentPage);
-            return;
-        }
-
-        int materialId = Integer.parseInt(materialIdStr);
-        int quantity = Integer.parseInt(quantityStr);
-
-        if (quantity <= 0) {
-            request.setAttribute("error", "Quantity must be greater than 0.");
-            loadDataAndForward(request, response, currentPage);
-            return;
-        }
-
-        int currentStock = inventoryDAO.getStockByMaterialId(materialId);
-        if (currentStock < quantity) {
-            request.setAttribute("error", "Insufficient stock for material ID: " + materialId + ". Available: " + currentStock);
-            loadDataAndForward(request, response, currentPage);
-            return;
-        }
-
-        if (!materialMap.containsKey(materialId)) {
-            request.setAttribute("error", "Selected material is invalid.");
-            loadDataAndForward(request, response, currentPage);
-            return;
-        }
-
-        ExportDetail detail = new ExportDetail();
-        detail.setMaterialId(materialId);
-        detail.setQuantity(quantity);
-        detail.setStatus("draft");
-        detail.setCreatedAt(LocalDateTime.now());
-        detail.setUpdatedAt(LocalDateTime.now());
-        detailsToAdd.add(detail);
-
-        Integer tempExportId = (Integer) session.getAttribute("tempExportId");
-        if (tempExportId == null) {
-            Export export = new Export();
-            export.setExportDate(LocalDateTime.now());
-            export.setExportedBy(user.getUserId());
-            export.setRecipientUserId(user.getUserId());
-            export.setCreatedAt(LocalDateTime.now());
-            export.setUpdatedAt(LocalDateTime.now());
-            tempExportId = exportDAO.createExport(export);
-            session.setAttribute("tempExportId", tempExportId);
-        }
-
-        for (ExportDetail detailToAdd : detailsToAdd) {
-            detailToAdd.setExportId(tempExportId);
-        }
-        exportDAO.createExportDetails(detailsToAdd);
-        request.setAttribute("success", "Material added to export list.");
-
-        List<ExportDetail> fullExportDetails = exportDAO.getDraftExportDetails(tempExportId);
-        int totalItems = fullExportDetails.size();
-        int totalPages = (int) Math.ceil((double) totalItems / PAGE_SIZE);
-        if (currentPage > totalPages && totalPages > 0) {
-            currentPage = totalPages;
-        }
-        loadDataAndForward(request, response, currentPage);
-    }
-
-    private void handleRemoveMaterial(HttpServletRequest request, HttpServletResponse response, HttpSession session, int currentPage)
-            throws ServletException, IOException, SQLException {
-        int materialId = Integer.parseInt(request.getParameter("materialId"));
-        int quantity = Integer.parseInt(request.getParameter("quantity"));
-        Integer tempExportId = (Integer) session.getAttribute("tempExportId");
-        if (tempExportId == null) {
-            request.setAttribute("error", "No export session found.");
-            loadDataAndForward(request, response, currentPage);
-            return;
-        }
-
-        exportDAO.removeExportDetail(tempExportId, materialId, quantity);
-        request.setAttribute("success", "Material removed from export list.");
-
-        List<ExportDetail> fullExportDetails = exportDAO.getDraftExportDetails(tempExportId);
-        int totalItems = fullExportDetails.size();
-        int totalPages = (int) Math.ceil((double) totalItems / PAGE_SIZE);
-        if (currentPage > totalPages && totalPages > 0) {
-            currentPage = totalPages;
-        }
-        loadDataAndForward(request, response, currentPage);
-    }
-
-    private void handleUpdateQuantity(HttpServletRequest request, HttpServletResponse response, HttpSession session, int currentPage)
-            throws ServletException, IOException, SQLException {
-        int materialId = Integer.parseInt(request.getParameter("materialId"));
-        int quantity = Integer.parseInt(request.getParameter("quantity"));
-        Integer tempExportId = (Integer) session.getAttribute("tempExportId");
-        if (tempExportId == null) {
-            request.setAttribute("error", "No export session found.");
-            loadDataAndForward(request, response, currentPage);
-            return;
-        }
-
-        if (quantity <= 0) {
-            request.setAttribute("error", "Quantity must be greater than 0.");
-            loadDataAndForward(request, response, currentPage);
-            return;
-        }
-
-        int currentStock = inventoryDAO.getStockByMaterialId(materialId);
-        if (currentStock < quantity) {
-            request.setAttribute("error", "Insufficient stock for material ID: " + materialId + ". Available: " + currentStock);
-            loadDataAndForward(request, response, currentPage);
-            return;
-        }
-
-        ExportDetail existingDetail = exportDAO.getExportDetailByMaterial(tempExportId, materialId);
-        if (existingDetail == null) {
-            request.setAttribute("error", "Export detail not found for material ID: " + materialId);
-            loadDataAndForward(request, response, currentPage);
-            return;
-        }
-
-        exportDAO.updateExportDetailQuantity(existingDetail.getExportDetailId(), quantity);
-        request.setAttribute("success", "Quantity updated successfully for material ID: " + materialId);
-        loadDataAndForward(request, response, currentPage);
-    }
-
-    private void handleExport(HttpServletRequest request, HttpServletResponse response, HttpSession session, User user, int currentPage)
-            throws ServletException, IOException, SQLException {
-        Integer tempExportId = (Integer) session.getAttribute("tempExportId");
-        if (tempExportId == null) {
-            request.setAttribute("error", "No materials selected for export.");
-            loadDataAndForward(request, response, currentPage);
-            return;
-        }
-
-        List<ExportDetail> details = exportDAO.getDraftExportDetails(tempExportId);
-        if (details.isEmpty()) {
-            request.setAttribute("error", "Export list is empty.");
-            loadDataAndForward(request, response, currentPage);
-            return;
-        }
-
-        for (ExportDetail detail : details) {
-            int currentStock = inventoryDAO.getStockByMaterialId(detail.getMaterialId());
-            if (currentStock < detail.getQuantity()) {
-                request.setAttribute("error", "Insufficient stock for material ID: " + detail.getMaterialId() + ". Available: " + currentStock);
-                loadDataAndForward(request, response, currentPage);
-                return;
-            }
-        }
-
-        int recipientUserId;
-        try {
-            recipientUserId = Integer.parseInt(request.getParameter("recipientUserId"));
-            List<Integer> roleIds = List.of(3, 4);
-            List<User> validRecipients = exportDAO.getUsersByRoleIds(roleIds);
-            boolean validRecipient = validRecipients.stream()
-                    .anyMatch(u -> u.getUserId() == recipientUserId);
-            if (!validRecipient) {
-                request.setAttribute("error", "Invalid recipient user ID. Must be a user with role ID 3 or 4.");
-                loadDataAndForward(request, response, currentPage);
-                return;
-            }
-        } catch (NumberFormatException e) {
-            request.setAttribute("error", "Invalid recipient user ID format.");
-            loadDataAndForward(request, response, currentPage);
-            return;
-        }
-
+        // Read form data
+        String exportCode = request.getParameter("exportCode");
+        String exportRequestIdStr = request.getParameter("exportRequestId");
+        String recipientIdStr = request.getParameter("recipientId");
+        String vehicleIdStr = request.getParameter("vehicleId");
+        String exportDateStr = request.getParameter("exportDate");
         String note = request.getParameter("note");
 
-        if (note != null && note.length() > 100) {
-            request.setAttribute("error", "Note must not exceed 100 characters.");
-            loadDataAndForward(request, response, currentPage);
+        String[] materialIds = request.getParameterValues("materialId[]");
+        String[] quantities = request.getParameterValues("quantity[]");
+        String[] rackIds = request.getParameterValues("rackId[]");
+        String[] notes = request.getParameterValues("materialNote[]");
+
+        // Basic validation
+        if (exportCode == null || exportCode.trim().isEmpty()) {
+            request.setAttribute("error", "Export code is required");
+            doGet(request, response);
             return;
         }
 
+        if (recipientIdStr == null || recipientIdStr.trim().isEmpty()) {
+            request.setAttribute("error", "Recipient is required");
+            doGet(request, response);
+            return;
+        }
+
+        if (materialIds == null || materialIds.length == 0) {
+            request.setAttribute("error", "At least one material is required");
+            doGet(request, response);
+            return;
+        }
+
+        // Process export
+        ExportDAO exportDAO = null;
+        ExportDetailDAO detailDAO = null;
+
         try {
+            exportDAO = new ExportDAO();
+            detailDAO = new ExportDetailDAO();
+
+            // Create Export record
             Export export = new Export();
-            export.setExportId(tempExportId);
-            export.setExportDate(LocalDateTime.now());
+            export.setExportCode(exportCode);
             export.setExportedBy(user.getUserId());
-            export.setRecipientUserId(recipientUserId);
+            export.setRecipientId(Integer.parseInt(recipientIdStr));
+
+            if (vehicleIdStr != null && !vehicleIdStr.trim().isEmpty()) {
+                export.setVehicleId(Integer.parseInt(vehicleIdStr));
+            }
+
+            if (exportRequestIdStr != null && !exportRequestIdStr.trim().isEmpty()) {
+                export.setExportRequestId(Integer.parseInt(exportRequestIdStr));
+            }
+
+            // Parse export date or use current time
+            if (exportDateStr != null && !exportDateStr.trim().isEmpty()) {
+                export.setExportDate(LocalDateTime.parse(exportDateStr + "T00:00:00"));
+            } else {
+                export.setExportDate(LocalDateTime.now());
+            }
+
             export.setNote(note);
-            export.setUpdatedAt(LocalDateTime.now());
 
-            exportDAO.updateExport(export);
-            exportDAO.confirmExport(tempExportId);
-            exportDAO.updateInventoryByExportId(tempExportId, user.getUserId());
+            int exportId = exportDAO.createExport(export);
 
-            String exportCode = exportDAO.getExportCode(tempExportId);
-            session.setAttribute("tempExportId", null);
-            request.setAttribute("success", "Export completed successfully with code: " + exportCode);
-            currentPage = 1;
-        } catch (SQLException e) {
-            request.setAttribute("error", "Export failed: " + e.getMessage());
-            e.printStackTrace();
+            if (exportId > 0) {
+                // Create Export_Details using STORED PROCEDURE
+                boolean allDetailsAdded = true;
+                StringBuilder errorMessages = new StringBuilder();
+
+                for (int i = 0; i < materialIds.length; i++) {
+                    int materialId = Integer.parseInt(materialIds[i]);
+                    BigDecimal quantity = new BigDecimal(quantities[i]);
+                    
+                    Integer rackId = null;
+                    if (rackIds != null && i < rackIds.length && 
+                        rackIds[i] != null && !rackIds[i].trim().isEmpty()) {
+                        rackId = Integer.parseInt(rackIds[i]);
+                    }
+
+                    String materialNote = (notes != null && i < notes.length) ? notes[i] : null;
+
+                    // Use stored procedure for inventory validation
+                    boolean added = detailDAO.addExportDetailWithSP(exportId, materialId, rackId, quantity, materialNote);
+                    
+                    if (!added) {
+                        allDetailsAdded = false;
+                        errorMessages.append("Failed to export material ID: ").append(materialId)
+                                    .append(" (insufficient inventory). ");
+                        LOGGER.log(Level.WARNING, "Failed to add export detail for material ID: " + materialId);
+                    }
+                }
+
+                if (allDetailsAdded) {
+                    response.sendRedirect("ExportList?success=Export created successfully");
+                } else {
+                    response.sendRedirect("ExportList?warning=Export created but some items failed: " + errorMessages.toString());
+                }
+            } else {
+                request.setAttribute("error", "Failed to create export record");
+                doGet(request, response);
+            }
+
+        } catch (NumberFormatException e) {
+            LOGGER.log(Level.SEVERE, "Invalid number format in export data", e);
+            request.setAttribute("error", "Invalid data format. Please check your inputs.");
+            doGet(request, response);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error processing export", e);
+            request.setAttribute("error", "Error processing export: " + e.getMessage());
+            doGet(request, response);
+        } finally {
+            if (exportDAO != null) exportDAO.close();
+            if (detailDAO != null) detailDAO.close();
         }
-        loadDataAndForward(request, response, currentPage);
-    }
-
-    private void loadDataAndForward(HttpServletRequest request, HttpServletResponse response, int currentPage)
-            throws ServletException, IOException {
-        try {
-            List<Department> departments = departmentDAO.getDepartments();
-            List<Material> materials = departmentDAO.getMaterials();
-            List<Integer> roleIds = List.of(3, 4);
-            List<User> users = exportDAO.getUsersByRoleIds(roleIds);
-            Integer tempExportId = (Integer) request.getSession().getAttribute("tempExportId");
-            List<ExportDetail> fullExportDetails = (tempExportId != null) 
-                    ? exportDAO.getDraftExportDetails(tempExportId) 
-                    : new ArrayList<>();
-
-            int totalItems = fullExportDetails.size();
-            int totalPages = (int) Math.ceil((double) totalItems / PAGE_SIZE);
-            if (currentPage > totalPages && totalPages > 0) {
-                currentPage = totalPages;
-            } else if (currentPage < 1) {
-                currentPage = 1;
-            }
-
-            int start = (currentPage - 1) * PAGE_SIZE;
-            int end = Math.min(start + PAGE_SIZE, totalItems);
-            List<ExportDetail> exportDetails = fullExportDetails.subList(start, end);
-
-            Map<Integer, Material> materialMap = new HashMap<>();
-            for (Material material : materials) {
-                materialMap.put(material.getMaterialId(), material);
-            }
-
-            Map<Integer, Integer> stockMap = new HashMap<>();
-            for (ExportDetail detail : fullExportDetails) {
-                int stock = inventoryDAO.getStockByMaterialId(detail.getMaterialId());
-                stockMap.put(detail.getMaterialId(), stock);
-            }
-
-            request.setAttribute("departments", departments);
-            request.setAttribute("materials", materials);
-            request.setAttribute("users", users);
-            request.setAttribute("fullExportDetails", fullExportDetails);
-            request.setAttribute("exportDetails", exportDetails);
-            request.setAttribute("materialMap", materialMap);
-            request.setAttribute("stockMap", stockMap);
-            request.setAttribute("currentPage", currentPage);
-            request.setAttribute("totalPages", totalPages);
-        } catch (SQLException e) {
-            request.setAttribute("error", "Error retrieving data: " + e.getMessage());
-            e.printStackTrace();
-        }
-        request.getRequestDispatcher("/ExportMaterial.jsp").forward(request, response);
     }
 }

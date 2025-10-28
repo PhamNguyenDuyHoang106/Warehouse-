@@ -256,7 +256,7 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
             
             for (int i = 0; i < materialIds.length; i++) {
                 int materialId = Integer.parseInt(materialIds[i]);
-                int quantity = Integer.parseInt(quantities[i]);
+                BigDecimal quantity = new BigDecimal(quantities[i]);
                 BigDecimal unitPrice = new BigDecimal(unitPrices[i]);
                 int supplierId = Integer.parseInt(suppliers[i]);
                 
@@ -401,7 +401,7 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
             MaterialDAO materialDAO = new MaterialDAO();
             
             for (entity.PurchaseOrderDetail detail : details) {
-                BigDecimal lineTotal = detail.getUnitPrice().multiply(new BigDecimal(detail.getQuantity()));
+                BigDecimal lineTotal = detail.getUnitPrice().multiply(detail.getQuantity());
                 totalAmount = totalAmount.add(lineTotal);
                 
                 // Get material information for category and unit
@@ -445,13 +445,15 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
                     try {
                         EmailUtils.sendEmail(director.getEmail(), subject, content.toString());
                     } catch (Exception e) {
-                        LOGGER.log(Level.SEVERE, "Error sending email to director " + director.getEmail() + ": " + e.getMessage(), e);
+                        // Log individual email failures but continue
+                        LOGGER.log(Level.WARNING, "Failed to send email to director: " + director.getEmail() + " - " + e.getMessage());
                     }
                 }
             }
             
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error in sendPurchaseOrderNotification: " + e.getMessage(), e);
+            // Log notification errors but don't crash the application
+            LOGGER.log(Level.WARNING, "Error in sendPurchaseOrderNotification: " + e.getMessage());
         }
     }
 

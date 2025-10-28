@@ -17,17 +17,31 @@ public class CleanupScheduler implements ServletContextListener {
     public void contextInitialized(ServletContextEvent sce) {
         scheduler = Executors.newSingleThreadScheduledExecutor();
         
+        // Cleanup every 1 hour instead of 30 seconds to reduce database load
         scheduler.scheduleAtFixedRate(() -> {
-            UserDAO userDAO = new UserDAO();
-            String sql = "DELETE FROM Users WHERE status = 'inactive' AND verification_status = 'pending' AND verification_expiry < CURRENT_TIMESTAMP";
-            try (PreparedStatement ps = userDAO.getConnection().prepareStatement(sql)) {
-                int rowsAffected = ps.executeUpdate();
-                System.out.println("✅ Đã xóa hoàn toàn " + rowsAffected + " tài khoản hết hạn khỏi cơ sở dữ liệu");
+            UserDAO userDAO = null;
+            try {
+                userDAO = new UserDAO();
+                String sql = "DELETE FROM Users WHERE status = 'inactive' AND verification_status = 'pending' AND verification_expiry < CURRENT_TIMESTAMP";
+                try (PreparedStatement ps = userDAO.getConnection().prepareStatement(sql)) {
+                    int rowsAffected = ps.executeUpdate();
+                    if (rowsAffected > 0) {
+                        System.out.println("✅ Đã xóa hoàn toàn " + rowsAffected + " tài khoản hết hạn khỏi cơ sở dữ liệu");
+                    }
+                }
             } catch (Exception e) {
                 System.err.println("❌ Lỗi khi xóa tài khoản hết hạn: " + e.getMessage());
-                e.printStackTrace();
+            } finally {
+                // IMPORTANT: Close connection to prevent leak
+                if (userDAO != null) {
+                    try {
+                        userDAO.close();
+                    } catch (Exception e) {
+                        System.err.println("❌ Lỗi khi đóng kết nối: " + e.getMessage());
+                    }
+                }
             }
-        }, 0, 30, TimeUnit.SECONDS); 
+        }, 0, 1, TimeUnit.HOURS); // Changed from 30 seconds to 1 hour
     }
 
     @Override

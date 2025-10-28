@@ -3,11 +3,15 @@ package controller;
 import dal.ExportRequestDAO;
 import dal.ExportRequestDetailDAO;
 import dal.MaterialDAO;
+import dal.RecipientDAO;
+import dal.WarehouseRackDAO;
 import dal.UserDAO;
 import dal.RolePermissionDAO;
 import entity.ExportRequest;
 import entity.ExportRequestDetail;
 import entity.Material;
+import entity.Recipient;
+import entity.WarehouseRack;
 import entity.User;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -16,6 +20,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -31,6 +36,8 @@ public class CreateExportRequestServlet extends HttpServlet {
     private ExportRequestDAO exportRequestDAO;
     private ExportRequestDetailDAO exportRequestDetailDAO;
     private MaterialDAO materialDAO;
+    private RecipientDAO recipientDAO;
+    private WarehouseRackDAO rackDAO;
     private UserDAO userDAO;
     private RolePermissionDAO rolePermissionDAO;
 
@@ -39,6 +46,8 @@ public class CreateExportRequestServlet extends HttpServlet {
         exportRequestDAO = new ExportRequestDAO();
         exportRequestDetailDAO = new ExportRequestDetailDAO();
         materialDAO = new MaterialDAO();
+        recipientDAO = new RecipientDAO();
+        rackDAO = new WarehouseRackDAO();
         userDAO = new UserDAO();
         rolePermissionDAO = new RolePermissionDAO();
     }
@@ -64,13 +73,16 @@ public class CreateExportRequestServlet extends HttpServlet {
             request.setAttribute("requestCode", requestCode);
             List<Material> materials = materialDAO.searchMaterials(null, null, 1, 1000, "name_asc");
             request.setAttribute("materials", materials);
-            List<User> staffUsers = userDAO.getUsersByRoleId(3);
-            request.setAttribute("users", staffUsers);
+            List<Recipient> recipients = recipientDAO.getAllRecipients();
+            request.setAttribute("recipients", recipients);
+            List<WarehouseRack> racks = rackDAO.getAvailableRacks();
+            request.setAttribute("racks", racks);
             request.getRequestDispatcher("CreateExportRequest.jsp").forward(request, response);
         } catch (Exception e) {
             request.setAttribute("error", "Error loading data: " + e.getMessage());
             request.setAttribute("materials", new ArrayList<Material>());
-            request.setAttribute("users", new ArrayList<User>());
+            request.setAttribute("recipients", new ArrayList<Recipient>());
+            request.setAttribute("racks", new ArrayList<WarehouseRack>());
             request.getRequestDispatcher("CreateExportRequest.jsp").forward(request, response);
         }
     }
@@ -95,14 +107,21 @@ public class CreateExportRequestServlet extends HttpServlet {
             String requestCode = request.getParameter("requestCode");
             String deliveryDateStr = request.getParameter("deliveryDate");
             String reason = request.getParameter("reason");
+            String recipientIdStr = request.getParameter("recipientId");
             
             // Validate form data using ExportRequestValidator
             Map<String, String> formErrors = ExportRequestValidator.validateExportRequestFormData(reason, deliveryDateStr);
+            
+            // Validate recipientId
+            if (recipientIdStr == null || recipientIdStr.trim().isEmpty()) {
+                formErrors.put("recipientId", "Please select a recipient");
+            }
             
             if (!formErrors.isEmpty()) {
                 // Set submitted data to repopulate form
                 request.setAttribute("submittedReason", reason);
                 request.setAttribute("submittedDeliveryDate", deliveryDateStr);
+                request.setAttribute("submittedRecipientId", recipientIdStr);
                 request.setAttribute("errors", formErrors);
                 
                 // Reload form data
@@ -110,22 +129,27 @@ public class CreateExportRequestServlet extends HttpServlet {
                 request.setAttribute("requestCode", newRequestCode);
                 List<Material> materials = materialDAO.searchMaterials(null, null, 1, 1000, "name_asc");
                 request.setAttribute("materials", materials);
-                List<User> staffUsers = userDAO.getUsersByRoleId(3);
-                request.setAttribute("users", staffUsers);
+                List<Recipient> recipients = recipientDAO.getAllRecipients();
+                request.setAttribute("recipients", recipients);
                 
                 request.getRequestDispatcher("CreateExportRequest.jsp").forward(request, response);
                 return;
             }
             
             Date deliveryDate = Date.valueOf(deliveryDateStr);
+            int recipientId = Integer.parseInt(recipientIdStr);
+            
             ExportRequest exportRequest = new ExportRequest();
             exportRequest.setRequestCode(requestCode);
             exportRequest.setDeliveryDate(deliveryDate);
             exportRequest.setReason(reason);
             exportRequest.setUserId(user.getUserId());
+            exportRequest.setRecipientId(recipientId); // Set recipient from form
             exportRequest.setStatus("pending");
-            String[] materialNames = request.getParameterValues("materialNames[]");
-            String[] quantities = request.getParameterValues("quantities[]");
+            String[] materialNames = request.getParameterValues("materialName[]");
+            String[] materialIds = request.getParameterValues("materialId[]");
+            String[] quantities = request.getParameterValues("quantity[]");
+            String[] notes = request.getParameterValues("note[]");
             
             // Validate material details
             Map<String, String> detailErrors = ExportRequestValidator.validateExportRequestDetails(materialNames, quantities);
@@ -134,8 +158,10 @@ public class CreateExportRequestServlet extends HttpServlet {
                 // Set submitted data to repopulate form
                 request.setAttribute("submittedReason", reason);
                 request.setAttribute("submittedDeliveryDate", deliveryDateStr);
+                request.setAttribute("submittedRecipientId", recipientIdStr);
                 request.setAttribute("submittedMaterialNames", materialNames);
                 request.setAttribute("submittedQuantities", quantities);
+                request.setAttribute("submittedNotes", notes);
                 request.setAttribute("errors", detailErrors);
                 
                 // Reload form data
@@ -143,39 +169,47 @@ public class CreateExportRequestServlet extends HttpServlet {
                 request.setAttribute("requestCode", newRequestCode);
                 List<Material> materials = materialDAO.searchMaterials(null, null, 1, 1000, "name_asc");
                 request.setAttribute("materials", materials);
-                List<User> staffUsers = userDAO.getUsersByRoleId(3);
-                request.setAttribute("users", staffUsers);
+                List<Recipient> recipients = recipientDAO.getAllRecipients();
+                request.setAttribute("recipients", recipients);
                 
                 request.getRequestDispatcher("CreateExportRequest.jsp").forward(request, response);
                 return;
             }
             
-            // Convert material names to IDs
-            List<Integer> materialIds = new ArrayList<>();
-            for (String materialName : materialNames) {
-                if (materialName != null && !materialName.trim().isEmpty()) {
-                    Material material = materialDAO.getMaterialByName(materialName.trim());
-                    if (material != null) {
-                        materialIds.add(material.getMaterialId());
+            // Validate materialIds
+            if (materialIds == null || materialIds.length == 0) {
+                throw new Exception("Please select at least one material");
+            }
+            
+            Map<Integer, BigDecimal> materialQuantityMap = new HashMap<>();
+            List<ExportRequestDetail> details = new ArrayList<>();
+            for (int i = 0; i < materialIds.length; i++) {
+                int materialId = 0;
+                if (materialIds[i] != null && !materialIds[i].trim().isEmpty()) {
+                    try {
+                        materialId = Integer.parseInt(materialIds[i]);
+                    } catch (NumberFormatException e) {
+                        throw new Exception("Invalid material ID at row " + (i + 1));
                     }
                 }
-            }
-            Map<Integer, Integer> materialQuantityMap = new HashMap<>();
-            List<ExportRequestDetail> details = new ArrayList<>();
-            for (int i = 0; i < materialIds.size(); i++) {
-                int materialId = materialIds.get(i);
-                int quantity = Integer.parseInt(quantities[i]);
-                materialQuantityMap.put(materialId, materialQuantityMap.getOrDefault(materialId, 0) + quantity);
+                if (materialId <= 0) {
+                    throw new Exception("Invalid material selected at row " + (i + 1) + ". Please select from the dropdown list.");
+                }
+                BigDecimal quantity = new BigDecimal(quantities[i]);
+                Integer rackId = null; // No rack selection in simplified form
+                
+                materialQuantityMap.put(materialId, materialQuantityMap.getOrDefault(materialId, BigDecimal.ZERO).add(quantity));
                 ExportRequestDetail detail = new ExportRequestDetail();
                 detail.setMaterialId(materialId);
+                detail.setRackId(rackId);
                 detail.setQuantity(quantity);
                 details.add(detail);
             }
             for (Integer materialId : materialQuantityMap.keySet()) {
-                int totalQuantity = materialQuantityMap.get(materialId);
+                BigDecimal totalQuantity = materialQuantityMap.get(materialId);
                 Material material = materialDAO.getInformation(materialId);
-                int stock = material.getQuantity();
-                if (totalQuantity > stock) {
+                BigDecimal stock = material.getQuantity();
+                if (totalQuantity.compareTo(stock) > 0) {
                     throw new Exception("Not enough stock for material: " + material.getMaterialName());
                 }
             }

@@ -34,9 +34,11 @@ public class ExportRequestDAO extends DBContext {
         List<ExportRequest> requests = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
                 "SELECT er.*, COALESCE(u.full_name, 'Unknown') as userName, "
+                + "COALESCE(r.recipient_name, 'Unknown') as recipientName, "
                 + "COALESCE(a.full_name, 'Unknown') as approverName "
                 + "FROM Export_Requests er "
                 + "LEFT JOIN Users u ON er.user_id = u.user_id "
+                + "LEFT JOIN Recipients r ON er.recipient_id = r.recipient_id "
                 + "LEFT JOIN Users a ON er.approved_by = a.user_id "
                 + "WHERE er.disable = 0"
         );
@@ -188,6 +190,34 @@ public class ExportRequestDAO extends DBContext {
         return null;
     }
     
+    /**
+     * Get all export requests by status (for ExportMaterialServlet)
+     */
+    public List<ExportRequest> getAllRequestsByStatus(String status) {
+        List<ExportRequest> requests = new ArrayList<>();
+        String sql = "SELECT er.*, COALESCE(u.full_name, 'Unknown') as userName, " +
+                     "COALESCE(r.recipient_name, 'Unknown') as recipientName, " +
+                     "COALESCE(a.full_name, 'Unknown') as approverName " +
+                     "FROM Export_Requests er " +
+                     "LEFT JOIN Users u ON er.user_id = u.user_id " +
+                     "LEFT JOIN Recipients r ON er.recipient_id = r.recipient_id " +
+                     "LEFT JOIN Users a ON er.approved_by = a.user_id " +
+                     "WHERE er.status = ? AND er.disable = 0 " +
+                     "ORDER BY er.created_at DESC";
+        
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, status);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    requests.add(mapResultSetToExportRequest(rs));
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting export requests by status: " + status, e);
+        }
+        return requests;
+    }
+    
     public boolean update(ExportRequest request) {
         if (connection == null) {
             return false;
@@ -236,14 +266,20 @@ public class ExportRequestDAO extends DBContext {
         try {
             conn = getConnection();
             conn.setAutoCommit(false);
-            String sql = "INSERT INTO Export_Requests (request_code, user_id, status, delivery_date, reason) "
-                       + "VALUES (?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO Export_Requests (request_code, user_id, recipient_id, status, delivery_date, reason) "
+                       + "VALUES (?, ?, ?, ?, ?, ?)";
             try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, request.getRequestCode());
                 ps.setInt(2, request.getUserId());
-                ps.setString(3, request.getStatus());
-                ps.setDate(4, request.getDeliveryDate());
-                ps.setString(5, request.getReason());
+                // Handle null recipientId properly
+                if (request.getRecipientId() != null) {
+                    ps.setInt(3, request.getRecipientId());
+                } else {
+                    ps.setNull(3, java.sql.Types.INTEGER);
+                }
+                ps.setString(4, request.getStatus());
+                ps.setDate(5, request.getDeliveryDate());
+                ps.setString(6, request.getReason());
                 int affectedRows = ps.executeUpdate();
                 if (affectedRows == 0) {
                     throw new SQLException("Creating request failed, no rows affected.");
@@ -256,13 +292,14 @@ public class ExportRequestDAO extends DBContext {
                     }
                 }
             }
-            String detailSql = "INSERT INTO Export_Request_Details (export_request_id, material_id, quantity) "
-                             + "VALUES (?, ?, ?)";
+            String detailSql = "INSERT INTO Export_Request_Details (export_request_id, material_id, rack_id, quantity) "
+                             + "VALUES (?, ?, ?, ?)";
             try (PreparedStatement ps = conn.prepareStatement(detailSql)) {
                 for (ExportRequestDetail detail : details) {
                     ps.setInt(1, request.getExportRequestId());
                     ps.setInt(2, detail.getMaterialId());
-                    ps.setInt(3, detail.getQuantity());
+                    ps.setObject(3, detail.getRackId());
+                    ps.setBigDecimal(4, detail.getQuantity());
                     ps.addBatch();
                 }
                 ps.executeBatch();

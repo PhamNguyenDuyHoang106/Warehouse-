@@ -57,13 +57,14 @@ public class StaticInventoryServlet extends HttpServlet {
         request.setAttribute("rolePermissionDAO", rolePermissionDAO);
         request.setAttribute("roleId", currentUser.getRoleId());
 
+        String searchTerm = request.getParameter("search");
+        String stockFilter = request.getParameter("filter");
+        String sortStock = request.getParameter("sortStock");
+        String pageStr = request.getParameter("page");
+        int currentPage = pageStr != null ? Integer.parseInt(pageStr) : 1;
+        if (currentPage < 1) currentPage = 1;
+        
         try {
-            String searchTerm = request.getParameter("search");
-            String stockFilter = request.getParameter("filter");
-            String sortStock = request.getParameter("sortStock");
-            String pageStr = request.getParameter("page");
-            int currentPage = pageStr != null ? Integer.parseInt(pageStr) : 1;
-            if (currentPage < 1) currentPage = 1;
             Map<String, Integer> stats = inventoryDAO.getInventoryStatistics();
             int totalStock = stats.getOrDefault("totalStock", 0);
             int lowStockCount = stats.getOrDefault("lowStockCount", 0);
@@ -114,13 +115,9 @@ public class StaticInventoryServlet extends HttpServlet {
             request.setAttribute("stockFilter", stockFilter);
             request.setAttribute("sortStock", sortStock);
 
-        } catch (SQLException e) {
-            request.setAttribute("error", "Error loading inventory data: " + e.getMessage());
-            System.err.println("SQL Error in StaticInventoryServlet: " + e.getMessage());
-            e.printStackTrace();
         } catch (Exception e) {
-            request.setAttribute("error", "Unexpected error: " + e.getMessage());
-            System.err.println("Unexpected error in StaticInventoryServlet: " + e.getMessage());
+            request.setAttribute("error", "Error loading inventory data: " + e.getMessage());
+            System.err.println("Error in StaticInventoryServlet: " + e.getMessage());
             e.printStackTrace();
         }
         request.getRequestDispatcher("/StaticInventory.jsp").forward(request, response);

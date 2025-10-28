@@ -78,8 +78,8 @@ public class PurchaseOrderValidator {
                 errors.put("quantity_" + i, "Quantity is required");
             } else {
                 try {
-                    int qty = Integer.parseInt(quantity);
-                    if (qty <= 0) {
+                    BigDecimal qty = new BigDecimal(quantity);
+                    if (qty.compareTo(BigDecimal.ZERO) <= 0) {
                         errors.put("quantity_" + i, "Quantity must be greater than 0");
                     }
                 } catch (NumberFormatException e) {

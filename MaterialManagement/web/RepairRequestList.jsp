@@ -131,7 +131,7 @@
                             <h2 class="fw-bold display-6 border-bottom pb-2 m-0" style="color: #DEAD6F;">
                                 <i class="fas fa-tools"></i> Repair Request Management
                             </h2>
-                            <a href="${pageContext.request.contextPath}/repairrequest" class="btn btn-add ms-auto">
+                            <a href="${pageContext.request.contextPath}/CreateRepairRequest" class="btn btn-add ms-auto">
                                 <i class="fas fa-plus"></i> Add Repair Request
                             </a>
                         </div>

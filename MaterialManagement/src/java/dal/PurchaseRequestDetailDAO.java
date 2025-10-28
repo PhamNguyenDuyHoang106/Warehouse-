@@ -32,7 +32,7 @@ public class PurchaseRequestDetailDAO extends DBContext {
                 prd.setPurchaseRequestDetailId(rs.getInt("detail_id"));
                 prd.setPurchaseRequestId(rs.getInt("purchase_request_id"));
                 prd.setMaterialId(rs.getInt("material_id"));
-                prd.setQuantity(rs.getInt("quantity"));
+                prd.setQuantity(rs.getBigDecimal("quantity"));
                 prd.setNotes(rs.getString("notes"));
                 prd.setCreatedAt(rs.getTimestamp("created_at"));
                 prd.setUpdatedAt(rs.getTimestamp("updated_at"));

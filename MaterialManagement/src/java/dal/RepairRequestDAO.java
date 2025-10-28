@@ -50,12 +50,12 @@ public class RepairRequestDAO extends DBContext {
 
                 // Insert details into Repair_Request_Details
                 for (RepairRequestDetail detail : details) {
-                    if (detail == null || detail.getMaterialId() <= 0 || detail.getQuantity() <= 0) {
+                    if (detail == null || detail.getMaterialId() <= 0 || detail.getQuantity() == null || detail.getQuantity().compareTo(java.math.BigDecimal.ZERO) <= 0) {
                         throw new IllegalArgumentException("Invalid repair request detail data.");
                     }
                     psDetail.setInt(1, repairRequestId);
                     psDetail.setInt(2, detail.getMaterialId());
-                    psDetail.setInt(3, detail.getQuantity());
+                    psDetail.setBigDecimal(3, detail.getQuantity());
                     psDetail.setString(4, detail.getDamageDescription());
                     psDetail.setObject(5, detail.getRepairCost(), java.sql.Types.DOUBLE);
                     psDetail.setObject(6, detail.getSupplierId() > 0 ? detail.getSupplierId() : null, java.sql.Types.INTEGER);

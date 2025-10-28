@@ -159,15 +159,10 @@ public class HomeServlet extends HttpServlet {
 
         // Thống kê tồn kho
         InventoryDAO inventoryDAO = new InventoryDAO();
-        int totalStock = 0, lowStockCount = 0, outOfStockCount = 0;
-        try {
-            Map<String, Integer> stats = inventoryDAO.getInventoryStatistics();
-            totalStock = stats.getOrDefault("totalStock", 0);
-            lowStockCount = stats.getOrDefault("lowStockCount", 0);
-            outOfStockCount = stats.getOrDefault("outOfStockCount", 0);
-        } catch (SQLException e) {
-            LOGGER.log(Level.WARNING, "Error getting inventory statistics: " + e.getMessage(), e);
-        }
+        Map<String, Integer> stats = inventoryDAO.getInventoryStatistics();
+        int totalStock = stats.getOrDefault("totalStock", 0);
+        int lowStockCount = stats.getOrDefault("lowStockCount", 0);
+        int outOfStockCount = stats.getOrDefault("outOfStockCount", 0);
         request.setAttribute("totalStock", totalStock);
         request.setAttribute("lowStockCount", lowStockCount);
         request.setAttribute("outOfStockCount", outOfStockCount);

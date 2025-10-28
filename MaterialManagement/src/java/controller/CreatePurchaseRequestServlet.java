@@ -110,9 +110,10 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
 
         try {
             String reason = request.getParameter("reason");
+            String requestDate = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm").format(new java.util.Date());
 
             String[] materialNames = request.getParameterValues("materialName[]");
-            String[] materialIds = request.getParameterValues("materialId");
+            String[] materialIds = request.getParameterValues("materialId[]");
             String[] quantities = request.getParameterValues("quantity[]");
             String[] notes = request.getParameterValues("note");
             
@@ -136,7 +137,7 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
                 List<entity.Material> materials = materialDAO.getAllProducts();
                 // Always generate a new request code for retry
                 String requestCode = prd.generateNextRequestCode();
-                String requestDate = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm").format(new java.util.Date());
+                // requestDate already declared above
                 
                 // Preserve form data for retry
                 request.setAttribute("categories", categories);
@@ -162,11 +163,40 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
                 if (materialName == null || materialName.trim().isEmpty()) {
                     continue;
                 }
-                int quantity = Integer.parseInt(quantities[i]);
+                java.math.BigDecimal quantity = new java.math.BigDecimal(quantities[i]);
                 int materialId = 0;
                 if (materialIds != null && materialIds.length > i && materialIds[i] != null && !materialIds[i].isEmpty()) {
-                    materialId = Integer.parseInt(materialIds[i]);
+                    try {
+                        materialId = Integer.parseInt(materialIds[i]);
+                    } catch (NumberFormatException e) {
+                        // If parsing fails, materialId stays 0
+                    }
                 }
+                
+                // Validate materialId
+                if (materialId <= 0) {
+                    String errorMsg = "Invalid material selected at row " + (i + 1) + ". Please select a material from the dropdown list.";
+                    request.setAttribute("error", errorMsg);
+                    
+                    // Reload form data
+                    String newRequestCode = prd.generateNextRequestCode();
+                    request.setAttribute("requestCode", newRequestCode);
+                    request.setAttribute("requestDate", requestDate);
+                    List<Material> materials = materialDAO.searchMaterials(null, null, 1, 1000, "name_asc");
+                    request.setAttribute("materials", materials);
+                    request.setAttribute("categories", categoryDAO.getAllCategories());
+                    request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+                    
+                    // Preserve submitted data
+                    request.setAttribute("submittedReason", reason);
+                    request.setAttribute("submittedMaterialNames", materialNames);
+                    request.setAttribute("submittedQuantities", quantities);
+                    request.setAttribute("submittedNotes", notes);
+                    
+                    request.getRequestDispatcher("PurchaseRequestForm.jsp").forward(request, response);
+                    return;
+                }
+                
                 PurchaseRequestDetail detail = new PurchaseRequestDetail();
                 detail.setMaterialName(materialName.trim());
                 detail.setMaterialId(materialId);
@@ -201,15 +231,17 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
            
 
             if (success) {
-                List<User> allUsers = userDAO.getAllUsers();
-                List<User> managers = new ArrayList<>();
-                for (User u : allUsers) {
-                    if (rolePermissionDAO.hasPermission(u.getRoleId(), "HANDLE_REQUEST")) {
-                        managers.add(u);
+                // Email notification (optional - may fail if email not configured)
+                try {
+                    List<User> allUsers = userDAO.getAllUsers();
+                    List<User> managers = new ArrayList<>();
+                    for (User u : allUsers) {
+                        if (rolePermissionDAO.hasPermission(u.getRoleId(), "HANDLE_REQUEST")) {
+                            managers.add(u);
+                        }
                     }
-                }
 
-                if (!managers.isEmpty()) {
+                    if (!managers.isEmpty()) {
                     String subject = "[Notification] New Purchase Request Created";
                     StringBuilder content = new StringBuilder();
                     content.append("<html><body style='margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;'>");
@@ -286,31 +318,23 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
                     content.append("</div>");
                     
                     content.append("</div></body></html>");
-                    content.append("<div class='action-section'>");
-                    content.append("<p style='color: #E9B775; margin-bottom: 20px; font-weight: bold; text-shadow: 1px 1px 2px rgba(233, 183, 117, 0.3);'>Please review and take action on this purchase request:</p>");
-                    content.append("<a href='").append(request.getScheme()).append("://").append(request.getServerName()).append(":").append(request.getServerPort()).append(request.getContextPath()).append("/ListPurchaseRequests' class='btn'>VIEW IN SYSTEM</a>");
-                    content.append("</div>");
-                    content.append("</div>");
-                    content.append("<div class='footer'>");
-                    content.append("<p style='color: #000;'>This is an automated notification from the Material Management System</p>");
-                    content.append("<p style='color: #000;'>If you have any questions, please contact the system administrator</p>");
-                    content.append("</div>");
-                    content.append("</div>");
-                    content.append("</body>");
-                    content.append("</html>");
 
                     for (User manager : managers) {
                         if (manager.getEmail() != null && !manager.getEmail().trim().isEmpty()) {
                             try {
-                                
                                 utils.EmailUtils.sendEmail(manager.getEmail(), subject, content.toString());
-                                
                             } catch (Exception e) {
-                                LOGGER.log(Level.SEVERE, "Error sending email to manager: " + manager.getEmail(), e);
+                                // Log individual email failures but continue
+                                LOGGER.log(Level.WARNING, "Failed to send email to manager: " + manager.getEmail() + " - " + e.getMessage());
                             }
                         }
                     }
+                    } // end if (!managers.isEmpty())
+                } catch (Exception emailEx) {
+                    // Email notification failed - log but don't stop the process
+                    LOGGER.log(Level.WARNING, "Email notification failed but purchase request was created successfully: " + emailEx.getMessage());
                 }
+                
                 response.sendRedirect("ListPurchaseRequests?success=created");
             } else {
                 LOGGER.log(Level.WARNING, "Could not create purchase request. Database operation failed or returned false.");

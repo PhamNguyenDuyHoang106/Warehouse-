@@ -4,6 +4,7 @@
  */
 package entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -15,15 +16,18 @@ public class ImportDetail {
     private int importDetailId;
     private int importId;
     private int materialId;
-    private int quantity;
-    private double unitPrice;
+    private Integer rackId;  // Nullable - warehouse rack location
+    private BigDecimal quantity;  // Changed to BigDecimal for DECIMAL(10,2)
+    private BigDecimal unitPrice;  // Changed to BigDecimal for DECIMAL(15,2)
     private String status;
     private LocalDateTime createdAt;
     private String materialName;
+    private String materialCode;  // For display purposes
     private String unitName;
     private String materialsUrl;
-
-  
+    private String rackCode;  // For display purposes
+    private String rackName;  // For display purposes
+    private String note;  // Import detail note
 
     public int getImportDetailId() {
         return importDetailId;
@@ -58,19 +62,27 @@ public class ImportDetail {
         this.materialId = materialId;
     }
 
-    public int getQuantity() {
+    public Integer getRackId() {
+        return rackId;
+    }
+
+    public void setRackId(Integer rackId) {
+        this.rackId = rackId;
+    }
+
+    public BigDecimal getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(int quantity) {
+    public void setQuantity(BigDecimal quantity) {
         this.quantity = quantity;
     }
 
-    public double getUnitPrice() {
+    public BigDecimal getUnitPrice() {
         return unitPrice;
     }
 
-    public void setUnitPrice(double unitPrice) {
+    public void setUnitPrice(BigDecimal unitPrice) {
         this.unitPrice = unitPrice;
     }
 
@@ -104,6 +116,38 @@ public class ImportDetail {
 
     public void setUnitName(String unitName) {
         this.unitName = unitName;
+    }
+
+    public String getRackCode() {
+        return rackCode;
+    }
+
+    public void setRackCode(String rackCode) {
+        this.rackCode = rackCode;
+    }
+
+    public String getRackName() {
+        return rackName;
+    }
+
+    public void setRackName(String rackName) {
+        this.rackName = rackName;
+    }
+
+    public String getMaterialCode() {
+        return materialCode;
+    }
+
+    public void setMaterialCode(String materialCode) {
+        this.materialCode = materialCode;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 
 }

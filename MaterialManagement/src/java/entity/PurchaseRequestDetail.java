@@ -9,12 +9,13 @@ package entity;
  * @author Admin
  */
 import java.sql.Timestamp;
+import java.math.BigDecimal;
 
 public class PurchaseRequestDetail {
 
     private int purchaseRequestDetailId;
     private int purchaseRequestId;
-    private int quantity;
+    private BigDecimal quantity;
     private String notes;
     private Timestamp createdAt;
     private Timestamp updatedAt;
@@ -42,11 +43,11 @@ public class PurchaseRequestDetail {
         this.purchaseRequestId = purchaseRequestId;
     }
 
-    public int getQuantity() {
+    public BigDecimal getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(int quantity) {
+    public void setQuantity(BigDecimal quantity) {
         this.quantity = quantity;
     }
 

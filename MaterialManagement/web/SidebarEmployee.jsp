@@ -93,7 +93,7 @@
 
                 <c:if test="${sessionScope.userPermissions.contains('CREATE_REPAIR_REQUEST')}">
                     <li class="nav-item mb-2">
-                        <a class="nav-link text-uppercase secondary-font d-flex align-items-center ps-4" href="${pageContext.request.contextPath}/repairrequest">
+                        <a class="nav-link text-uppercase secondary-font d-flex align-items-center ps-4" href="${pageContext.request.contextPath}/CreateRepairRequest">
                             <i class="fas fa-tools fs-5 me-3"></i>
                             New Repair Request
                         </a>

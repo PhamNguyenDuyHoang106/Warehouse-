@@ -21,6 +21,7 @@ import utils.RepairRequestValidator;
 
 import java.io.IOException;
 import java.sql.Timestamp;
+import java.math.BigDecimal;
 import java.sql.Date;
 import java.time.LocalDateTime;
 import java.text.SimpleDateFormat;
@@ -30,7 +31,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-@WebServlet(name = "RepairRequestServlet", urlPatterns = {"/repairrequest"})
+@WebServlet(name = "RepairRequestServlet", urlPatterns = {"/CreateRepairRequest"})
 public class RepairRequestServlet extends HttpServlet {
 
     private static final Logger LOGGER = Logger.getLogger(RepairRequestServlet.class.getName());
@@ -53,29 +54,47 @@ public class RepairRequestServlet extends HttpServlet {
             return;
         }
 
-        MaterialDAO materialDAO = new MaterialDAO();
-        List<Material> materialList = materialDAO.searchMaterials("", "damaged", 1, Integer.MAX_VALUE, "code_asc");
+        MaterialDAO materialDAO = null;
+        SupplierDAO supplierDAO = null;
         
-        // Debug log
-        LOGGER.log(Level.INFO, "Found " + materialList.size() + " damaged materials:");
-        for (Material m : materialList) {
-            LOGGER.log(Level.INFO, "- " + m.getMaterialName() + " (ID: " + m.getMaterialId() + ", Status: " + m.getMaterialStatus() + ")");
+        try {
+            materialDAO = new MaterialDAO();
+            // Load ALL materials, not just damaged ones (like PurchaseRequest does)
+            List<Material> materialList = materialDAO.getAllProducts();
+            
+            // Debug log
+            LOGGER.log(Level.INFO, "Found " + materialList.size() + " materials for repair request autocomplete");
+
+            supplierDAO = new SupplierDAO();
+            List<Supplier> supplierList = supplierDAO.getAllSuppliers();
+
+            // Generate request code and date
+            String requestCode = generateRequestCode();
+            String requestDate = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm").format(new java.util.Date());
+
+            request.setAttribute("materialList", materialList);
+            request.setAttribute("supplierList", supplierList);
+            request.setAttribute("requestCode", requestCode);
+            request.setAttribute("requestDate", requestDate);
+
+            // Forward đến trang tạo yêu cầu sửa chữa
+            request.getRequestDispatcher("CreateRepairRequest.jsp").forward(request, response);
+        } finally {
+            if (materialDAO != null) {
+                try {
+                    materialDAO.close();
+                } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "Error closing MaterialDAO connection", e);
+                }
+            }
+            if (supplierDAO != null) {
+                try {
+                    supplierDAO.close();
+                } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "Error closing SupplierDAO connection", e);
+                }
+            }
         }
-
-        SupplierDAO supplierDAO = new SupplierDAO();
-        List<Supplier> supplierList = supplierDAO.getAllSuppliers();
-
-        // Generate request code and date
-        String requestCode = generateRequestCode();
-        String requestDate = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm").format(new java.util.Date());
-
-        request.setAttribute("materialList", materialList);
-        request.setAttribute("supplierList", supplierList);
-        request.setAttribute("requestCode", requestCode);
-        request.setAttribute("requestDate", requestDate);
-
-        // Forward đến trang tạo yêu cầu sửa chữa
-        request.getRequestDispatcher("CreateRepairRequest.jsp").forward(request, response);
     }
 
     @Override
@@ -102,6 +121,7 @@ public class RepairRequestServlet extends HttpServlet {
             String supplierIdStr = request.getParameter("supplierId");
             String reason = request.getParameter("reason");
             String[] materialNames = request.getParameterValues("materialName[]");
+            String[] materialIds = request.getParameterValues("materialId[]");
             String[] quantities = request.getParameterValues("quantity[]");
             String[] damageDescriptions = request.getParameterValues("damageDescription[]");
             Timestamp now = Timestamp.valueOf(LocalDateTime.now());
@@ -113,24 +133,46 @@ public class RepairRequestServlet extends HttpServlet {
 
             if (!formErrors.isEmpty()) {
                 // Preserve form data for retry
-                MaterialDAO materialDAO = new MaterialDAO();
-                SupplierDAO supplierDAO = new SupplierDAO();
-                List<Material> materialList = materialDAO.searchMaterials("", "damaged", 1, Integer.MAX_VALUE, "code_asc");
-                List<Supplier> supplierList = supplierDAO.getAllSuppliers();
+                MaterialDAO materialDAO = null;
+                SupplierDAO supplierDAO = null;
+                
+                try {
+                    materialDAO = new MaterialDAO();
+                    supplierDAO = new SupplierDAO();
+                    // Load ALL materials, not just damaged ones
+                    List<Material> materialList = materialDAO.getAllProducts();
+                    List<Supplier> supplierList = supplierDAO.getAllSuppliers();
 
-                String requestDate = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm").format(new java.util.Date());
+                    String requestDate = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm").format(new java.util.Date());
 
-                request.setAttribute("materialList", materialList);
-                request.setAttribute("supplierList", supplierList);
-                request.setAttribute("requestCode", requestCode);
-                request.setAttribute("requestDate", requestDate);
-                request.setAttribute("errors", formErrors);
-                request.setAttribute("submittedReason", reason);
-                request.setAttribute("submittedMaterialNames", materialNames);
-                request.setAttribute("submittedQuantities", quantities);
-                request.setAttribute("submittedDamageDescriptions", damageDescriptions);
+                    request.setAttribute("materialList", materialList);
+                    request.setAttribute("supplierList", supplierList);
+                    request.setAttribute("requestCode", requestCode);
+                    request.setAttribute("requestDate", requestDate);
+                    request.setAttribute("errors", formErrors);
+                    request.setAttribute("submittedReason", reason);
+                    request.setAttribute("submittedSupplierId", supplierIdStr);
+                    request.setAttribute("submittedMaterialNames", materialNames);
+                    request.setAttribute("submittedQuantities", quantities);
+                    request.setAttribute("submittedDamageDescriptions", damageDescriptions);
 
-                request.getRequestDispatcher("CreateRepairRequest.jsp").forward(request, response);
+                    request.getRequestDispatcher("CreateRepairRequest.jsp").forward(request, response);
+                } finally {
+                    if (materialDAO != null) {
+                        try {
+                            materialDAO.close();
+                        } catch (Exception e) {
+                            LOGGER.log(Level.WARNING, "Error closing MaterialDAO connection", e);
+                        }
+                    }
+                    if (supplierDAO != null) {
+                        try {
+                            supplierDAO.close();
+                        } catch (Exception e) {
+                            LOGGER.log(Level.WARNING, "Error closing SupplierDAO connection", e);
+                        }
+                    }
+                }
                 return;
             }
 
@@ -156,7 +198,6 @@ public class RepairRequestServlet extends HttpServlet {
             requestObj.setDisable(false);
 
             List<RepairRequestDetail> detailList = new ArrayList<>();
-            MaterialDAO materialDAO = new MaterialDAO();
 
             for (int i = 0; i < materialNames.length; i++) {
                 String materialName = materialNames[i];
@@ -164,28 +205,71 @@ public class RepairRequestServlet extends HttpServlet {
                     continue;
                 }
                 
-                String trimmedMaterialName = materialName.trim();
-                // Xử lý trường hợp tên vật tư có "(damaged)" ở cuối
-                if (trimmedMaterialName.endsWith(" (damaged)")) {
-                    trimmedMaterialName = trimmedMaterialName.substring(0, trimmedMaterialName.length() - 10); // Bỏ "(damaged)"
+                // Get material ID from hidden field
+                int materialId = 0;
+                if (materialIds != null && materialIds.length > i && materialIds[i] != null && !materialIds[i].isEmpty()) {
+                    try {
+                        materialId = Integer.parseInt(materialIds[i]);
+                    } catch (NumberFormatException e) {
+                        LOGGER.log(Level.WARNING, "Invalid material ID at index " + i);
+                    }
                 }
                 
-                LOGGER.log(Level.FINE, "Processing material: '" + materialName.trim() + "' -> trimmed: '" + trimmedMaterialName + "'");
-                
-                Material material = materialDAO.getInformationByNameAndStatus(trimmedMaterialName, "damaged");
-                
-                if (material == null) {
-                    LOGGER.log(Level.WARNING, "Material not found: '" + trimmedMaterialName + "' with status 'damaged'");
-                    continue; // Already validated above
+                // Validate material ID
+                if (materialId <= 0) {
+                    LOGGER.log(Level.WARNING, "Invalid material ID: " + materialId + " for material: " + materialName);
+                    String errorMsg = "Invalid material selected at row " + (i + 1) + ". Please select from the dropdown list.";
+                    request.setAttribute("error", errorMsg);
+                    
+                    // Reload form data
+                    MaterialDAO materialDAO = null;
+                    SupplierDAO supplierDAO = null;
+                    
+                    try {
+                        materialDAO = new MaterialDAO();
+                        supplierDAO = new SupplierDAO();
+                        // Load ALL materials, not just damaged ones
+                        List<Material> materialList = materialDAO.getAllProducts();
+                        List<Supplier> supplierList = supplierDAO.getAllSuppliers();
+                        String requestDate = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm").format(new java.util.Date());
+                        
+                        request.setAttribute("materialList", materialList);
+                        request.setAttribute("supplierList", supplierList);
+                        request.setAttribute("requestCode", requestCode);
+                        request.setAttribute("requestDate", requestDate);
+                        request.setAttribute("submittedReason", reason);
+                        request.setAttribute("submittedSupplierId", supplierIdStr);
+                        request.setAttribute("submittedMaterialNames", materialNames);
+                        request.setAttribute("submittedQuantities", quantities);
+                        request.setAttribute("submittedDamageDescriptions", damageDescriptions);
+                        
+                        request.getRequestDispatcher("CreateRepairRequest.jsp").forward(request, response);
+                    } finally {
+                        if (materialDAO != null) {
+                            try {
+                                materialDAO.close();
+                            } catch (Exception e) {
+                                LOGGER.log(Level.WARNING, "Error closing MaterialDAO connection", e);
+                            }
+                        }
+                        if (supplierDAO != null) {
+                            try {
+                                supplierDAO.close();
+                            } catch (Exception e) {
+                                LOGGER.log(Level.WARNING, "Error closing SupplierDAO connection", e);
+                            }
+                        }
+                    }
+                    return;
                 }
                 
-                LOGGER.log(Level.FINE, "Found material: " + material.getMaterialName() + " (ID: " + material.getMaterialId() + ")");
+                LOGGER.log(Level.FINE, "Processing material ID: " + materialId + " - " + materialName);
                 
-                int quantity = Integer.parseInt(quantities[i]);
+                BigDecimal quantity = new BigDecimal(quantities[i]);
                 String damageDescription = damageDescriptions[i];
 
                 RepairRequestDetail detail = new RepairRequestDetail();
-                detail.setMaterialId(material.getMaterialId());
+                detail.setMaterialId(materialId);
                 detail.setQuantity(quantity);
                 detail.setDamageDescription(damageDescription);
                 detail.setSupplierId(supplierId); 
@@ -199,10 +283,15 @@ public class RepairRequestServlet extends HttpServlet {
             LOGGER.log(Level.INFO, "[doPost] Kết quả lưu yêu cầu vào DB: " + success);
 
             if (success) {
+                // Get user and supplier data, then close connections immediately
                 UserDAO userDAO = new UserDAO();
+                List<User> allUsers = userDAO.getAllUsers();
+                userDAO.close();
+                
                 SupplierDAO supplierDAO = new SupplierDAO();
                 Supplier supplier = supplierDAO.getSupplierByID(supplierId);
-                List<User> allUsers = userDAO.getAllUsers();
+                supplierDAO.close();
+                
                 List<User> managers = new ArrayList<>();
                 for (User u : allUsers) {
                     if (u.getRoleId() == 2) {
@@ -260,8 +349,9 @@ public class RepairRequestServlet extends HttpServlet {
                     htmlContent.append("</tr></thead>");
                     htmlContent.append("<tbody>");
                     
+                    MaterialDAO emailMaterialDAO = new MaterialDAO();
                     for (RepairRequestDetail detail : detailList) {
-                        Material material = materialDAO.getProductById(detail.getMaterialId());
+                        Material material = emailMaterialDAO.getProductById(detail.getMaterialId());
                         if (material != null) {
                             htmlContent.append("<tr style='background-color: #ffffff;'>");
                             htmlContent.append("<td style='padding: 12px; border: 1px solid #dee2e6; color: #333333;'>").append(material.getMaterialName()).append("</td>");
@@ -273,6 +363,7 @@ public class RepairRequestServlet extends HttpServlet {
                             htmlContent.append("</tr>");
                         }
                     }
+                    emailMaterialDAO.close();
                     
                     htmlContent.append("</tbody></table>");
                     htmlContent.append("</div>");
@@ -296,7 +387,8 @@ public class RepairRequestServlet extends HttpServlet {
                             try {
                                 EmailUtils.sendEmail(manager.getEmail(), subject, htmlContent.toString());
                             } catch (Exception e) {
-                                LOGGER.log(Level.SEVERE, "Error sending email to manager: " + manager.getEmail(), e);
+                                // Log individual email failures but continue
+                                LOGGER.log(Level.WARNING, "Failed to send email to manager: " + manager.getEmail() + " - " + e.getMessage());
                             }
                         } else {
                             LOGGER.log(Level.INFO, "Manager has no valid email: " + manager.getFullName());
@@ -305,11 +397,10 @@ public class RepairRequestServlet extends HttpServlet {
 
                     if (user.getEmail() != null && !user.getEmail().trim().isEmpty()) {
                         try {
-                            LOGGER.log(Level.INFO, "Sending email to user: " + user.getEmail());
-                            LOGGER.log(Level.INFO, "Subject: " + subject);
                             EmailUtils.sendEmail(user.getEmail(), subject, htmlContent.toString());
                         } catch (Exception e) {
-                            LOGGER.log(Level.SEVERE, "Error sending email to user: " + user.getEmail(), e);
+                            // Log individual email failures but continue
+                            LOGGER.log(Level.WARNING, "Failed to send email to user: " + user.getEmail() + " - " + e.getMessage());
                         }
                     } else {
                         LOGGER.log(Level.INFO, "User has no valid email: " + user.getFullName());

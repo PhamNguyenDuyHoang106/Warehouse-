@@ -118,16 +118,20 @@ if (user != null) {
                         <select class="filter-categories border-0 mb-0 me-5" onchange="location.href = this.value;">
                             <option selected disabled>Stock</option>
                             <!-- Export / Import Stock -->
-                            <c:if test="${sessionScope.userPermissions.contains('EXPORT_MATERIAL')}">
-                                <option value="ExportMaterial">Export Stock</option>
-                                <option value="ExportHistory">Export History</option>
+                            <c:if test="${sessionScope.userPermissions.contains('CREATE_EXPORT')}">
+                                <option value="ExportMaterial">Export Material</option>
                             </c:if>
-                            <c:if test="${sessionScope.userPermissions.contains('IMPORT_MATERIAL')}">
-                                <option value="ImportMaterial">Import Stock</option>
-                                <option value="ImportHistory">Import History</option>
+                            <c:if test="${sessionScope.userPermissions.contains('VIEW_EXPORT_LIST')}">
+                                <option value="ExportList">Export List</option>
+                            </c:if>
+                            <c:if test="${sessionScope.userPermissions.contains('CREATE_IMPORT')}">
+                                <option value="ImportMaterial">Import Material</option>
+                            </c:if>
+                            <c:if test="${sessionScope.userPermissions.contains('VIEW_IMPORT_LIST')}">
+                                <option value="ImportList">Import List</option>
                             </c:if>
                             <c:if test="${sessionScope.userPermissions.contains('CREATE_REPAIR_REQUEST') && sessionScope.user.roleId == 3}">
-                                <option value="repairrequest">Repair Request</option>
+                                <option value="CreateRepairRequest">Repair Request</option>
                             </c:if>
                         </select>
                     </c:if>
@@ -146,7 +150,7 @@ if (user != null) {
                                   <option value="CreatePurchaseRequest">Purchase Request</option>
                               </c:if>
                               <c:if test="${sessionScope.userPermissions.contains('CREATE_REPAIR_REQUEST')}">
-                                  <option value="repairrequest">Repair Request</option>
+                                  <option value="CreateRepairRequest">Repair Request</option>
                               </c:if>
                               <c:if test="${sessionScope.userPermissions.contains('CREATE_PURCHASE_ORDER')}">
                                   <option value="CreatePurchaseOrder">Purchase Order Request</option>

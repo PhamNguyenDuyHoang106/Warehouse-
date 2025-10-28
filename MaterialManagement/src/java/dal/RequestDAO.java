@@ -144,7 +144,7 @@ public class RequestDAO extends DBContext {
                 detail.setMaterialCode(rs.getString("material_code"));
                 detail.setMaterialName(rs.getString("material_name"));
                 detail.setMaterialUnit(rs.getString("unit_name"));
-                detail.setQuantity(rs.getInt("quantity"));
+                detail.setQuantity(rs.getBigDecimal("quantity"));
                 detail.setCreatedAt(rs.getTimestamp("created_at"));
                 detail.setUpdatedAt(rs.getTimestamp("updated_at"));
                 details.add(detail);
@@ -174,7 +174,7 @@ public class RequestDAO extends DBContext {
                 detail.setMaterialName(rs.getString("material_name"));
                 detail.setMaterialCode(rs.getString("material_code"));
                 detail.setUnitName(rs.getString("unit_name"));
-                detail.setQuantity(rs.getInt("quantity"));
+                detail.setQuantity(rs.getBigDecimal("quantity"));
                 detail.setNotes(rs.getString("notes"));
                 detail.setCreatedAt(rs.getTimestamp("created_at"));
                 detail.setUpdatedAt(rs.getTimestamp("updated_at"));
@@ -205,7 +205,7 @@ public class RequestDAO extends DBContext {
                 detail.setMaterialCode(rs.getString("material_code"));
                 detail.setMaterialName(rs.getString("material_name"));
                 detail.setUnitName(rs.getString("unit_name"));
-                detail.setQuantity(rs.getInt("quantity"));
+                detail.setQuantity(rs.getBigDecimal("quantity"));
                 detail.setDamageDescription(rs.getString("damage_description"));
                 detail.setRepairCost(rs.getObject("repair_cost") != null ? rs.getDouble("repair_cost") : null);
                 detail.setCreatedAt(rs.getTimestamp("created_at"));
@@ -709,7 +709,7 @@ public class RequestDAO extends DBContext {
                 detail.setMaterialName(rs.getString("material_name"));
                 detail.setCategoryId(rs.getInt("category_id"));
                 detail.setCategoryName(rs.getString("category_name"));
-                detail.setQuantity(rs.getInt("quantity"));
+                detail.setQuantity(rs.getBigDecimal("quantity"));
                 detail.setUnitPrice(rs.getBigDecimal("unit_price"));
                 detail.setSupplierId(rs.getObject("supplier_id") != null ? rs.getInt("supplier_id") : null);
                 detail.setSupplierName(rs.getString("supplier_name"));

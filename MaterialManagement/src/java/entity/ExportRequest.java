@@ -9,7 +9,7 @@ public class ExportRequest {
     private String requestCode;
     private int userId;
     private String userName;
-    private int recipientId;
+    private Integer recipientId; // Changed to Integer to allow null
     private String recipientName;
     private Timestamp requestDate;
     private String status;
@@ -20,6 +20,10 @@ public class ExportRequest {
     private String approvalReason;
     private Timestamp approvedAt;
     private String rejectionReason;
+    private boolean isUsed;
+    private Timestamp createdAt;
+    private Timestamp updatedAt;
+    private boolean disable;
     private List<ExportRequestDetail> details;
 
     public int getExportRequestId() {
@@ -54,11 +58,11 @@ public class ExportRequest {
         this.userName = userName;
     }
 
-    public int getRecipientId() {
+    public Integer getRecipientId() {
         return recipientId;
     }
 
-    public void setRecipientId(int recipientId) {
+    public void setRecipientId(Integer recipientId) {
         this.recipientId = recipientId;
     }
 
@@ -148,5 +152,37 @@ public class ExportRequest {
 
     public void setDetails(List<ExportRequestDetail> details) {
         this.details = details;
+    }
+
+    public boolean isUsed() {
+        return isUsed;
+    }
+
+    public void setUsed(boolean used) {
+        isUsed = used;
+    }
+
+    public Timestamp getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Timestamp createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Timestamp getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Timestamp updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public boolean isDisable() {
+        return disable;
+    }
+
+    public void setDisable(boolean disable) {
+        this.disable = disable;
     }
 } 

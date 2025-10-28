@@ -4,6 +4,7 @@ import entity.PurchaseRequest;
 import entity.PurchaseRequestDetail;
 import dal.MaterialDAO;
 import entity.Material;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,17 +68,13 @@ public class PurchaseRequestValidator {
                 errors.put("quantity_" + i, "Quantity cannot be empty for material " + trimmedMaterialName + ".");
             } else {
                 String trimmedQuantity = quantityStr.trim();
-                if (trimmedQuantity.contains(".") || trimmedQuantity.contains(",")) {
-                    errors.put("quantity_" + i, "Quantity must be a whole number (no decimals) for material " + trimmedMaterialName + ".");
-                } else {
-                    try {
-                        int quantity = Integer.parseInt(trimmedQuantity);
-                        if (quantity <= 0) {
-                            errors.put("quantity_" + i, "Quantity must be greater than 0 for material " + trimmedMaterialName + ".");
-                        }
-                    } catch (NumberFormatException e) {
-                        errors.put("quantity_" + i, "Invalid quantity format for material " + trimmedMaterialName + ".");
+                try {
+                    BigDecimal quantity = new BigDecimal(trimmedQuantity);
+                    if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+                        errors.put("quantity_" + i, "Quantity must be greater than 0 for material " + trimmedMaterialName + ".");
                     }
+                } catch (NumberFormatException e) {
+                    errors.put("quantity_" + i, "Invalid quantity format for material " + trimmedMaterialName + ".");
                 }
             }
 
@@ -98,7 +95,7 @@ public class PurchaseRequestValidator {
             errors.put("materialId", "Invalid material ID.");
         }
 
-        if (detail.getQuantity() <= 0) {
+        if (detail.getQuantity() == null || detail.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
             errors.put("quantity", "Quantity must be greater than 0.");
         }
 
@@ -125,17 +122,13 @@ public class PurchaseRequestValidator {
             errors.put("quantity", "Quantity cannot be empty.");
         } else {
             String trimmedQuantity = quantityStr.trim();
-            if (trimmedQuantity.contains(".") || trimmedQuantity.contains(",")) {
-                errors.put("quantity", "Quantity must be a whole number (no decimals).");
-            } else {
-                try {
-                    int quantity = Integer.parseInt(trimmedQuantity);
-                    if (quantity <= 0) {
-                        errors.put("quantity", "Quantity must be greater than 0.");
-                    }
-                } catch (NumberFormatException e) {
-                    errors.put("quantity", "Invalid quantity format.");
+            try {
+                BigDecimal quantity = new BigDecimal(trimmedQuantity);
+                if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+                    errors.put("quantity", "Quantity must be greater than 0.");
                 }
+            } catch (NumberFormatException e) {
+                errors.put("quantity", "Invalid quantity format.");
             }
         }
 

@@ -42,6 +42,17 @@ public class DBContext {
         return connection;
     }
 
+    public void close() {
+        try {
+            if (connection != null && !connection.isClosed()) {
+                connection.close();
+                LOGGER.log(Level.INFO, "✅ Đã đóng kết nối MySQL");
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "❌ Lỗi khi đóng kết nối: " + e.getMessage(), e);
+        }
+    }
+
     public static void main(String[] args) {
         new DBContext();
     }

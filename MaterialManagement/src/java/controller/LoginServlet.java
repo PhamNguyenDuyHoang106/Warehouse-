@@ -24,9 +24,13 @@ public class LoginServlet extends HttpServlet {
         String username = request.getParameter("username");
         String password = request.getParameter("password");
 
-        UserDAO userDAO = new UserDAO();
-        PermissionDAO permissionDAO = new PermissionDAO();
-        User user = userDAO.login(username, password); 
+        UserDAO userDAO = null;
+        PermissionDAO permissionDAO = null;
+        
+        try {
+            userDAO = new UserDAO();
+            permissionDAO = new PermissionDAO();
+            User user = userDAO.login(username, password); 
 
         if (user != null) {
             if (user.getStatus() != null && user.getStatus().toString().equalsIgnoreCase("inactive")) {
@@ -76,6 +80,22 @@ public class LoginServlet extends HttpServlet {
         } else {
             request.setAttribute("error", "Invalid username or password!");
             request.getRequestDispatcher("Login.jsp").forward(request, response);
+        }
+        } finally {
+            if (userDAO != null) {
+                try {
+                    userDAO.close();
+                } catch (Exception e) {
+                    // Log but don't throw
+                }
+            }
+            if (permissionDAO != null) {
+                try {
+                    permissionDAO.close();
+                } catch (Exception e) {
+                    // Log but don't throw
+                }
+            }
         }
     }
 

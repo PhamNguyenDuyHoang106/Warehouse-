@@ -3,15 +3,10 @@ package dal;
 import entity.Category;
 import entity.DBContext;
 import entity.Material;
-import entity.MaterialDetails;
-import entity.Supplier;
 import entity.Unit;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -24,12 +19,14 @@ public class MaterialDAO extends DBContext {
         List<Material> list = new ArrayList<>();
         try {
             StringBuilder sql = new StringBuilder();
-            sql.append("SELECT m.*, c.category_name, u.unit_name, IFNULL(i.stock, 0) AS quantity ")
-                    .append("FROM materials m ")
-                    .append("LEFT JOIN categories c ON m.category_id = c.category_id ")
-                    .append("LEFT JOIN units u ON m.unit_id = u.unit_id AND u.disable = 0 ")
-                    .append("LEFT JOIN inventory i ON m.material_id = i.material_id ")
-                    .append("WHERE m.disable = 0 ");
+            sql.append("SELECT m.*, c.category_name, u.unit_name, wr.rack_name, wr.rack_code, ")
+               .append("IFNULL(SUM(i.stock), 0) AS quantity ")
+               .append("FROM materials m ")
+               .append("LEFT JOIN categories c ON m.category_id = c.category_id ")
+               .append("LEFT JOIN units u ON m.unit_id = u.unit_id AND u.disable = 0 ")
+               .append("LEFT JOIN Warehouse_Racks wr ON m.rack_id = wr.rack_id ")
+               .append("LEFT JOIN inventory i ON m.material_id = i.material_id ")
+               .append("WHERE m.disable = 0 ");
 
             List<Object> params = new ArrayList<>();
 
@@ -63,6 +60,7 @@ public class MaterialDAO extends DBContext {
                     sortOrder = "DESC";
                     break;
             }
+            sql.append(" GROUP BY m.material_id, c.category_name, u.unit_name, wr.rack_name, wr.rack_code ");
             sql.append(" ORDER BY ").append(sortBy).append(" ").append(sortOrder).append(" ");
 
             sql.append("LIMIT ? OFFSET ?");
@@ -83,7 +81,7 @@ public class MaterialDAO extends DBContext {
                 m.setMaterialName(rs.getString("material_name"));
                 m.setMaterialsUrl(rs.getString("materials_url"));
                 m.setMaterialStatus(rs.getString("material_status"));
-                m.setQuantity(rs.getInt("quantity"));
+                m.setQuantity(rs.getBigDecimal("quantity"));
 
                 m.setCreatedAt(rs.getTimestamp("created_at"));
                 m.setUpdatedAt(rs.getTimestamp("updated_at"));
@@ -97,6 +95,15 @@ public class MaterialDAO extends DBContext {
                 u.setId(rs.getInt("unit_id"));
                 u.setUnitName(rs.getString("unit_name"));
                 m.setUnit(u);
+
+                // optional default rack info
+                if (rs.getObject("rack_id") != null) {
+                    entity.WarehouseRack wr = new entity.WarehouseRack();
+                    wr.setRackId(rs.getInt("rack_id"));
+                    wr.setRackName(rs.getString("rack_name"));
+                    wr.setRackCode(rs.getString("rack_code"));
+                    m.setRack(wr);
+                }
 
                 list.add(m);
             }
@@ -153,8 +160,8 @@ public class MaterialDAO extends DBContext {
             ResultSet rs = checkPs.executeQuery();
             
             if (rs.next()) {
-                int quantity = rs.getInt("quantity");
-                if (quantity > 0) {
+                java.math.BigDecimal quantity = rs.getBigDecimal("quantity");
+                if (quantity != null && quantity.compareTo(java.math.BigDecimal.ZERO) > 0) {
                     // Không thể xóa vì còn stock
                     return false;
                 }
@@ -176,17 +183,19 @@ public class MaterialDAO extends DBContext {
     public Material getInformation(int materialId) {
         Material m = new Material();
         try {
-            String sql = "SELECT m.material_id, m.material_code, m.material_name, m.materials_url, "
-                    + "m.material_status, "
-                    + "c.category_id, c.category_name, c.description AS category_description, "
-                    + "u.unit_id, u.unit_name, u.symbol, u.description AS unit_description, "
-                    + "m.created_at, m.updated_at, m.disable, "
-                    + "IFNULL(i.stock, 0) AS quantity "
-                    + "FROM materials m "
-                    + "LEFT JOIN categories c ON m.category_id = c.category_id "
-                    + "LEFT JOIN units u ON m.unit_id = u.unit_id "
-                    + "LEFT JOIN inventory i ON m.material_id = i.material_id "
-                    + "WHERE m.material_id = ?";
+        String sql = "SELECT m.material_id, m.material_code, m.material_name, m.materials_url, "
+                + "m.material_status, m.rack_id, wr.rack_name, wr.rack_code, "
+                + "c.category_id, c.category_name, c.description AS category_description, "
+                + "u.unit_id, u.unit_name, u.symbol, u.description AS unit_description, "
+                + "m.created_at, m.updated_at, m.disable, "
+                + "IFNULL(SUM(i.stock), 0) AS quantity "
+                + "FROM materials m "
+                + "LEFT JOIN categories c ON m.category_id = c.category_id "
+                + "LEFT JOIN units u ON m.unit_id = u.unit_id "
+                + "LEFT JOIN Warehouse_Racks wr ON m.rack_id = wr.rack_id "
+                + "LEFT JOIN inventory i ON m.material_id = i.material_id "
+                + "WHERE m.material_id = ? "
+                + "GROUP BY m.material_id, c.category_name, u.unit_name, u.symbol, wr.rack_name, wr.rack_code";
 
             PreparedStatement ps = connection.prepareStatement(sql);
             ps.setInt(1, materialId);
@@ -200,7 +209,7 @@ public class MaterialDAO extends DBContext {
                 m.setCreatedAt(rs.getTimestamp("created_at"));
                 m.setUpdatedAt(rs.getTimestamp("updated_at"));
                 m.setDisable(rs.getBoolean("disable"));
-                m.setQuantity(rs.getInt("quantity"));
+                m.setQuantity(rs.getBigDecimal("quantity"));
 
                 Category c = new Category();
                 c.setCategory_id(rs.getInt("category_id"));
@@ -214,6 +223,14 @@ public class MaterialDAO extends DBContext {
                 u.setSymbol(rs.getString("symbol"));
                 u.setDescription(rs.getString("unit_description"));
                 m.setUnit(u);
+
+                if (rs.getObject("rack_id") != null) {
+                    entity.WarehouseRack wr = new entity.WarehouseRack();
+                    wr.setRackId(rs.getInt("rack_id"));
+                    wr.setRackName(rs.getString("rack_name"));
+                    wr.setRackCode(rs.getString("rack_code"));
+                    m.setRack(wr);
+                }
             }
         } catch (SQLException ex) {
             ex.printStackTrace();
@@ -287,18 +304,17 @@ public class MaterialDAO extends DBContext {
                     );
                 }
 
-                product = new Material(
-                        rs.getInt("material_id"),
-                        rs.getString("material_code"),
-                        rs.getString("material_name"),
-                        rs.getString("materials_url"),
-                        rs.getString("material_status"),
-                        category,
-                        unit,
-                        rs.getTimestamp("created_at"),
-                        rs.getTimestamp("updated_at"),
-                        rs.getBoolean("disable")
-                );
+                product = new Material();
+                product.setMaterialId(rs.getInt("material_id"));
+                product.setMaterialCode(rs.getString("material_code"));
+                product.setMaterialName(rs.getString("material_name"));
+                product.setMaterialsUrl(rs.getString("materials_url"));
+                product.setMaterialStatus(rs.getString("material_status"));
+                product.setCategory(category);
+                product.setUnit(unit);
+                product.setCreatedAt(rs.getTimestamp("created_at"));
+                product.setUpdatedAt(rs.getTimestamp("updated_at"));
+                product.setDisable(rs.getBoolean("disable"));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -308,11 +324,14 @@ public class MaterialDAO extends DBContext {
 
     public List<Material> getAllProducts() {
         List<Material> list = new ArrayList<>();
-        String sql = "SELECT m.material_id, m.material_code, m.material_name, m.materials_url, m.material_status, m.created_at, m.updated_at, m.disable, u.unit_id, u.unit_name, c.category_id, c.category_name "
+        String sql = "SELECT m.material_id, m.material_code, m.material_name, m.materials_url, m.material_status, m.created_at, m.updated_at, m.disable, u.unit_id, u.unit_name, c.category_id, c.category_name, m.rack_id, wr.rack_name, wr.rack_code, IFNULL(SUM(i.stock),0) AS quantity "
                 + "FROM Materials m "
                 + "LEFT JOIN Units u ON m.unit_id = u.unit_id "
                 + "LEFT JOIN Categories c ON m.category_id = c.category_id "
-                + "WHERE m.disable = 0";
+                + "LEFT JOIN Warehouse_Racks wr ON m.rack_id = wr.rack_id "
+                + "LEFT JOIN Inventory i ON m.material_id = i.material_id "
+                + "WHERE m.disable = 0 "
+                + "GROUP BY m.material_id, u.unit_id, u.unit_name, c.category_id, c.category_name, wr.rack_name, wr.rack_code";
 
         try (PreparedStatement stmt = connection.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
 
@@ -330,18 +349,25 @@ public class MaterialDAO extends DBContext {
                     );
                 }
 
-                Material m = new Material(
-                        rs.getInt("material_id"),
-                        rs.getString("material_code"),
-                        rs.getString("material_name"),
-                        rs.getString("materials_url"),
-                        rs.getString("material_status"),
-                        category,
-                        unit,
-                        rs.getTimestamp("created_at"),
-                        rs.getTimestamp("updated_at"),
-                        rs.getBoolean("disable")
-                );
+                Material m = new Material();
+                m.setMaterialId(rs.getInt("material_id"));
+                m.setMaterialCode(rs.getString("material_code"));
+                m.setMaterialName(rs.getString("material_name"));
+                m.setMaterialsUrl(rs.getString("materials_url"));
+                m.setMaterialStatus(rs.getString("material_status"));
+                m.setQuantity(rs.getBigDecimal("quantity"));
+                m.setCategory(category);
+                m.setUnit(unit);
+                m.setCreatedAt(rs.getTimestamp("created_at"));
+                m.setUpdatedAt(rs.getTimestamp("updated_at"));
+                m.setDisable(rs.getBoolean("disable"));
+                if (rs.getObject("rack_id") != null) {
+                    entity.WarehouseRack wr = new entity.WarehouseRack();
+                    wr.setRackId(rs.getInt("rack_id"));
+                    wr.setRackName(rs.getString("rack_name"));
+                    wr.setRackCode(rs.getString("rack_code"));
+                    m.setRack(wr);
+                }
                 list.add(m);
             }
         } catch (SQLException e) {
@@ -373,18 +399,17 @@ public class MaterialDAO extends DBContext {
                     );
                 }
 
-                Material m = new Material(
-                        rs.getInt("material_id"),
-                        rs.getString("material_code"),
-                        rs.getString("material_name"),
-                        rs.getString("materials_url"),
-                        rs.getString("material_status"),
-                        category,
-                        unit,
-                        rs.getTimestamp("created_at"),
-                        rs.getTimestamp("updated_at"),
-                        rs.getBoolean("disable")
-                );
+                Material m = new Material();
+                m.setMaterialId(rs.getInt("material_id"));
+                m.setMaterialCode(rs.getString("material_code"));
+                m.setMaterialName(rs.getString("material_name"));
+                m.setMaterialsUrl(rs.getString("materials_url"));
+                m.setMaterialStatus(rs.getString("material_status"));
+                m.setCategory(category);
+                m.setUnit(unit);
+                m.setCreatedAt(rs.getTimestamp("created_at"));
+                m.setUpdatedAt(rs.getTimestamp("updated_at"));
+                m.setDisable(rs.getBoolean("disable"));
                 list.add(m);
             }
         } catch (SQLException e) {
@@ -426,18 +451,17 @@ public class MaterialDAO extends DBContext {
                             rs.getString("unit_name")
                     );
                 }
-                Material m = new Material(
-                        rs.getInt("material_id"),
-                        rs.getString("material_code"),
-                        rs.getString("material_name"),
-                        rs.getString("materials_url"),
-                        rs.getString("material_status"),
-                        category,
-                        unit,
-                        rs.getTimestamp("created_at"),
-                        rs.getTimestamp("updated_at"),
-                        rs.getBoolean("disable")
-                );
+                Material m = new Material();
+                m.setMaterialId(rs.getInt("material_id"));
+                m.setMaterialCode(rs.getString("material_code"));
+                m.setMaterialName(rs.getString("material_name"));
+                m.setMaterialsUrl(rs.getString("materials_url"));
+                m.setMaterialStatus(rs.getString("material_status"));
+                m.setCategory(category);
+                m.setUnit(unit);
+                m.setCreatedAt(rs.getTimestamp("created_at"));
+                m.setUpdatedAt(rs.getTimestamp("updated_at"));
+                m.setDisable(rs.getBoolean("disable"));
                 products.add(m);
             }
         } catch (SQLException e) {
@@ -471,18 +495,17 @@ public class MaterialDAO extends DBContext {
                             rs.getString("unit_name")
                     );
                 }
-                Material m = new Material(
-                        rs.getInt("material_id"),
-                        rs.getString("material_code"),
-                        rs.getString("material_name"),
-                        rs.getString("materials_url"),
-                        rs.getString("material_status"),
-                        category,
-                        unit,
-                        rs.getTimestamp("created_at"),
-                        rs.getTimestamp("updated_at"),
-                        rs.getBoolean("disable")
-                );
+                Material m = new Material();
+                m.setMaterialId(rs.getInt("material_id"));
+                m.setMaterialCode(rs.getString("material_code"));
+                m.setMaterialName(rs.getString("material_name"));
+                m.setMaterialsUrl(rs.getString("materials_url"));
+                m.setMaterialStatus(rs.getString("material_status"));
+                m.setCategory(category);
+                m.setUnit(unit);
+                m.setCreatedAt(rs.getTimestamp("created_at"));
+                m.setUpdatedAt(rs.getTimestamp("updated_at"));
+                m.setDisable(rs.getBoolean("disable"));
                 products.add(m);
             }
         } catch (SQLException e) {
@@ -516,18 +539,17 @@ public class MaterialDAO extends DBContext {
                             rs.getString("unit_name")
                     );
                 }
-                Material m = new Material(
-                        rs.getInt("material_id"),
-                        rs.getString("material_code"),
-                        rs.getString("material_name"),
-                        rs.getString("materials_url"),
-                        rs.getString("material_status"),
-                        category,
-                        unit,
-                        rs.getTimestamp("created_at"),
-                        rs.getTimestamp("updated_at"),
-                        rs.getBoolean("disable")
-                );
+                Material m = new Material();
+                m.setMaterialId(rs.getInt("material_id"));
+                m.setMaterialCode(rs.getString("material_code"));
+                m.setMaterialName(rs.getString("material_name"));
+                m.setMaterialsUrl(rs.getString("materials_url"));
+                m.setMaterialStatus(rs.getString("material_status"));
+                m.setCategory(category);
+                m.setUnit(unit);
+                m.setCreatedAt(rs.getTimestamp("created_at"));
+                m.setUpdatedAt(rs.getTimestamp("updated_at"));
+                m.setDisable(rs.getBoolean("disable"));
                 products.add(m);
             }
         } catch (SQLException e) {
@@ -561,18 +583,17 @@ public class MaterialDAO extends DBContext {
                             rs.getString("unit_name")
                     );
                 }
-                Material m = new Material(
-                        rs.getInt("material_id"),
-                        rs.getString("material_code"),
-                        rs.getString("material_name"),
-                        rs.getString("materials_url"),
-                        rs.getString("material_status"),
-                        category,
-                        unit,
-                        rs.getTimestamp("created_at"),
-                        rs.getTimestamp("updated_at"),
-                        rs.getBoolean("disable")
-                );
+                Material m = new Material();
+                m.setMaterialId(rs.getInt("material_id"));
+                m.setMaterialCode(rs.getString("material_code"));
+                m.setMaterialName(rs.getString("material_name"));
+                m.setMaterialsUrl(rs.getString("materials_url"));
+                m.setMaterialStatus(rs.getString("material_status"));
+                m.setCategory(category);
+                m.setUnit(unit);
+                m.setCreatedAt(rs.getTimestamp("created_at"));
+                m.setUpdatedAt(rs.getTimestamp("updated_at"));
+                m.setDisable(rs.getBoolean("disable"));
                 products.add(m);
             }
         } catch (SQLException e) {
@@ -602,7 +623,7 @@ public class MaterialDAO extends DBContext {
                 material.setMaterialName(rs.getString("material_name"));
                 material.setMaterialsUrl(rs.getString("materials_url"));
                 material.setMaterialStatus(rs.getString("material_status"));
-                material.setQuantity(rs.getInt("quantity"));
+                material.setQuantity(rs.getBigDecimal("quantity"));
                 material.setCreatedAt(rs.getTimestamp("created_at"));
                 material.setUpdatedAt(rs.getTimestamp("updated_at"));
                 material.setDisable(rs.getBoolean("disable"));
@@ -689,11 +710,14 @@ public class MaterialDAO extends DBContext {
     public int getMaxMaterialNumber() {
         int maxNumber = 0;
         try {
-            String sql = "SELECT MAX(CAST(SUBSTRING(material_code, 4) AS UNSIGNED)) FROM materials WHERE material_code LIKE 'MAT%'";
+            String sql = "SELECT COALESCE(MAX(CAST(SUBSTRING(material_code, 4) AS SIGNED)), 0) AS max_num FROM materials WHERE material_code LIKE 'MAT%'";
             PreparedStatement ps = connection.prepareStatement(sql);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
-                maxNumber = rs.getInt(1);
+                int num = rs.getInt("max_num");
+                if (!rs.wasNull() && num >= 0) {
+                    maxNumber = num;
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -770,7 +794,7 @@ public class MaterialDAO extends DBContext {
                 m.setMaterialName(rs.getString("material_name"));
                 m.setMaterialsUrl(rs.getString("materials_url"));
                 m.setMaterialStatus(rs.getString("material_status"));
-                m.setQuantity(rs.getInt("quantity"));
+                m.setQuantity(rs.getBigDecimal("quantity"));
 
                 m.setCreatedAt(rs.getTimestamp("created_at"));
                 m.setUpdatedAt(rs.getTimestamp("updated_at"));
@@ -869,7 +893,7 @@ public class MaterialDAO extends DBContext {
                 m.setMaterialName(rs.getString("material_name"));
                 m.setMaterialsUrl(rs.getString("materials_url"));
                 m.setMaterialStatus(rs.getString("material_status"));
-                m.setQuantity(rs.getInt("quantity"));
+                m.setQuantity(rs.getBigDecimal("quantity"));
 
                 m.setCreatedAt(rs.getTimestamp("created_at"));
                 m.setUpdatedAt(rs.getTimestamp("updated_at"));

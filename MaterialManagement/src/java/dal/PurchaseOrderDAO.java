@@ -262,7 +262,7 @@ public class PurchaseOrderDAO extends DBContext {
         detail.setMaterialImageUrl(rs.getString("materials_url"));
         detail.setCategoryId(rs.getInt("category_id"));
         detail.setCategoryName(rs.getString("category_name"));
-        detail.setQuantity(rs.getInt("quantity"));
+        detail.setQuantity(rs.getBigDecimal("quantity"));
         detail.setUnitPrice(rs.getBigDecimal("unit_price"));
         detail.setSupplierId(rs.getObject("supplier_id") != null ? rs.getInt("supplier_id") : null);
         detail.setSupplierName(rs.getString("supplier_name"));
@@ -273,12 +273,15 @@ public class PurchaseOrderDAO extends DBContext {
     }
 
     public String generateNextPOCode() throws SQLException {
-        String sql = "SELECT MAX(CAST(SUBSTRING(po_code, 3) AS UNSIGNED)) AS max_num FROM Purchase_Orders WHERE po_code LIKE 'PO%'";
+        String sql = "SELECT COALESCE(MAX(CAST(SUBSTRING(po_code, 3) AS SIGNED)), 0) AS max_num FROM Purchase_Orders WHERE po_code LIKE 'PO%'";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             try (ResultSet rs = ps.executeQuery()) {
                 int nextNum = 1;
                 if (rs.next()) {
-                    nextNum = rs.getInt("max_num") + 1;
+                    int maxNum = rs.getInt("max_num");
+                    if (!rs.wasNull() && maxNum >= 0) {
+                        nextNum = maxNum + 1;
+                    }
                 }
                 return String.format("PO%03d", nextNum);
             }
@@ -313,7 +316,7 @@ public class PurchaseOrderDAO extends DBContext {
                                 detailPs.setInt(1, poId);
                                 detailPs.setInt(2, detail.getMaterialId());
                                 detailPs.setInt(3, detail.getCategoryId());
-                                detailPs.setInt(4, detail.getQuantity());
+                                detailPs.setBigDecimal(4, detail.getQuantity());
                                 detailPs.setBigDecimal(5, detail.getUnitPrice());
                                 if (detail.getSupplierId() != null) {
                                     detailPs.setInt(6, detail.getSupplierId());

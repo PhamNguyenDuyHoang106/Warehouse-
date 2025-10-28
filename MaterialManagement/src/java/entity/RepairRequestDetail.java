@@ -5,6 +5,7 @@
 package entity;
 
 import java.sql.Timestamp;
+import java.math.BigDecimal;
 
 /**
  *
@@ -15,7 +16,7 @@ public class RepairRequestDetail {
     private int detailId;
     private int repairRequestId;
     private int materialId;
-    private int quantity;
+    private BigDecimal quantity;
     private String damageDescription;
     private Double repairCost;
     private int supplierId;
@@ -30,7 +31,7 @@ public class RepairRequestDetail {
     public RepairRequestDetail() {
     }
 
-    public RepairRequestDetail(int detailId, int repairRequestId, int materialId, int quantity, String damageDescription, Double repairCost, Timestamp createdAt, Timestamp updatedAt) {
+    public RepairRequestDetail(int detailId, int repairRequestId, int materialId, java.math.BigDecimal quantity, String damageDescription, Double repairCost, Timestamp createdAt, Timestamp updatedAt) {
         this.detailId = detailId;
         this.repairRequestId = repairRequestId;
         this.materialId = materialId;
@@ -89,11 +90,11 @@ public class RepairRequestDetail {
         this.materialId = materialId;
     }
 
-    public int getQuantity() {
+    public BigDecimal getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(int quantity) {
+    public void setQuantity(BigDecimal quantity) {
         this.quantity = quantity;
     }
 

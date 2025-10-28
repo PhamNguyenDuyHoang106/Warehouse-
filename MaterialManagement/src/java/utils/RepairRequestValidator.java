@@ -4,6 +4,7 @@ import dal.MaterialDAO;
 import entity.Material;
 import entity.RepairRequest;
 import entity.RepairRequestDetail;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,17 +77,13 @@ public class RepairRequestValidator {
                 errors.put("quantity_" + i, "Quantity cannot be empty for material " + trimmedMaterialName + ".");
             } else {
                 String trimmedQuantity = quantityStr.trim();
-                if (trimmedQuantity.contains(".") || trimmedQuantity.contains(",")) {
-                    errors.put("quantity_" + i, "Quantity must be a whole number (no decimals) for material " + trimmedMaterialName + ".");
-                } else {
-                    try {
-                        int quantity = Integer.parseInt(trimmedQuantity);
-                        if (quantity <= 0) {
-                            errors.put("quantity_" + i, "Quantity must be greater than 0 for material " + trimmedMaterialName + ".");
-                        }
-                    } catch (NumberFormatException e) {
-                        errors.put("quantity_" + i, "Invalid quantity format for material " + trimmedMaterialName + ".");
+                try {
+                    BigDecimal quantity = new BigDecimal(trimmedQuantity);
+                    if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+                        errors.put("quantity_" + i, "Quantity must be greater than 0 for material " + trimmedMaterialName + ".");
                     }
+                } catch (NumberFormatException e) {
+                    errors.put("quantity_" + i, "Invalid quantity format for material " + trimmedMaterialName + ".");
                 }
             }
 
@@ -111,7 +108,7 @@ public class RepairRequestValidator {
             errors.put("materialId", "Invalid material ID.");
         }
 
-        if (detail.getQuantity() <= 0) {
+        if (detail.getQuantity() == null || detail.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
             errors.put("quantity", "Quantity must be greater than 0.");
         }
 

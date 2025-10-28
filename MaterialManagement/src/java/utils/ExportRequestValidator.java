@@ -1,14 +1,11 @@
 package utils;
 
-import dal.MaterialDAO;
 import entity.Material;
 import entity.ExportRequest;
 import entity.ExportRequestDetail;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 
 public class ExportRequestValidator {
 
@@ -74,7 +71,7 @@ public class ExportRequestValidator {
         }
 
         boolean hasValidDetail = false;
-        MaterialDAO materialDAO = new MaterialDAO();
+        dal.MaterialDAO materialDAO = new dal.MaterialDAO();
 
         for (int i = 0; i < materialNames.length; i++) {
             String materialName = materialNames[i];
@@ -96,23 +93,19 @@ public class ExportRequestValidator {
                 errors.put("quantity_" + i, "Quantity cannot be empty for material " + trimmedMaterialName + ".");
             } else {
                 String trimmedQuantity = quantityStr.trim();
-                if (trimmedQuantity.contains(".") || trimmedQuantity.contains(",")) {
-                    errors.put("quantity_" + i, "Quantity must be a whole number (no decimals) for material " + trimmedMaterialName + ".");
-                } else {
-                    try {
-                        int quantity = Integer.parseInt(trimmedQuantity);
-                        if (quantity <= 0) {
-                            errors.put("quantity_" + i, "Quantity must be greater than 0 for material " + trimmedMaterialName + ".");
-                        } else {
-                            // Check if quantity exceeds available stock
-                            int availableStock = materialDAO.getAvailableStock(material.getMaterialId());
-                            if (quantity > availableStock) {
-                                errors.put("quantity_" + i, "Quantity exceeds available stock for material " + trimmedMaterialName + ". Available: " + availableStock);
-                            }
+                try {
+                    java.math.BigDecimal quantity = new java.math.BigDecimal(trimmedQuantity);
+                    if (quantity.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                        errors.put("quantity_" + i, "Quantity must be greater than 0 for material " + trimmedMaterialName + ".");
+                    } else {
+                        // Check if quantity exceeds available stock (sum across racks)
+                        java.math.BigDecimal availableStock = material.getQuantity() != null ? material.getQuantity() : java.math.BigDecimal.ZERO;
+                        if (quantity.compareTo(availableStock) > 0) {
+                            errors.put("quantity_" + i, "Quantity exceeds available stock for material " + trimmedMaterialName + ". Available: " + availableStock);
                         }
-                    } catch (NumberFormatException e) {
-                        errors.put("quantity_" + i, "Invalid quantity format for material " + trimmedMaterialName + ".");
                     }
+                } catch (NumberFormatException e) {
+                    errors.put("quantity_" + i, "Invalid quantity format for material " + trimmedMaterialName + ".");
                 }
             }
 
@@ -133,7 +126,7 @@ public class ExportRequestValidator {
             errors.put("materialId", "Invalid material ID.");
         }
 
-        if (detail.getQuantity() <= 0) {
+        if (detail.getQuantity() == null || detail.getQuantity().compareTo(java.math.BigDecimal.ZERO) <= 0) {
             errors.put("quantity", "Quantity must be greater than 0.");
         }
 
@@ -148,7 +141,7 @@ public class ExportRequestValidator {
             return errors;
         }
 
-        MaterialDAO materialDAO = new MaterialDAO();
+        dal.MaterialDAO materialDAO = new dal.MaterialDAO();
         
         for (int i = 0; i < materialNames.length; i++) {
             String materialName = materialNames[i];

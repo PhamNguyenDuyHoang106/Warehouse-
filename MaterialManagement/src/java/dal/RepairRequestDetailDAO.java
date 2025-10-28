@@ -31,7 +31,7 @@ public class RepairRequestDetailDAO extends DBContext {
                     detail.setDetailId(rs.getInt("detail_id"));
                     detail.setRepairRequestId(rs.getInt("repair_request_id"));
                     detail.setMaterialId(rs.getInt("material_id"));
-                    detail.setQuantity(rs.getInt("quantity"));
+                    detail.setQuantity(rs.getBigDecimal("quantity"));
                     detail.setDamageDescription(rs.getString("damage_description"));
                     detail.setRepairCost(rs.getObject("repair_cost") != null ? rs.getDouble("repair_cost") : null);
                     detail.setCreatedAt(rs.getTimestamp("created_at"));

@@ -36,30 +36,78 @@
                 </c:if>
                 <c:if test="${sessionScope.userPermissions.contains('VIEW_INVENTORY')}">
                     <li class="nav-item mb-2">
-                        <a class="nav-link text-uppercase secondary-font d-flex align-items-center" href="${pageContext.request.contextPath}/StaticInventory">
-                            <i class="fas fa-tachometer-alt fs-4 me-3"></i>
+                        <a class="nav-link text-uppercase secondary-font d-flex align-items-center" href="${pageContext.request.contextPath}/InventoryReport">
+                            <i class="fas fa-warehouse fs-4 me-3"></i>
                             Inventory Report
                         </a>
                     </li>
                 </c:if>
-                <c:if test="${sessionScope.user.roleId == 1}">
+                
+                <%-- WAREHOUSE MANAGEMENT --%>
+                <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_RACK') || sessionScope.userPermissions.contains('VIEW_LIST_VEHICLE')}">
                     <li class="nav-item mb-2">
-                        <a class="nav-link text-uppercase secondary-font d-flex align-items-center collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#historyMenu" aria-expanded="false" aria-controls="historyMenu">
-                            <i class="fas fa-history fs-4 me-3"></i>
-                            History
+                        <a class="nav-link text-uppercase secondary-font d-flex align-items-center collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#warehouseMgmt" aria-expanded="false" aria-controls="warehouseMgmt">
+                            <i class="fas fa-industry fs-4 me-3"></i>
+                            Warehouse Mgmt
                         </a>
-                        <div class="collapse" id="historyMenu">
+                        <div class="collapse" id="warehouseMgmt">
                             <ul class="nav flex-column ms-3">
-                                <li class="nav-item">
-                                    <a class="nav-link d-flex align-items-center ms-4" href="ImportHistory">
-                                        <i class="fas fa-arrow-down me-2"></i> Import History
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link d-flex align-items-center ms-4" href="ExportHistory">
-                                        <i class="fas fa-arrow-up me-2"></i> Export History
-                                    </a>
-                                </li>
+                                <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_RACK')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="WarehouseRackList">
+                                            <i class="fas fa-layer-group me-2"></i> Warehouse Racks
+                                        </a>
+                                    </li>
+                                </c:if>
+                                <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_VEHICLE')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="VehicleList">
+                                            <i class="fas fa-truck me-2"></i> Vehicles
+                                        </a>
+                                    </li>
+                                </c:if>
+                            </ul>
+                        </div>
+                    </li>
+                </c:if>
+                
+                <%-- IMPORT/EXPORT OPERATIONS --%>
+                <c:if test="${sessionScope.userPermissions.contains('CREATE_IMPORT') || sessionScope.userPermissions.contains('CREATE_EXPORT') || sessionScope.userPermissions.contains('VIEW_IMPORT_LIST') || sessionScope.userPermissions.contains('VIEW_EXPORT_LIST')}">
+                    <li class="nav-item mb-2">
+                        <a class="nav-link text-uppercase secondary-font d-flex align-items-center collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#importExportMenu" aria-expanded="false" aria-controls="importExportMenu">
+                            <i class="fas fa-exchange-alt fs-4 me-3"></i>
+                            Import/Export
+                        </a>
+                        <div class="collapse" id="importExportMenu">
+                            <ul class="nav flex-column ms-3">
+                                <c:if test="${sessionScope.userPermissions.contains('CREATE_IMPORT')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="ImportMaterial">
+                                            <i class="fas fa-box-open me-2"></i> Import Material
+                                        </a>
+                                    </li>
+                                </c:if>
+                                <c:if test="${sessionScope.userPermissions.contains('VIEW_IMPORT_LIST')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="ImportList">
+                                            <i class="fas fa-list me-2"></i> Import List
+                                        </a>
+                                    </li>
+                                </c:if>
+                                <c:if test="${sessionScope.userPermissions.contains('CREATE_EXPORT')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="ExportMaterial">
+                                            <i class="fas fa-shipping-fast me-2"></i> Export Material
+                                        </a>
+                                    </li>
+                                </c:if>
+                                <c:if test="${sessionScope.userPermissions.contains('VIEW_EXPORT_LIST')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="ExportList">
+                                            <i class="fas fa-clipboard-list me-2"></i> Export List
+                                        </a>
+                                    </li>
+                                </c:if>
                             </ul>
                         </div>
                     </li>
@@ -164,18 +212,10 @@
         const currentPage = window.location.pathname.split('/').pop();
 
         const navLinks = document.querySelectorAll('#sidebarMenu .nav-link');
-        const historyDropdown = document.querySelector('#sidebarMenu [data-bs-target="#historyMenu"]');
-        const historyPages = ["ImportHistory", "ExportHistory"];
-
-        let isHistoryPage = historyPages.includes(currentPage);
 
         navLinks.forEach(link => {
             const href = link.getAttribute('href') ? link.getAttribute('href').split('/').pop() : null;
-            // Nếu là trang history thì chỉ bôi nâu mục History dropdown
-            if (isHistoryPage && link === historyDropdown) {
-                link.classList.add('active');
-                link.setAttribute('aria-current', 'page');
-            } else if (!isHistoryPage && href === currentPage) {
+            if (href === currentPage || href === currentPage + '.jsp') {
                 link.classList.add('active');
                 link.setAttribute('aria-current', 'page');
             } else {

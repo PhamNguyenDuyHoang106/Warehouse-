@@ -21,7 +21,8 @@ public class Material {
 
     private Category category;
     private Unit unit;
-    private int quantity;
+    private WarehouseRack rack; // Vị trí kệ gợi ý
+    private BigDecimal quantity; // Thay đổi từ int sang BigDecimal
 
     private Timestamp createdAt;
     private Timestamp updatedAt;
@@ -31,7 +32,7 @@ public class Material {
     }
 
     public Material(int materialId, String materialCode, String materialName, String materialsUrl, String materialStatus,
-             Category category, Unit unit,
+             Category category, Unit unit, WarehouseRack rack, BigDecimal quantity,
             Timestamp createdAt, Timestamp updatedAt, boolean disable) {
         this.materialId = materialId;
         this.materialCode = materialCode;
@@ -40,6 +41,8 @@ public class Material {
         this.materialStatus = materialStatus;
         this.category = category;
         this.unit = unit;
+        this.rack = rack;
+        this.quantity = quantity;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.disable = disable;
@@ -119,12 +122,20 @@ public class Material {
         this.unit = unit;
     }
 
-    public int getQuantity() {
+    public BigDecimal getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(int quantity) {
+    public void setQuantity(BigDecimal quantity) {
         this.quantity = quantity;
+    }
+
+    public WarehouseRack getRack() {
+        return rack;
+    }
+
+    public void setRack(WarehouseRack rack) {
+        this.rack = rack;
     }
 
     public boolean isDisable() {

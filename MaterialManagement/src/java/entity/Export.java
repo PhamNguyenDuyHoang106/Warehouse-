@@ -8,13 +8,19 @@ public class Export {
     private String exportCode;
     private LocalDateTime exportDate;
     private int exportedBy;
-    private int recipientUserId;
+    private Integer recipientId;  // FK to Recipients table
+    private Integer vehicleId;  // FK to Vehicles table
+    private Integer exportRequestId;  // FK to Export_Requests table
     private String note;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // Joined fields for display
     private String exportedByName;
     private String recipientName;
+    private String recipientLocation;
+    private String vehicleLicensePlate;
+    private String exportRequestCode;
     private int totalQuantity;
     private double totalValue;
 
@@ -50,12 +56,28 @@ public class Export {
         this.exportedBy = exportedBy;
     }
 
-    public int getRecipientUserId() {
-        return recipientUserId;
+    public Integer getRecipientId() {
+        return recipientId;
     }
 
-    public void setRecipientUserId(int recipientUserId) {
-        this.recipientUserId = recipientUserId;
+    public void setRecipientId(Integer recipientId) {
+        this.recipientId = recipientId;
+    }
+
+    public Integer getVehicleId() {
+        return vehicleId;
+    }
+
+    public void setVehicleId(Integer vehicleId) {
+        this.vehicleId = vehicleId;
+    }
+
+    public Integer getExportRequestId() {
+        return exportRequestId;
+    }
+
+    public void setExportRequestId(Integer exportRequestId) {
+        this.exportRequestId = exportRequestId;
     }
 
     public String getNote() {
@@ -96,6 +118,30 @@ public class Export {
 
     public void setRecipientName(String recipientName) {
         this.recipientName = recipientName;
+    }
+
+    public String getRecipientLocation() {
+        return recipientLocation;
+    }
+
+    public void setRecipientLocation(String recipientLocation) {
+        this.recipientLocation = recipientLocation;
+    }
+
+    public String getVehicleLicensePlate() {
+        return vehicleLicensePlate;
+    }
+
+    public void setVehicleLicensePlate(String vehicleLicensePlate) {
+        this.vehicleLicensePlate = vehicleLicensePlate;
+    }
+
+    public String getExportRequestCode() {
+        return exportRequestCode;
+    }
+
+    public void setExportRequestCode(String exportRequestCode) {
+        this.exportRequestCode = exportRequestCode;
     }
 
     public int getTotalQuantity() {

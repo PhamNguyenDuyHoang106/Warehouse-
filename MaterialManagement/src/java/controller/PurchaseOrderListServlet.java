@@ -184,14 +184,16 @@ public class PurchaseOrderListServlet extends HttpServlet {
                                     try {
                                         EmailUtils.sendEmail(supplier.getEmail(), subject, content);
                                     } catch (Exception e) {
-                                        LOGGER.log(Level.SEVERE, "[MAIL] Failed to send email to supplier {0}: {1}", new Object[]{supplier.getEmail(), e.getMessage()});
+                                        // Log individual email failures but continue
+                                        LOGGER.log(Level.WARNING, "[MAIL] Failed to send email to supplier {0}: {1}", new Object[]{supplier.getEmail(), e.getMessage()});
                                     }
                                 } else {
                                     LOGGER.log(Level.WARNING, "[MAIL] Supplier {0} has no valid email for PO {1}.", new Object[]{supplier != null ? supplier.getSupplierName() : "N/A", po.getPoCode()});
                                 }
                             }
                         } catch (Exception e) {
-                            LOGGER.log(Level.SEVERE, "[MAIL] Error when sending email to suppliers for PO {0}: {1}", new Object[]{poId, e.getMessage()});
+                            // Log notification errors but don't crash the application
+                            LOGGER.log(Level.WARNING, "[MAIL] Error when sending email to suppliers for PO {0}: {1}", new Object[]{poId, e.getMessage()});
                         }
                     }
                     response.sendRedirect(request.getContextPath() + "/PurchaseOrderList?message=Status updated successfully");

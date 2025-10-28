@@ -1,5 +1,6 @@
 package entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class ExportDetail {
@@ -7,13 +8,19 @@ public class ExportDetail {
     private int exportDetailId;
     private int exportId;
     private int materialId;
-    private int quantity;
-    private String status;
+    private Integer rackId;  // Warehouse rack location
+    private BigDecimal quantity;  // Changed to BigDecimal for DECIMAL(10,2)
+    private String note;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    // Joined fields for display
     private String materialName;
+    private String materialCode;
     private String unitName;
     private String materialsUrl;
+    private String rackCode;
+    private String rackName;
 
     public int getExportDetailId() {
         return exportDetailId;
@@ -48,20 +55,28 @@ public class ExportDetail {
         this.materialId = materialId;
     }
 
-    public int getQuantity() {
+    public Integer getRackId() {
+        return rackId;
+    }
+
+    public void setRackId(Integer rackId) {
+        this.rackId = rackId;
+    }
+
+    public BigDecimal getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(int quantity) {
+    public void setQuantity(BigDecimal quantity) {
         this.quantity = quantity;
     }
 
-    public String getStatus() {
-        return status;
+    public String getNote() {
+        return note;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
+    public void setNote(String note) {
+        this.note = note;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -94,5 +109,29 @@ public class ExportDetail {
 
     public void setUnitName(String unitName) {
         this.unitName = unitName;
+    }
+
+    public String getRackCode() {
+        return rackCode;
+    }
+
+    public void setRackCode(String rackCode) {
+        this.rackCode = rackCode;
+    }
+
+    public String getRackName() {
+        return rackName;
+    }
+
+    public void setRackName(String rackName) {
+        this.rackName = rackName;
+    }
+
+    public String getMaterialCode() {
+        return materialCode;
+    }
+
+    public void setMaterialCode(String materialCode) {
+        this.materialCode = materialCode;
     }
 }

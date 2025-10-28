@@ -1,20 +1,22 @@
 package entity;
 
-import java.util.Date;
+import java.math.BigDecimal;
+import java.sql.Timestamp;
 
 public class ExportRequestDetail {
 
     private int detailId;
     private int exportRequestId;
     private int materialId;
+    private Integer rackId; // Vị trí kệ mong muốn
     private String materialCode;
     private String materialName;
     private String materialUnit;
-    private int quantity;
+    private BigDecimal quantity; // Thay đổi từ int sang BigDecimal
     private String status;
     private String materialImageUrl;
-    private Date createdAt;
-    private Date updatedAt;
+    private Timestamp createdAt;
+    private Timestamp updatedAt;
     private String unitName;
 
     public ExportRequestDetail() {
@@ -68,12 +70,20 @@ public class ExportRequestDetail {
         this.materialUnit = materialUnit;
     }
 
-    public int getQuantity() {
+    public BigDecimal getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(int quantity) {
+    public void setQuantity(BigDecimal quantity) {
         this.quantity = quantity;
+    }
+
+    public Integer getRackId() {
+        return rackId;
+    }
+
+    public void setRackId(Integer rackId) {
+        this.rackId = rackId;
     }
 
     public String getStatus() {
@@ -92,19 +102,19 @@ public class ExportRequestDetail {
         this.materialImageUrl = materialImageUrl;
     }
 
-    public Date getCreatedAt() {
+    public Timestamp getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(Date createdAt) {
+    public void setCreatedAt(Timestamp createdAt) {
         this.createdAt = createdAt;
     }
 
-    public Date getUpdatedAt() {
+    public Timestamp getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(Date updatedAt) {
+    public void setUpdatedAt(Timestamp updatedAt) {
         this.updatedAt = updatedAt;
     }
 

@@ -43,20 +43,63 @@
             background: #fff;
             border: 1px solid #dee2e6;
             border-radius: 8px;
-            max-height: 250px;
+            max-height: 300px;
             overflow-y: auto;
             box-shadow: 0 4px 16px rgba(0,0,0,0.08);
             z-index: 9999 !important;
             font-size: 1rem;
+            padding: 4px 0;
+        }
+        .ui-menu-item {
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .ui-menu-item:last-child {
+            border-bottom: none;
         }
         .ui-menu-item-wrapper {
-            padding: 8px 16px;
+            padding: 0 !important;
             cursor: pointer;
+            display: flex !important;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px !important;
+            transition: all 0.2s ease;
         }
+        .ui-menu-item-wrapper:hover,
         .ui-menu-item-wrapper.ui-state-active {
-            background: #f0f4fa;
-            color: #0d6efd;
+            background: #f0f4fa !important;
+            color: #0d6efd !important;
+            border: none !important;
+            margin: 0 !important;
+        }
+        .autocomplete-img {
+            width: 45px;
+            height: 45px;
+            object-fit: cover;
             border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            flex-shrink: 0;
+        }
+        .autocomplete-info {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            min-width: 0;
+        }
+        .autocomplete-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.95rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .autocomplete-code {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        .ui-menu-item-wrapper.ui-state-active .autocomplete-name {
+            color: #0d6efd;
         }
     </style>
 </head>
@@ -134,7 +177,7 @@
                                                             <div class="col-md-3">
                                                                 <label class="form-label text-muted">Material</label>
                                                                 <input type="text" class="form-control material-name-input" name="materialName[]" placeholder="Type material name or code" autocomplete="off">
-                                                                <input type="hidden" name="materialId" class="material-id-input">
+                                                                <input type="hidden" name="materialId[]" class="material-id-input">
                                                                 <c:if test="${not empty errors.material_0}">
                                                                     <div class="text-danger small mt-1">${errors.material_0}</div>
                                                                 </c:if>
@@ -200,53 +243,65 @@
             const nameInput = row.querySelector('.material-name-input');
             const idInput = row.querySelector('.material-id-input');
             const img = row.querySelector('.material-image');
-            $(nameInput).autocomplete({
-                source: function(request, response) {
-                    const term = request.term.toLowerCase();
-                    const matches = materialsData.filter(material => 
-                        material.name.toLowerCase().includes(term) || 
-                        material.code.toLowerCase().includes(term)
-                    );
-                    response(matches);
-                },
-                select: function(event, ui) {
-                    idInput.value = ui.item.id;
-                    nameInput.value = ui.item.name;
-                    let imgUrl = ui.item.imageUrl && ui.item.imageUrl !== 'null' ? ui.item.imageUrl : '';
-                    if (imgUrl.startsWith('http') || imgUrl.startsWith('/') || imgUrl.startsWith('images/material/')) {
-                        img.src = imgUrl;
-                    } else if (imgUrl) {
-                        img.src = 'images/material/' + imgUrl;
-                    } else {
-                        img.src = 'images/material/default.jpg';
-                    }
-                },
-                change: function(event, ui) {
-                    if (!ui.item) {
-                        const inputValue = nameInput.value.toLowerCase().trim();
-                        const selectedMaterial = materialsData.find(material => 
-                            material.name.toLowerCase() === inputValue || 
-                            material.code.toLowerCase() === inputValue
-                        );
-                        if (selectedMaterial) {
-                            idInput.value = selectedMaterial.id;
-                            nameInput.value = selectedMaterial.name;
-                            let imgUrl = selectedMaterial.imageUrl && selectedMaterial.imageUrl !== 'null' ? selectedMaterial.imageUrl : '';
-                            if (imgUrl.startsWith('http') || imgUrl.startsWith('/') || imgUrl.startsWith('images/material/')) {
-                                img.src = imgUrl;
-                            } else if (imgUrl) {
-                                img.src = 'images/material/' + imgUrl;
-                            } else {
-                                img.src = 'images/material/default.jpg';
-                            }
-                        } else {
-                            idInput.value = '';
-                            img.src = 'images/material/default.jpg';
-                        }
-                    }
-                },
-                minLength: 1
-            });
+$(nameInput).autocomplete({
+    source: function(request, response) {
+        const term = request.term.toLowerCase();
+        let matches;
+
+        if (term.length === 0) {
+            // Khi chưa gõ gì: chỉ hiển thị 10 sản phẩm đầu tiên
+            matches = materialsData.slice(0, 10);
+        } else {
+            matches = materialsData.filter(material =>
+                material.name.toLowerCase().includes(term) ||
+                material.code.toLowerCase().includes(term)
+            );
+        }
+        response(matches);
+    },
+    select: function(event, ui) {
+        idInput.value = ui.item.id;
+        nameInput.value = ui.item.name;
+        let imgUrl = ui.item.imageUrl && ui.item.imageUrl !== 'null' ? ui.item.imageUrl : '';
+        if (imgUrl.startsWith('http') || imgUrl.startsWith('/') || imgUrl.startsWith('images/material/')) {
+            img.src = imgUrl;
+        } else if (imgUrl) {
+            img.src = 'images/material/' + imgUrl;
+        } else {
+            img.src = 'images/material/default.jpg';
+        }
+        return false;
+    },
+    focus: function(event, ui) {
+        event.preventDefault(); // tránh tự động ghi đè input
+        return false;
+    },
+    minLength: 0 // Cho phép hiển thị danh sách khi click (chưa gõ gì)
+}).autocomplete("instance")._renderItem = function(ul, item) {
+    // Custom render với ảnh thumbnail
+    let imgUrl = item.imageUrl && item.imageUrl !== 'null' ? item.imageUrl : '';
+    if (!imgUrl.startsWith('http') && !imgUrl.startsWith('/') && !imgUrl.startsWith('images/material/')) {
+        imgUrl = imgUrl ? 'images/material/' + imgUrl : 'images/material/default.jpg';
+    }
+    
+    return $("<li>")
+        .append(
+            $("<div class='ui-menu-item-wrapper'>")
+                .append($("<img>").attr("src", imgUrl).addClass("autocomplete-img"))
+                .append(
+                    $("<div class='autocomplete-info'>")
+                        .append($("<div class='autocomplete-name'>").text(item.name))
+                        .append($("<div class='autocomplete-code'>").text("Code: " + item.code))
+                )
+        )
+        .appendTo(ul);
+};
+
+// Khi click hoặc focus, tự động hiển thị gợi ý ban đầu
+$(nameInput).on('focus click', function () {
+    $(this).autocomplete('search', '');
+});
+
         }
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.material-row').forEach(row => {
@@ -283,7 +338,7 @@
                                 <div class="col-md-3">
                                     <label class="form-label text-muted">Material</label>
                                     <input type="text" class="form-control material-name-input" name="materialName[]" placeholder="Type material name or code" autocomplete="off">
-                                    <input type="hidden" name="materialId" class="material-id-input">
+                                    <input type="hidden" name="materialId[]" class="material-id-input">
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label text-muted">Quantity</label>

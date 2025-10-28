@@ -198,10 +198,13 @@ public class CategoryDAO extends DBContext {
 
     public int getMaxCategoryNumber() {
         int max = 0;
-        String sql = "SELECT MAX(CAST(SUBSTRING(code, 4) AS UNSIGNED)) AS max_num FROM categories WHERE code LIKE 'CAT%'";
+        String sql = "SELECT COALESCE(MAX(CAST(SUBSTRING(code, 4) AS SIGNED)), 0) AS max_num FROM categories WHERE code LIKE 'CAT%'";
         try (PreparedStatement ps = connection.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
-                max = rs.getInt("max_num");
+                int num = rs.getInt("max_num");
+                if (!rs.wasNull() && num >= 0) {
+                    max = num;
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();

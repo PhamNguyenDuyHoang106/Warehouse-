@@ -2,6 +2,7 @@ package dal;
 
 import entity.DBContext;
 import entity.ExportRequestDetail;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -14,12 +15,14 @@ public class ExportRequestDetailDAO extends DBContext {
     public List<ExportRequestDetail> getByRequestId(int requestId) {
         connection = getConnection();
         List<ExportRequestDetail> details = new ArrayList<>();
-        String sql = "SELECT erd.detail_id, erd.export_request_id, erd.material_id, "
+        String sql = "SELECT erd.detail_id, erd.export_request_id, erd.material_id, erd.rack_id, "
                 + "erd.quantity, erd.created_at, erd.updated_at, "
-                + "m.material_code, m.material_name, m.materials_url, u.unit_name as material_unit "
+                + "m.material_code, m.material_name, m.materials_url, u.unit_name as material_unit, "
+                + "wr.rack_name, wr.rack_code "
                 + "FROM Export_Request_Details erd "
                 + "JOIN Materials m ON erd.material_id = m.material_id "
                 + "LEFT JOIN Units u ON m.unit_id = u.unit_id "
+                + "LEFT JOIN Warehouse_Racks wr ON erd.rack_id = wr.rack_id "
                 + "WHERE erd.export_request_id = ?";
                 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -30,10 +33,11 @@ public class ExportRequestDetailDAO extends DBContext {
                     detail.setDetailId(rs.getInt("detail_id"));
                     detail.setExportRequestId(rs.getInt("export_request_id"));
                     detail.setMaterialId(rs.getInt("material_id"));
+                    detail.setRackId(rs.getInt("rack_id"));
                     detail.setMaterialCode(rs.getString("material_code"));
                     detail.setMaterialName(rs.getString("material_name"));
                     detail.setMaterialUnit(rs.getString("material_unit"));
-                    detail.setQuantity(rs.getInt("quantity"));
+                    detail.setQuantity(rs.getBigDecimal("quantity"));
                     String rawUrl = rs.getString("materials_url");
                     String imgUrl = rawUrl;
                     if (imgUrl != null && !imgUrl.isEmpty() && !imgUrl.startsWith("/") && !imgUrl.startsWith("http") && !imgUrl.startsWith("images/material/")) {
@@ -50,5 +54,29 @@ public class ExportRequestDetailDAO extends DBContext {
             e.printStackTrace();
         }
         return details;
+    }
+    
+    public boolean addDetails(List<ExportRequestDetail> details) {
+        if (details == null || details.isEmpty()) {
+            return true;
+        }
+        
+        String sql = "INSERT INTO Export_Request_Details (export_request_id, material_id, rack_id, quantity) VALUES (?, ?, ?, ?)";
+        
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            for (ExportRequestDetail detail : details) {
+                ps.setInt(1, detail.getExportRequestId());
+                ps.setInt(2, detail.getMaterialId());
+                ps.setObject(3, detail.getRackId());
+                ps.setBigDecimal(4, detail.getQuantity());
+                ps.addBatch();
+            }
+            int[] results = ps.executeBatch();
+            return results.length == details.size();
+        } catch (SQLException e) {
+            System.out.println("Error adding export request details: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
 }
