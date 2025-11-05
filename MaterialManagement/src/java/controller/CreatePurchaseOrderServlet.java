@@ -70,11 +70,16 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
             PurchaseOrderDAO purchaseOrderDAO = new PurchaseOrderDAO();
             String poCode = purchaseOrderDAO.generateNextPOCode();
             List<PurchaseRequest> purchaseRequests = purchaseRequestDAO.getApprovedPurchaseRequests();
+            
+            // Get PO status for each Purchase Request (Map: PR ID -> PO Status)
+            java.util.Map<Integer, String> poStatusMap = purchaseRequestDAO.getApprovedPurchaseRequestsWithPOStatus();
+            
             List<Material> materials = materialDAO.searchMaterials(null, null, 1, 1000, "name_asc");
             List<Supplier> suppliers = supplierDAO.getAllSuppliers();
 
             request.setAttribute("poCode", poCode);
             request.setAttribute("purchaseRequests", purchaseRequests);
+            request.setAttribute("poStatusMap", poStatusMap); // Map to show PO status in dropdown
             request.setAttribute("materials", materials);
             request.setAttribute("suppliers", suppliers);
             request.setAttribute("rolePermissionDAO", rolePermissionDAO);
@@ -173,9 +178,13 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
                 // Generate proper PO code using DAO method
                 String newPoCode = purchaseOrderDAO.generateNextPOCode();
                 
+                // Get PO status for each Purchase Request
+                java.util.Map<Integer, String> poStatusMap = purchaseRequestDAO.getApprovedPurchaseRequestsWithPOStatus();
+                
                 // Preserve form data for retry
                 request.setAttribute("poCode", newPoCode);
                 request.setAttribute("purchaseRequests", purchaseRequests);
+                request.setAttribute("poStatusMap", poStatusMap); // Map to show PO status in dropdown
                 request.setAttribute("materials", materials);
                 request.setAttribute("suppliers", suppliersList);
                 request.setAttribute("errors", formErrors);

@@ -8,8 +8,12 @@ public class ExportDetail {
     private int exportDetailId;
     private int exportId;
     private int materialId;
+    private Integer exportRequestDetailId;  // Link to Export_Request_Details (V8)
     private Integer rackId;  // Warehouse rack location
-    private BigDecimal quantity;  // Changed to BigDecimal for DECIMAL(10,2)
+    private BigDecimal quantity;  // DECIMAL(15,4) in V8
+    private String status;  // 'draft' or 'exported' (V8)
+    private BigDecimal unitPriceExport;  // Selling price - REQUIRED for profit calculation (V8)
+    private BigDecimal totalAmountExport;  // Generated column: unit_price_export * quantity (V8)
     private String note;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -133,5 +137,37 @@ public class ExportDetail {
 
     public void setMaterialCode(String materialCode) {
         this.materialCode = materialCode;
+    }
+
+    public Integer getExportRequestDetailId() {
+        return exportRequestDetailId;
+    }
+
+    public void setExportRequestDetailId(Integer exportRequestDetailId) {
+        this.exportRequestDetailId = exportRequestDetailId;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public BigDecimal getUnitPriceExport() {
+        return unitPriceExport;
+    }
+
+    public void setUnitPriceExport(BigDecimal unitPriceExport) {
+        this.unitPriceExport = unitPriceExport;
+    }
+
+    public BigDecimal getTotalAmountExport() {
+        return totalAmountExport;
+    }
+
+    public void setTotalAmountExport(BigDecimal totalAmountExport) {
+        this.totalAmountExport = totalAmountExport;
     }
 }

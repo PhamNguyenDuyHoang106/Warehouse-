@@ -21,8 +21,11 @@ public class Material {
 
     private Category category;
     private Unit unit;
-    private WarehouseRack rack; // Vị trí kệ gợi ý
-    private BigDecimal quantity; // Thay đổi từ int sang BigDecimal
+    private WarehouseRack rack; // Vị trí kệ gợi ý (optional default rack)
+    private BigDecimal quantity; // Current stock (joined from Inventory)
+    private BigDecimal averageCost; // Weighted average cost (V8 - auto-updated)
+    private BigDecimal unitVolume; // V9.1: Thể tích 1 đơn vị (m³)
+    private BigDecimal unitWeight; // V9.1: Khối lượng 1 đơn vị (kg)
 
     private Timestamp createdAt;
     private Timestamp updatedAt;
@@ -146,10 +149,33 @@ public class Material {
         this.disable = disable;
     }
 
-    @Override
-    public String toString() {
-        return "Material{" + "materialId=" + materialId + ", materialCode=" + materialCode + ", materialName=" + materialName + ", materialsUrl=" + materialsUrl + ", materialStatus=" + materialStatus + ", category=" + category + ", unit=" + unit + ", quantity=" + quantity + ", createdAt=" + createdAt + ", updatedAt=" + updatedAt + ", disable=" + disable + '}';
+    public BigDecimal getAverageCost() {
+        return averageCost;
     }
 
-    
+    public void setAverageCost(BigDecimal averageCost) {
+        this.averageCost = averageCost;
+    }
+
+    // V9.1: Unit volume and weight getters and setters
+    public BigDecimal getUnitVolume() {
+        return unitVolume;
+    }
+
+    public void setUnitVolume(BigDecimal unitVolume) {
+        this.unitVolume = unitVolume;
+    }
+
+    public BigDecimal getUnitWeight() {
+        return unitWeight;
+    }
+
+    public void setUnitWeight(BigDecimal unitWeight) {
+        this.unitWeight = unitWeight;
+    }
+
+    @Override
+    public String toString() {
+        return "Material{" + "materialId=" + materialId + ", materialCode=" + materialCode + ", materialName=" + materialName + ", materialsUrl=" + materialsUrl + ", materialStatus=" + materialStatus + ", category=" + category + ", unit=" + unit + ", quantity=" + quantity + ", averageCost=" + averageCost + ", unitVolume=" + unitVolume + ", unitWeight=" + unitWeight + ", createdAt=" + createdAt + ", updatedAt=" + updatedAt + ", disable=" + disable + '}';
+    }
 }

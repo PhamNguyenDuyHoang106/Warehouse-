@@ -139,6 +139,34 @@
             </div>
         </div>
 
+        <c:if test="${not empty recipient}">
+            <div class="card">
+                <div class="card-header">Recipient</div>
+                <div class="card-body">
+                    <p><strong>Recipient Code:</strong> ${recipient.recipientCode}</p>
+                    <p><strong>Recipient Name:</strong> ${recipient.recipientName}</p>
+                    <c:if test="${not empty recipient.contactPerson}">
+                        <p><strong>Contact Person:</strong> ${recipient.contactPerson}</p>
+                    </c:if>
+                    <c:if test="${not empty recipient.phoneNumber}">
+                        <p><strong>Phone Number:</strong> ${recipient.phoneNumber}</p>
+                    </c:if>
+                    <c:if test="${not empty recipient.email}">
+                        <p><strong>Email:</strong> ${recipient.email}</p>
+                    </c:if>
+                    <c:if test="${not empty recipient.address}">
+                        <p><strong>Address:</strong> ${recipient.address}</p>
+                    </c:if>
+                    <c:if test="${not empty recipient.location}">
+                        <p><strong>Location:</strong> ${recipient.location}</p>
+                    </c:if>
+                    <c:if test="${not empty recipient.description}">
+                        <p><strong>Description:</strong> ${recipient.description}</p>
+                    </c:if>
+                </div>
+            </div>
+        </c:if>
+
         <div class="card">
             <div class="card-header">Order Information</div>
             <div class="card-body">

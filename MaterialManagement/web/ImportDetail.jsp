@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -82,31 +83,136 @@
         <jsp:include page="Header.jsp" />
         <div class="container">
             <h2 class="fw-bold mb-4 text-center" style="color: #DEAD6F;">Import Detail - ${importData.importCode}</h2>
+            
+            <!-- Import Information Card -->
             <div class="card">
                 <div class="card-header">Import Information</div>
                 <div class="card-body">
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <p><strong>Date:</strong> ${importData.importDate}</p>
-                            <p><strong>Imported By:</strong> 
+                            <p><strong><i class="fas fa-calendar me-1"></i>Import Date:</strong> 
                                 <c:choose>
-                                    <c:when test="${not empty importData.importedByName}">${importData.importedByName}</c:when>
-                                    <c:otherwise>N/A</c:otherwise>
+                                    <c:when test="${not empty importDate}">
+                                        <fmt:formatDate value="${importDate}" pattern="dd/MM/yyyy HH:mm" />
+                                    </c:when>
+                                    <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
                                 </c:choose>
                             </p>
-                            <p><strong>Supplier:</strong> 
+                            <p><strong><i class="fas fa-warehouse me-1"></i>Warehouse(s):</strong> 
                                 <c:choose>
-                                    <c:when test="${not empty importData.supplierName}">${importData.supplierName}</c:when>
-                                    <c:otherwise>N/A</c:otherwise>
+                                    <c:when test="${not empty warehouseNames}">${warehouseNames}</c:when>
+                                    <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                </c:choose>
+                            </p>
+                            <p><strong><i class="fas fa-money-bill me-1"></i>Total Value:</strong> 
+                                <c:choose>
+                                    <c:when test="${not empty totalValue}">
+                                        <fmt:formatNumber value="${totalValue}" type="currency" currencySymbol="VND" />
+                                    </c:when>
+                                    <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
                                 </c:choose>
                             </p>
                         </div>
                         <div class="col-md-6">
-                            <p><strong>Note:</strong> ${importData.note}</p>
+                            <p><strong><i class="fas fa-sticky-note me-1"></i>Note:</strong> 
+                                <c:choose>
+                                    <c:when test="${not empty importData.note}">${importData.note}</c:when>
+                                    <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                </c:choose>
+                            </p>
+                            <c:if test="${not empty actualArrival}">
+                                <p><strong><i class="fas fa-clock me-1"></i>Actual Arrival:</strong> 
+                                    <fmt:formatDate value="${actualArrival}" pattern="dd/MM/yyyy HH:mm" />
+                                </p>
+                            </c:if>
                         </div>
                     </div>
                 </div>
             </div>
+            
+            <!-- Supplier Information Card -->
+            <c:if test="${not empty supplier}">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-truck me-1"></i>Supplier Information</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Supplier Code:</strong> ${supplier.supplierCode}</p>
+                                <p><strong>Supplier Name:</strong> ${supplier.supplierName}</p>
+                                <p><strong>Contact Info:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty supplier.contactInfo}">${supplier.contactInfo}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                                <p><strong>Phone:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty supplier.phoneNumber}">${supplier.phoneNumber}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Email:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty supplier.email}">${supplier.email}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                                <p><strong>Address:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty supplier.address}">${supplier.address}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                                <p><strong>Tax ID:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty supplier.taxId}">${supplier.taxId}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                                <c:if test="${not empty supplier.description}">
+                                    <p><strong>Description:</strong> ${supplier.description}</p>
+                                </c:if>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </c:if>
+            
+            <!-- Imported By User Information Card -->
+            <c:if test="${not empty importedByUser}">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-user me-1"></i>Imported By</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Full Name:</strong> ${importedByUser.fullName}</p>
+                                <p><strong>Email:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty importedByUser.email}">${importedByUser.email}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Phone:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty importedByUser.phoneNumber}">${importedByUser.phoneNumber}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                                <p><strong>Department:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty importedByUser.departmentName}">${importedByUser.departmentName}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </c:if>
             <div class="card">
                 <div class="card-header">Material List</div>
                 <div class="card-body">
@@ -117,6 +223,8 @@
                                     <th>#</th>
                                     <th>Image</th>
                                     <th>Material Name</th>
+                                    <th>Warehouse</th>
+                                    <th>Rack</th>
                                     <th>Quantity</th>
                                     <th>Unit</th>
                                     <th>Unit Price</th>
@@ -135,10 +243,24 @@
                                                 data-fallback="${pageContext.request.contextPath}/images/default-material.png">
                                         </td>
                                         <td>${detail.materialName}</td>
-                                        <td>${detail.quantity}</td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${not empty detail.rackId && not empty rackToWarehouseMap[detail.rackId]}">
+                                                    ${rackToWarehouseMap[detail.rackId]}
+                                                </c:when>
+                                                <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${not empty detail.rackCode}">${detail.rackCode}</c:when>
+                                                <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                        <td><fmt:formatNumber value="${detail.quantity}" maxFractionDigits="2" /></td>
                                         <td>${detail.unitName}</td>
-                                        <td>${detail.unitPrice}</td>
-                                        <td>${detail.quantity * detail.unitPrice}</td>
+                                        <td><fmt:formatNumber value="${detail.unitPrice}" type="currency" currencySymbol="VND" /></td>
+                                        <td><fmt:formatNumber value="${detail.quantity * detail.unitPrice}" type="currency" currencySymbol="VND" /></td>
                                     </tr>
                                 </c:forEach>
                             </tbody>
@@ -147,7 +269,7 @@
                 </div>
             </div>
             <div class="d-flex gap-2 mb-2 justify-content-center">
-                <a href="ImportHistory" class="btn btn-cancel">← Back to Import History</a>
+                <a href="ImportList" class="btn btn-cancel">← Back to Import List</a>
             </div>
         </div>
         <jsp:include page="Footer.jsp" />

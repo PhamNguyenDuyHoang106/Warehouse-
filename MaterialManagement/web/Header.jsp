@@ -8,12 +8,30 @@
 <%
 User user = (User) session.getAttribute("user");
 if (user != null) {
-    PermissionDAO permissionDAO = new PermissionDAO();
-    List<String> permissionNames = permissionDAO.getPermissionsByRole(user.getRoleId())
-        .stream()
-        .map(permission -> permission.getPermissionName())
-        .collect(Collectors.toList());
-    session.setAttribute("userPermissions", permissionNames);
+    // Only query permissions if not already in session to avoid repeated database queries
+    List<String> userPermissions = (List<String>) session.getAttribute("userPermissions");
+    if (userPermissions == null) {
+        PermissionDAO permissionDAO = null;
+        try {
+            permissionDAO = new PermissionDAO();
+            userPermissions = permissionDAO.getPermissionsByRole(user.getRoleId())
+                .stream()
+                .map(permission -> permission.getPermissionName())
+                .collect(Collectors.toList());
+            session.setAttribute("userPermissions", userPermissions);
+        } catch (Exception e) {
+            // Log error but don't break the page
+            e.printStackTrace();
+        } finally {
+            if (permissionDAO != null) {
+                try {
+                    permissionDAO.close();
+                } catch (Exception e) {
+                    // Ignore close errors
+                }
+            }
+        }
+    }
 }
 %>
 
@@ -21,10 +39,74 @@ if (user != null) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
           integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ=="
           crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* Đảm bảo header, body và footer đồng nhất khi zoom - tất cả đều full width */
+        * {
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            max-width: 100vw;
+        }
+        
+        header, footer {
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Đảm bảo container-fluid cho header và footer giống body content */
+        header .container-fluid, footer .container-fluid {
+            width: 100%;
+            padding-left: calc(var(--bs-gutter-x, 0.75rem) * 1);
+            padding-right: calc(var(--bs-gutter-x, 0.75rem) * 1);
+            margin-left: auto;
+            margin-right: auto;
+            box-sizing: border-box;
+        }
+        
+        /* Đảm bảo header menu không bị overflow */
+        header nav.main-menu {
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+        }
+        
+        /* Đảm bảo dropdown không bị overflow */
+        header .filter-categories {
+            max-width: 100%;
+            white-space: nowrap;
+            box-sizing: border-box;
+        }
+        
+        /* Responsive cho mobile */
+        @media (max-width: 991px) {
+            header .offcanvas-body {
+                overflow-x: hidden;
+            }
+            
+            header .container-fluid, footer .container-fluid {
+                padding-left: 15px;
+                padding-right: 15px;
+            }
+        }
+        
+        /* Đảm bảo row trong header và footer có cùng gutter */
+        header .row, footer .row {
+            margin-left: calc(-0.5 * var(--bs-gutter-x, 0.75rem));
+            margin-right: calc(-0.5 * var(--bs-gutter-x, 0.75rem));
+        }
+    </style>
 </head>
 
 <header>
-    <div class="container py-2">
+    <div class="container-fluid py-2">
         <div class="row align-items-center">
             <div class="col-12 col-sm-4 text-center text-sm-start mb-3 mb-sm-0">
                 <a href="home">
@@ -57,7 +139,7 @@ if (user != null) {
         <hr class="my-2">
     </div>
 
-    <div class="container">
+    <div class="container-fluid">
         <nav class="navbar navbar-expand-lg navbar-light main-menu d-flex">
             <a class="navbar-brand d-lg-none" href="#">Menu</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar"
@@ -72,113 +154,135 @@ if (user != null) {
                 </div>
                 <div class="offcanvas-body d-flex flex-column flex-lg-row align-items-lg-center justify-content-between">
 
-                    <!-- System Management Dropdown -->
-                    <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_USER') 
+                    <!-- System Management Dropdown - Hệ thống, ai cũng có thể truy cập -->
+                    <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 
+                                  || sessionScope.userPermissions.contains('VIEW_INVENTORY')
+                                  || sessionScope.userPermissions.contains('VIEW_LIST_USER') 
                                   || sessionScope.userPermissions.contains('VIEW_LIST_DEPARTMENT') 
-                                  || sessionScope.userPermissions.contains('VIEW_UNIT') 
-                                  || sessionScope.userPermissions.contains('VIEW_INVENTORY') 
+                                  || sessionScope.userPermissions.contains('VIEW_LIST_UNIT') 
                                   || sessionScope.userPermissions.contains('VIEW_LIST_MATERIAL') 
                                   || sessionScope.userPermissions.contains('VIEW_LIST_CATEGORY') 
-                                  || sessionScope.userPermissions.contains('VIEW_LIST_SUPPLIER') 
-                                  || sessionScope.userPermissions.contains('VIEW_LIST_UNIT')}">
+                                  || sessionScope.userPermissions.contains('VIEW_LIST_SUPPLIER')
+                                  || sessionScope.userPermissions.contains('VIEW_LIST_RECIPIENT')
+                                  || sessionScope.userPermissions.contains('VIEW_LIST_RACK')
+                                  || sessionScope.userPermissions.contains('VIEW_LIST_VEHICLE'))}">
                           <select class="filter-categories border-0 mb-0 me-5" onchange="location.href = this.value;">
                               <option selected disabled>System Management</option>
-                              <c:if test="${sessionScope.userPermissions.contains('VIEW_INVENTORY')}">
-                                  <option value="StaticInventory">Manage Inventory</option>
-                              </c:if>                            
+                              <c:if test="${not empty sessionScope.user && sessionScope.user.roleId == 1}">
+                                  <option value="RolePermission">Permission</option>
+                              </c:if>
+                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_INVENTORY'))}">
+                                  <option value="InventoryReport">Inventory Report</option>
+                              </c:if>
+                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_LIST_RACK'))}">
+                                  <option value="WarehouseRackList">Warehouse Racks</option>
+                              </c:if>
+                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_LIST_VEHICLE'))}">
+                                  <option value="VehicleList">Vehicles</option>
+                              </c:if>
                               <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_USER')}">
-                                  <option value="UserList">Manage Users</option>
+                                  <option value="UserList">Users</option>
                               </c:if>
                               <c:if test="${not empty sessionScope.user && sessionScope.user.roleId == 1}">
-                                  <option value="PasswordResetRequests">Manager Password</option>
+                                  <option value="PasswordResetRequests">Password Reset Requests</option>
                               </c:if>                                
                               <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_DEPARTMENT')}">
-                                  <option value="depairmentlist">Manage Department</option>
-                              </c:if>
-                              <c:if test="${sessionScope.userPermissions.contains('VIEW_UNIT')}">
-                                  <option value="Unit">Manage Unit</option>
+                                  <option value="depairmentlist">Department</option>
                               </c:if>
                               <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_UNIT')}">
-                                  <option value="UnitList">Manage Units</option>
+                                  <option value="UnitList">Unit</option>
                               </c:if>                                
                               <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_MATERIAL')}">
-                                  <option value="dashboardmaterial">Manage Materials</option>
+                                  <option value="dashboardmaterial">Material</option>
                               </c:if>
                               <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_CATEGORY')}">
-                                  <option value="Category">Manage Categories</option>
+                                  <option value="Category">Category</option>
                               </c:if>
                               <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_SUPPLIER')}">
-                                  <option value="Supplier">Manage Suppliers</option>
+                                  <option value="Supplier">Supplier</option>
+                              </c:if>
+                              <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_RECIPIENT')}">
+                                  <option value="Recipient">Recipient</option>
                               </c:if>                                
                           </select>
                     </c:if>
 
-                    <!-- Stock & History Dropdown -->
-                    <c:if test="${sessionScope.userPermissions.contains('EXPORT_MATERIAL') || sessionScope.userPermissions.contains('IMPORT_MATERIAL') || sessionScope.userPermissions.contains('CREATE_REPAIR_REQUEST')}">
+                    <!-- Import/Export Operations Dropdown -->
+                    <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_IMPORT') || sessionScope.userPermissions.contains('CREATE_EXPORT') || sessionScope.userPermissions.contains('VIEW_IMPORT_LIST') || sessionScope.userPermissions.contains('VIEW_EXPORT_LIST'))}">
                         <select class="filter-categories border-0 mb-0 me-5" onchange="location.href = this.value;">
-                            <option selected disabled>Stock</option>
-                            <!-- Export / Import Stock -->
-                            <c:if test="${sessionScope.userPermissions.contains('CREATE_EXPORT')}">
-                                <option value="ExportMaterial">Export Material</option>
-                            </c:if>
-                            <c:if test="${sessionScope.userPermissions.contains('VIEW_EXPORT_LIST')}">
-                                <option value="ExportList">Export List</option>
-                            </c:if>
-                            <c:if test="${sessionScope.userPermissions.contains('CREATE_IMPORT')}">
+                            <option selected disabled>Import/Export</option>
+                            <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_IMPORT'))}">
                                 <option value="ImportMaterial">Import Material</option>
                             </c:if>
-                            <c:if test="${sessionScope.userPermissions.contains('VIEW_IMPORT_LIST')}">
+                            <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_IMPORT_LIST'))}">
                                 <option value="ImportList">Import List</option>
                             </c:if>
-                            <c:if test="${sessionScope.userPermissions.contains('CREATE_REPAIR_REQUEST') && sessionScope.user.roleId == 3}">
-                                <option value="CreateRepairRequest">Repair Request</option>
+                            <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_EXPORT'))}">
+                                <option value="ExportMaterial">Export Material</option>
+                            </c:if>
+                            <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_EXPORT_LIST'))}">
+                                <option value="ExportList">Export List</option>
                             </c:if>
                         </select>
                     </c:if>
 
-                    <!-- Request Dropdown -->
-                    <c:if test="${sessionScope.userPermissions.contains('CREATE_EXPORT_REQUEST') 
-                                  || sessionScope.userPermissions.contains('CREATE_PURCHASE_REQUEST') 
-                                  || sessionScope.userPermissions.contains('CREATE_REPAIR_REQUEST') 
-                                  || sessionScope.userPermissions.contains('CREATE_PURCHASE_ORDER')}">
+                    <!-- Employee Requests Dropdown - Các đơn yêu cầu cho nhân viên (không có Purchase Order) -->
+                    <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 
+                                  || sessionScope.userPermissions.contains('CREATE_EXPORT_REQUEST')
+                                  || sessionScope.userPermissions.contains('VIEW_EXPORT_REQUEST_LIST')
+                                  || sessionScope.userPermissions.contains('CREATE_PURCHASE_REQUEST')
+                                  || sessionScope.userPermissions.contains('VIEW_PURCHASE_REQUEST_LIST')
+                                  || sessionScope.userPermissions.contains('CREATE_REPAIR_REQUEST')
+                                  || sessionScope.userPermissions.contains('VIEW_REPAIR_REQUEST_LIST'))}">
                           <select class="filter-categories border-0 mb-0 me-5" onchange="location.href = this.value;">
-                              <option selected disabled>Request</option>
-                              <c:if test="${sessionScope.userPermissions.contains('CREATE_EXPORT_REQUEST')}">
-                                  <option value="CreateExportRequest">Export Request</option>
+                              <option selected disabled>Employee Requests</option>
+                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_EXPORT_REQUEST'))}">
+                                  <option value="CreateExportRequest">Create Export Request</option>
                               </c:if>
-                              <c:if test="${sessionScope.userPermissions.contains('CREATE_PURCHASE_REQUEST')}">
-                                  <option value="CreatePurchaseRequest">Purchase Request</option>
+                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_EXPORT_REQUEST_LIST'))}">
+                                  <option value="ExportRequestList">Export Requests</option>
                               </c:if>
-                              <c:if test="${sessionScope.userPermissions.contains('CREATE_REPAIR_REQUEST')}">
-                                  <option value="CreateRepairRequest">Repair Request</option>
+                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_PURCHASE_REQUEST'))}">
+                                  <option value="CreatePurchaseRequest">Create Purchase Request</option>
                               </c:if>
-                              <c:if test="${sessionScope.userPermissions.contains('CREATE_PURCHASE_ORDER')}">
-                                  <option value="CreatePurchaseOrder">Purchase Order Request</option>
+                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_PURCHASE_REQUEST_LIST'))}">
+                                  <option value="ListPurchaseRequests">Purchase Requests</option>
+                              </c:if>
+                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_REPAIR_REQUEST'))}">
+                                  <option value="CreateRepairRequest">Create Repair Request</option>
+                              </c:if>
+                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_REPAIR_REQUEST_LIST'))}">
+                                  <option value="repairrequestlist">Repair Requests</option>
                               </c:if>
                           </select>
                     </c:if>
 
-                    <!-- Request List Dropdown -->
-                    <c:if test="${sessionScope.userPermissions.contains('VIEW_EXPORT_REQUEST_LIST') 
-                                  || sessionScope.userPermissions.contains('VIEW_PURCHASE_REQUEST_LIST') 
-                                  || sessionScope.userPermissions.contains('VIEW_REPAIR_REQUEST_LIST') 
-                                  || sessionScope.userPermissions.contains('VIEW_PURCHASE_ORDER_LIST')}">
+                    <!-- Purchase Order Dropdown - Dành cho Accounting -->
+                    <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_PURCHASE_ORDER') || sessionScope.userPermissions.contains('VIEW_PURCHASE_ORDER_LIST'))}">
                           <select class="filter-categories border-0 mb-0 me-5" onchange="location.href = this.value;">
-                              <option selected disabled>Request List</option>
-                              <c:if test="${sessionScope.userPermissions.contains('VIEW_EXPORT_REQUEST_LIST')}">
-                                  <option value="ExportRequestList">Export Request List</option>
+                              <option selected disabled>Purchase Order</option>
+                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_PURCHASE_ORDER'))}">
+                                  <option value="CreatePurchaseOrder">Create Purchase Order</option>
                               </c:if>
-                              <c:if test="${sessionScope.userPermissions.contains('VIEW_PURCHASE_REQUEST_LIST')}">
-                                  <option value="ListPurchaseRequests">Purchase Request List</option>
-                              </c:if>
-                              <c:if test="${sessionScope.userPermissions.contains('VIEW_REPAIR_REQUEST_LIST')}">
-                                  <option value="repairrequestlist">Repair Request List</option>
-                              </c:if>
-                              <c:if test="${sessionScope.userPermissions.contains('VIEW_PURCHASE_ORDER_LIST')}">
-                                  <option value="PurchaseOrderList">Purchase Order List</option>
+                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_PURCHASE_ORDER_LIST'))}">
+                                  <option value="PurchaseOrderList">Purchase Orders</option>
                               </c:if>
                           </select>
                     </c:if>
+
+                    <!-- History Dropdown -->
+                    <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_IMPORT_LIST') || sessionScope.userPermissions.contains('VIEW_EXPORT_LIST'))}">
+                          <select class="filter-categories border-0 mb-0 me-5" onchange="location.href = this.value;">
+                              <option selected disabled>History</option>
+                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_IMPORT_LIST'))}">
+                                  <option value="ImportDetailHistory">Import Details</option>
+                              </c:if>
+                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_EXPORT_LIST'))}">
+                                  <option value="ExportDetailHistory">Export Details</option>
+                              </c:if>
+                          </select>
+                    </c:if>
+
 
                     <ul class="navbar-nav d-flex flex-row flex-wrap gap-3 mb-3 mb-lg-0 menu-list list-unstyled">
                         <li class="nav-item">

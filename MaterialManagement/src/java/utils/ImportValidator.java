@@ -38,7 +38,9 @@ public class ImportValidator {
             return errors;
         }
         
-        if (unitPrices == null || unitPrices.length != materialIds.length) {
+        // Unit prices can be null/empty - will default to 0
+        // Just ensure array exists if provided
+        if (unitPrices != null && unitPrices.length != materialIds.length) {
             errors.put("unitPrices", "Unit prices array size mismatch");
             return errors;
         }
@@ -82,17 +84,20 @@ public class ImportValidator {
                     errors.put(prefix + "quantity", "Invalid quantity format");
                 }
                 
-                // Validate Unit Price
-                try {
-                    BigDecimal unitPrice = new BigDecimal(unitPrices[i]);
-                    if (unitPrice.compareTo(BigDecimal.ZERO) < 0) {
-                        errors.put(prefix + "unitPrice", "Unit price cannot be negative");
+                // Validate Unit Price (optional - defaults to 0)
+                if (unitPrices != null && i < unitPrices.length && 
+                    unitPrices[i] != null && !unitPrices[i].trim().isEmpty()) {
+                    try {
+                        BigDecimal unitPrice = new BigDecimal(unitPrices[i]);
+                        if (unitPrice.compareTo(BigDecimal.ZERO) < 0) {
+                            errors.put(prefix + "unitPrice", "Unit price cannot be negative");
+                        }
+                        if (unitPrice.scale() > 2) {
+                            errors.put(prefix + "unitPrice", "Maximum 2 decimal places allowed");
+                        }
+                    } catch (NumberFormatException e) {
+                        errors.put(prefix + "unitPrice", "Invalid unit price format");
                     }
-                    if (unitPrice.scale() > 2) {
-                        errors.put(prefix + "unitPrice", "Maximum 2 decimal places allowed");
-                    }
-                } catch (NumberFormatException e) {
-                    errors.put(prefix + "unitPrice", "Invalid unit price format");
                 }
                 
                 // Validate Rack ID (optional but must be valid if provided)
@@ -104,8 +109,15 @@ public class ImportValidator {
                             WarehouseRack rack = rackDAO.getRackById(rackId);
                             if (rack == null) {
                                 errors.put(prefix + "rackId", "Rack not found");
-                            } else if (!"active".equals(rack.getStatus())) {
-                                errors.put(prefix + "rackId", "Rack is not active");
+                            } else {
+                                // Check if rack is available/active (handle both string and enum)
+                                Object statusObj = rack.getStatus();
+                                String statusStr = statusObj != null ? statusObj.toString() : "";
+                                if (!statusStr.equalsIgnoreCase("active") && 
+                                    !statusStr.equalsIgnoreCase("available") &&
+                                    !statusStr.equals("AVAILABLE")) {
+                                    errors.put(prefix + "rackId", "Rack is not available");
+                                }
                             }
                         }
                     } catch (NumberFormatException e) {

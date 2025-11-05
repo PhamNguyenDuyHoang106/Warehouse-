@@ -172,8 +172,14 @@ public class PurchaseRequestDAO extends DBContext {
     }
 
     // Lấy danh sách Purchase Requests đã được approved
+    /**
+     * Gets approved purchase requests with their Purchase Order status.
+     * If PO exists, shows PO status; if not, no status is shown.
+     * If multiple POs exist, shows the latest PO status.
+     */
     public List<PurchaseRequest> getApprovedPurchaseRequests() {
         List<PurchaseRequest> list = new ArrayList<>();
+        // LEFT JOIN with Purchase_Orders to get PO status (latest PO if multiple exist)
         String sql = "SELECT pr.*, u.full_name, u.email, u.phone_number "
                 + "FROM material_management.purchase_requests pr "
                 + "LEFT JOIN material_management.users u ON pr.user_id = u.user_id "
@@ -203,6 +209,9 @@ public class PurchaseRequestDAO extends DBContext {
                     pr.setUpdatedAt(rs.getTimestamp("updated_at"));
                     pr.setDisable(rs.getBoolean("disable"));
 
+                    // PO status is retrieved separately via getApprovedPurchaseRequestsWithPOStatus()
+                    // and passed to JSP via Map to avoid modifying entity
+
                     // Load details for each purchase request
                     List<PurchaseRequestDetail> details = prdd.paginationOfDetails(pr.getPurchaseRequestId(), 1, Integer.MAX_VALUE);
                     pr.setDetails(details);
@@ -214,6 +223,42 @@ public class PurchaseRequestDAO extends DBContext {
             LOGGER.log(Level.SEVERE, "Error getting approved purchase requests.", ex);
         }
         return list;
+    }
+    
+    /**
+     * Gets approved purchase requests with their Purchase Order status.
+     * Returns a Map: PurchaseRequestId -> PO Status (or null if no PO exists)
+     * If multiple POs exist for same PR, returns the status of the latest PO (by po_id DESC).
+     */
+    public java.util.Map<Integer, String> getApprovedPurchaseRequestsWithPOStatus() {
+        java.util.Map<Integer, String> poStatusMap = new java.util.HashMap<>();
+        // Get latest PO status for each approved PR
+        // If multiple POs exist, get the one with highest po_id (most recent)
+        String sql = "SELECT pr.purchase_request_id, "
+                + "  (SELECT po.status "
+                + "   FROM material_management.purchase_orders po "
+                + "   WHERE po.purchase_request_id = pr.purchase_request_id "
+                + "     AND po.disable = 0 "
+                + "   ORDER BY po.po_id DESC "
+                + "   LIMIT 1) AS po_status "
+                + "FROM material_management.purchase_requests pr "
+                + "WHERE (pr.status = 'APPROVED' OR pr.status = 'approved') AND pr.disable = 0";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int prId = rs.getInt("purchase_request_id");
+                    String poStatus = rs.getString("po_status");
+                    // Only store if PO exists (status is not null and not empty)
+                    if (poStatus != null && !poStatus.trim().isEmpty()) {
+                        poStatusMap.put(prId, poStatus.trim());
+                    }
+                }
+            }
+        } catch (SQLException ex) {
+            LOGGER.log(Level.SEVERE, "Error getting PO status for approved purchase requests.", ex);
+        }
+        return poStatusMap;
     }
 
     // Generate sequential request codes (PR1, PR2, PR3, etc.)

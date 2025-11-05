@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.PrintWriter;
+import utils.PasswordHasher;
 
 @WebServlet(name="ChangePasswordServlet", urlPatterns={"/ChangePassword"})
 public class ChangePasswordServlet extends HttpServlet {
@@ -59,7 +60,8 @@ public class ChangePasswordServlet extends HttpServlet {
         if (oldPassword == null || newPassword == null || confirmPassword == null
                 || oldPassword.isEmpty() || newPassword.isEmpty() || confirmPassword.isEmpty()) {
             error = "All fields are required.";
-        } else if (!userDAO.md5(oldPassword).equals(user.getPassword())) {
+        } else if (!PasswordHasher.verifyPassword(oldPassword, user.getPassword())) {
+            // Use PasswordHasher to verify (supports both MD5 and BCrypt)
             error = "Current password is incorrect.";
         } else if (!newPassword.equals(confirmPassword)) {
             error = "New password and confirmation do not match.";
@@ -67,10 +69,13 @@ public class ChangePasswordServlet extends HttpServlet {
             error = "New password must be at least 6 characters.";
         } else if (!newPassword.matches("^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[^a-zA-Z0-9]).{6,}$")) {
             error = "Password must contain letters, numbers, and special characters.";
-        } else if (userDAO.md5(newPassword).equals(user.getPassword())) {
+        } else if (PasswordHasher.verifyPassword(newPassword, user.getPassword())) {
+            // Check if new password is same as old (supports both MD5 and BCrypt)
             error = "New password must be different from the old password.";
         } else {
-            user.setPassword(userDAO.md5(newPassword));
+            // Hash new password with BCrypt
+            String hashedNewPassword = PasswordHasher.hashPassword(newPassword);
+            user.setPassword(hashedNewPassword);
             boolean updated = userDAO.updateUser(user);
             if (updated) {
                 session.setAttribute("user", user);

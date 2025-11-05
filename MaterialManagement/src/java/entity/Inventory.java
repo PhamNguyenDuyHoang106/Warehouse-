@@ -6,11 +6,11 @@ import java.time.LocalDateTime;
 public class Inventory {
     private int inventoryId;
     private int materialId;
-    private Integer rackId; // Vị trí kệ trong kho
-    private BigDecimal stock; // Thay đổi từ int sang BigDecimal
+    private Integer rackId; // Vị trí kệ trong kho (V8)
+    private Integer warehouseId; // Warehouse ID (V8 - NEW)
+    private BigDecimal stock; // DECIMAL(15,4) in V8
     private LocalDateTime lastUpdated;
-    private Integer updatedBy;
-    private String location;
+    private Integer updatedBy; // User who last updated (V8)
     private String note;
     
     private String materialName;
@@ -20,17 +20,18 @@ public class Inventory {
     private String materialsUrl;
     private String rackName;
     private String rackCode;
+    private String warehouseName;
 
     public Inventory() {}
 
-    public Inventory(int inventoryId, int materialId, Integer rackId, BigDecimal stock, LocalDateTime lastUpdated, Integer updatedBy, String location, String note) {
+    public Inventory(int inventoryId, int materialId, Integer rackId, Integer warehouseId, BigDecimal stock, LocalDateTime lastUpdated, Integer updatedBy, String note) {
         this.inventoryId = inventoryId;
         this.materialId = materialId;
         this.rackId = rackId;
+        this.warehouseId = warehouseId;
         this.stock = stock;
         this.lastUpdated = lastUpdated;
         this.updatedBy = updatedBy;
-        this.location = location;
         this.note = note;
     }
 
@@ -82,12 +83,12 @@ public class Inventory {
         this.updatedBy = updatedBy;
     }
 
-    public String getLocation() {
-        return location;
+    public Integer getWarehouseId() {
+        return warehouseId;
     }
 
-    public void setLocation(String location) {
-        this.location = location;
+    public void setWarehouseId(Integer warehouseId) {
+        this.warehouseId = warehouseId;
     }
 
     public String getNote() {
@@ -151,5 +152,13 @@ public class Inventory {
 
     public void setRackCode(String rackCode) {
         this.rackCode = rackCode;
+    }
+
+    public String getWarehouseName() {
+        return warehouseName;
+    }
+
+    public void setWarehouseName(String warehouseName) {
+        this.warehouseName = warehouseName;
     }
 } 

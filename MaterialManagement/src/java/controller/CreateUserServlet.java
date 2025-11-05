@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 import utils.UserValidator;
 import utils.EmailUtils;
+import utils.PermissionHelper;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -45,7 +46,8 @@ public class CreateUserServlet extends HttpServlet {
         }
 
         User admin = (User) session.getAttribute("user");
-        if (admin.getRoleId() != 1) {
+        // Admin has full access, other roles need CREATE_USER permission
+        if (admin == null || (!PermissionHelper.isAdmin(admin) && !PermissionHelper.hasPermission(admin, "CREATE_USER"))) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
             return;
         }
@@ -66,7 +68,8 @@ public class CreateUserServlet extends HttpServlet {
         }
 
         User admin = (User) session.getAttribute("user");
-        if (admin.getRoleId() != 1) {
+        // Admin has full access, other roles need CREATE_USER permission
+        if (admin == null || (!PermissionHelper.isAdmin(admin) && !PermissionHelper.hasPermission(admin, "CREATE_USER"))) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
             return;
         }

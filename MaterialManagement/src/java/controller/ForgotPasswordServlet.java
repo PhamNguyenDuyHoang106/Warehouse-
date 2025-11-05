@@ -7,8 +7,6 @@ import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import java.io.PrintWriter;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 
 @WebServlet(name="ForgotPasswordServlet", urlPatterns={"/ForgotPassword"})
 public class ForgotPasswordServlet extends HttpServlet {
@@ -57,19 +55,6 @@ public class ForgotPasswordServlet extends HttpServlet {
         }
         request.setAttribute("message", "Your password reset request has been sent to the admin. Please check your email to receive a new password.");
         request.getRequestDispatcher("ForgotPassword.jsp").forward(request, response);
-    }
-    private String md5(String input) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] messageDigest = md.digest(input.getBytes());
-            StringBuilder sb = new StringBuilder();
-            for (byte b : messageDigest) {
-                sb.append(String.format("%02x", b & 0xff));
-            }
-            return sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     @Override

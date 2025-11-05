@@ -13,6 +13,7 @@ import jakarta.servlet.http.*;
 import java.io.PrintWriter;
 import java.util.Random;
 import utils.EmailUtils;
+import utils.PasswordHasher;
 
 @WebServlet(name="PasswordResetRequestsServlet", urlPatterns={"/PasswordResetRequests"})
 public class PasswordResetRequestsServlet extends HttpServlet {
@@ -112,7 +113,8 @@ public class PasswordResetRequestsServlet extends HttpServlet {
         }
         if ("completed".equals(status) && userEmail != null) {
             String randomPassword = generateRandomPassword(8);
-            userDAO.updatePasswordByEmail(userEmail, UserDAO.md5(randomPassword));
+            // updatePasswordByEmail() now uses PasswordHasher (BCrypt) internally (V8)
+            userDAO.updatePasswordByEmail(userEmail, randomPassword);
             String subject = "Your Password Has Been Reset";
             String content = "Your new password is: <b>" + randomPassword + "</b><br>Please log in and change your password immediately.";
             try {

@@ -175,8 +175,9 @@
                                     <th scope="col" style="width: 200px">Name</th>
                                     <th scope="col" style="width: 100px">Status</th>
                                     <th scope="col" style="width: 150px">Category</th>
-                                    <th scope="col" style="width: 150px">Created At</th>
-                                    <th scope="col" style="width: 150px">Updated At</th>
+                                    <th scope="col" style="width: 120px">Unit Volume (m³)</th>
+                                    <th scope="col" style="width: 120px">Unit Weight (kg)</th>
+                                    <th scope="col" style="width: 120px">Average Cost</th>
                                     <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'VIEW_DETAIL_MATERIAL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_MATERIAL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_MATERIAL')}">
                                         <th scope="col">Actions</th>
                                     </c:if>
@@ -213,8 +214,37 @@
                                                     </c:choose>
                                                 </td>
                                                 <td>${material.category != null ? material.category.category_name : 'N/A'}</td>
-                                                <td><fmt:formatDate value="${material.createdAt}" pattern="yyyy-MM-dd HH:mm:ss"/></td>
-                                                <td><fmt:formatDate value="${material.updatedAt}" pattern="yyyy-MM-dd HH:mm:ss"/></td>
+                                                <td>
+                                                    <c:choose>
+                                                        <c:when test="${material.unitVolume != null && material.unitVolume.doubleValue() > 0}">
+                                                            <fmt:formatNumber value="${material.unitVolume}" maxFractionDigits="4"/> m³
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <span class="text-muted">-</span>
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                </td>
+                                                <td>
+                                                    <c:choose>
+                                                        <c:when test="${material.unitWeight != null && material.unitWeight.doubleValue() > 0}">
+                                                            <fmt:formatNumber value="${material.unitWeight}" maxFractionDigits="4"/> kg
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <span class="text-muted">-</span>
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                </td>
+                                                <td>
+                                                    <c:choose>
+                                                        <c:when test="${material.averageCost != null && material.averageCost.doubleValue() > 0}">
+                                                            <fmt:formatNumber value="${material.averageCost}" maxFractionDigits="2" type="currency" currencySymbol=""/>
+                                                            <small class="text-muted">VND</small>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <span class="text-muted">-</span>
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                </td>
                                                 <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'VIEW_DETAIL_MATERIAL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_MATERIAL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_MATERIAL')}">
                                                     <td>
                                                         <div class="d-flex justify-content-center">
@@ -247,7 +277,7 @@
                                         </c:forEach>
                                     </c:when>
                                     <c:otherwise>
-                                        <tr><td colspan="8">No materials found.</td></tr>
+                                        <tr><td colspan="9">No materials found.</td></tr>
                                     </c:otherwise>
                                 </c:choose>
                             </tbody>

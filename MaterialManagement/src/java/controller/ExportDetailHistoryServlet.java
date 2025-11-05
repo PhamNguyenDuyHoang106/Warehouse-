@@ -1,17 +1,30 @@
 package controller;
 
 import dal.ExportDAO;
+import dal.RecipientDAO;
+import dal.VehicleDAO;
+import dal.UserDAO;
+import dal.WarehouseDAO;
 import entity.Export;
 import entity.ExportDetail;
+import entity.Recipient;
+import entity.Vehicle;
+import entity.User;
+import entity.Warehouse;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -21,31 +34,141 @@ public class ExportDetailHistoryServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        String exportIdStr = request.getParameter("exportId");
+        // Get parameter id (from ExportList.jsp) or exportId (backward compatibility)
+        String exportIdStr = request.getParameter("id");
+        if (exportIdStr == null) {
+            exportIdStr = request.getParameter("exportId"); // Fallback for backward compatibility
+        }
         if (exportIdStr == null || exportIdStr.trim().isEmpty()) {
-            response.sendRedirect("ExportHistory");
+            response.sendRedirect("ExportList");
             return;
         }
         try {
             int exportId = Integer.parseInt(exportIdStr);
-            ExportDAO exportDAO = new ExportDAO();
-            Export exportData = exportDAO.getExportById(exportId);
-            List<ExportDetail> exportDetails = exportDAO.getExportDetailsByExportId(exportId);
+            ExportDAO exportDAO = null;
+            RecipientDAO recipientDAO = null;
+            VehicleDAO vehicleDAO = null;
+            UserDAO userDAO = null;
+            WarehouseDAO warehouseDAO = null;
+            
+            try {
+                exportDAO = new ExportDAO();
+                recipientDAO = new RecipientDAO();
+                vehicleDAO = new VehicleDAO();
+                userDAO = new UserDAO();
+                warehouseDAO = new WarehouseDAO();
+                
+                Export exportData = exportDAO.getExportById(exportId);
+                if (exportData == null) {
+                    response.sendRedirect("ExportList");
+                    return;
+                }
+                
+                List<ExportDetail> exportDetails = null;
+                try {
+                    exportDetails = exportDAO.getExportDetailsByExportId(exportId);
+                } catch (SQLException e) {
+                    Logger.getLogger(ExportDetailHistoryServlet.class.getName()).log(Level.SEVERE, "Error getting export details", e);
+                    exportDetails = new ArrayList<>();
+                }
 
-            // Log để kiểm tra
-            System.out.println("Export ID: " + exportId);
-            for (ExportDetail detail : exportDetails) {
-                System.out.println("Material: " + detail.getMaterialName() + ", URL: " + detail.getMaterialsUrl());
+                // Lấy thông tin bổ sung
+                // Recipient information
+                Recipient recipient = null;
+                if (exportData.getRecipientId() != null) {
+                    try {
+                        recipient = recipientDAO.getRecipientById(exportData.getRecipientId());
+                    } catch (Exception e) {
+                        Logger.getLogger(ExportDetailHistoryServlet.class.getName()).log(Level.WARNING, "Error getting recipient", e);
+                    }
+                }
+                
+                // Vehicle information
+                Vehicle vehicle = null;
+                if (exportData.getVehicleId() != null) {
+                    try {
+                        vehicle = vehicleDAO.getVehicleById(exportData.getVehicleId());
+                    } catch (Exception e) {
+                        Logger.getLogger(ExportDetailHistoryServlet.class.getName()).log(Level.WARNING, "Error getting vehicle", e);
+                    }
+                }
+                
+                // User information (người export)
+                User exportedByUser = null;
+                try {
+                    exportedByUser = userDAO.getUserById(exportData.getExportedBy());
+                } catch (Exception e) {
+                    Logger.getLogger(ExportDetailHistoryServlet.class.getName()).log(Level.WARNING, "Error getting user", e);
+                }
+                
+                // Calculate total value and get unique warehouses from details
+                BigDecimal totalValue = BigDecimal.ZERO;
+                Map<Integer, Warehouse> warehousesMap = new HashMap<>();
+                Map<Integer, String> rackToWarehouseMap = new HashMap<>(); // rackId -> warehouseName
+                List<String> warehouseNames = new ArrayList<>();
+                
+                if (exportDetails != null && !exportDetails.isEmpty()) {
+                    for (ExportDetail detail : exportDetails) {
+                        // Calculate total value (unit_price_export * quantity)
+                        if (detail.getQuantity() != null && detail.getUnitPriceExport() != null) {
+                            totalValue = totalValue.add(detail.getQuantity().multiply(detail.getUnitPriceExport()));
+                        }
+                        
+                        // Get warehouse from rack if available
+                        if (detail.getRackId() != null) {
+                            dal.WarehouseRackDAO rackDAO = null;
+                            try {
+                                rackDAO = new dal.WarehouseRackDAO();
+                                entity.WarehouseRack rack = rackDAO.getRackById(detail.getRackId());
+                                if (rack != null && rack.getWarehouseId() != null) {
+                                    Integer warehouseId = rack.getWarehouseId();
+                                    if (!warehousesMap.containsKey(warehouseId)) {
+                                        Warehouse warehouse = warehouseDAO.getWarehouseById(warehouseId);
+                                        if (warehouse != null) {
+                                            warehousesMap.put(warehouseId, warehouse);
+                                            warehouseNames.add(warehouse.getWarehouseName());
+                                        }
+                                    }
+                                    // Map rack to warehouse name
+                                    if (warehousesMap.containsKey(warehouseId)) {
+                                        rackToWarehouseMap.put(detail.getRackId(), warehousesMap.get(warehouseId).getWarehouseName());
+                                    }
+                                }
+                            } catch (Exception e) {
+                                Logger.getLogger(ExportDetailHistoryServlet.class.getName()).log(Level.WARNING, "Error getting warehouse for rack: " + detail.getRackId(), e);
+                            } finally {
+                                // WarehouseRackDAO doesn't have close method
+                            }
+                        }
+                    }
+                }
+
+                // Convert LocalDateTime to Date for JSP formatting
+                if (exportData.getExportDate() != null) {
+                    Date exportDate = Date.from(exportData.getExportDate().atZone(ZoneId.systemDefault()).toInstant());
+                    request.setAttribute("exportDate", exportDate);
+                }
+                
+                request.setAttribute("exportData", exportData);
+                request.setAttribute("exportDetails", exportDetails != null ? exportDetails : new ArrayList<>());
+                request.setAttribute("recipient", recipient);
+                request.setAttribute("vehicle", vehicle);
+                request.setAttribute("exportedByUser", exportedByUser);
+                request.setAttribute("warehouses", new ArrayList<>(warehousesMap.values()));
+                request.setAttribute("warehouseNames", warehouseNames.isEmpty() ? "" : String.join(", ", warehouseNames));
+                request.setAttribute("rackToWarehouseMap", rackToWarehouseMap);
+                request.setAttribute("totalValue", totalValue);
+                request.getRequestDispatcher("ExportDetail.jsp").forward(request, response);
+            } catch (Exception e) {
+                Logger.getLogger(ExportDetailHistoryServlet.class.getName()).log(Level.SEVERE, "Error in ExportDetailHistoryServlet", e);
+                e.printStackTrace();
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error loading export details: " + e.getMessage());
             }
-
-            request.setAttribute("exportData", exportData);
-            request.setAttribute("exportDetails", exportDetails != null ? exportDetails : new ArrayList<>());
-            request.getRequestDispatcher("ExportDetail.jsp").forward(request, response);
         } catch (NumberFormatException e) {
-            response.sendRedirect("ExportHistory");
-        } catch (SQLException e) {
-            Logger.getLogger(ExportDetailHistoryServlet.class.getName()).log(Level.SEVERE, null, e);
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error");
+            response.sendRedirect("ExportList");
+        } catch (Exception e) {
+            Logger.getLogger(ExportDetailHistoryServlet.class.getName()).log(Level.SEVERE, "Unexpected error", e);
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Unexpected error: " + e.getMessage());
         }
     }
 

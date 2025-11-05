@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -82,21 +83,181 @@
         <jsp:include page="Header.jsp" />
         <div class="container">
             <h2 class="fw-bold mb-4 text-center" style="color: #DEAD6F;">Export Detail - ${exportData.exportCode}</h2>
+            
+            <!-- Export Information Card -->
             <div class="card">
                 <div class="card-header">Export Information</div>
                 <div class="card-body">
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <p><strong>Date:</strong> ${exportData.exportDate}</p>
-                            <p><strong>Exported By:</strong> ${exportData.exportedByName}</p>
-                            <p><strong>Recipient:</strong> ${exportData.recipientName}</p>
+                            <p><strong><i class="fas fa-calendar me-1"></i>Export Date:</strong> 
+                                <c:choose>
+                                    <c:when test="${not empty exportDate}">
+                                        <fmt:formatDate value="${exportDate}" pattern="dd/MM/yyyy HH:mm" />
+                                    </c:when>
+                                    <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                </c:choose>
+                            </p>
+                            <p><strong><i class="fas fa-warehouse me-1"></i>Warehouse(s):</strong> 
+                                <c:choose>
+                                    <c:when test="${not empty warehouseNames}">${warehouseNames}</c:when>
+                                    <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                </c:choose>
+                            </p>
+                            <p><strong><i class="fas fa-money-bill me-1"></i>Total Value:</strong> 
+                                <c:choose>
+                                    <c:when test="${not empty totalValue}">
+                                        <fmt:formatNumber value="${totalValue}" type="currency" currencySymbol="VND" />
+                                    </c:when>
+                                    <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                </c:choose>
+                            </p>
                         </div>
                         <div class="col-md-6">
-                            <p><strong>Note:</strong> ${exportData.note}</p>
+                            <p><strong><i class="fas fa-sticky-note me-1"></i>Note:</strong> 
+                                <c:choose>
+                                    <c:when test="${not empty exportData.note}">${exportData.note}</c:when>
+                                    <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                </c:choose>
+                            </p>
+                            <c:if test="${not empty exportData.exportRequestCode}">
+                                <p><strong><i class="fas fa-file-alt me-1"></i>Export Request:</strong> ${exportData.exportRequestCode}</p>
+                            </c:if>
                         </div>
                     </div>
                 </div>
             </div>
+            
+            <!-- Recipient Information Card -->
+            <c:if test="${not empty recipient}">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-user-tag me-1"></i>Recipient Information</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Recipient Code:</strong> ${recipient.recipientCode}</p>
+                                <p><strong>Recipient Name:</strong> ${recipient.recipientName}</p>
+                                <p><strong>Contact Person:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty recipient.contactPerson}">${recipient.contactPerson}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                                <p><strong>Phone:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty recipient.phoneNumber}">${recipient.phoneNumber}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Email:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty recipient.email}">${recipient.email}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                                <p><strong>Address:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty recipient.address}">${recipient.address}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                                <p><strong>Location:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty recipient.location}">${recipient.location}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                                <c:if test="${not empty recipient.description}">
+                                    <p><strong>Description:</strong> ${recipient.description}</p>
+                                </c:if>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </c:if>
+            
+            <!-- Vehicle Information Card -->
+            <c:if test="${not empty vehicle}">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-truck me-1"></i>Vehicle Information</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Vehicle Code:</strong> ${vehicle.vehicleCode}</p>
+                                <p><strong>License Plate:</strong> ${vehicle.licensePlate}</p>
+                                <p><strong>Vehicle Type:</strong> ${vehicle.vehicleType}</p>
+                                <p><strong>Driver Name:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty vehicle.driverName}">${vehicle.driverName}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Driver Phone:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty vehicle.driverPhone}">${vehicle.driverPhone}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                                <p><strong>Volume:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty vehicle.volume}">
+                                            <fmt:formatNumber value="${vehicle.volume}" maxFractionDigits="2"/> m³
+                                        </c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                                <p><strong>Weight:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty vehicle.weight}">
+                                            <fmt:formatNumber value="${vehicle.weight}" maxFractionDigits="2"/> kg
+                                        </c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                                <p><strong>Status:</strong> ${vehicle.status}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </c:if>
+            
+            <!-- Exported By User Information Card -->
+            <c:if test="${not empty exportedByUser}">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-user me-1"></i>Exported By</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Full Name:</strong> ${exportedByUser.fullName}</p>
+                                <p><strong>Email:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty exportedByUser.email}">${exportedByUser.email}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                        </div>
+                        <div class="col-md-6">
+                                <p><strong>Phone:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty exportedByUser.phoneNumber}">${exportedByUser.phoneNumber}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                                <p><strong>Department:</strong> 
+                                    <c:choose>
+                                        <c:when test="${not empty exportedByUser.departmentName}">${exportedByUser.departmentName}</c:when>
+                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                    </c:choose>
+                                </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </c:if>
             <div class="card">
                 <div class="card-header">Material List</div>
                 <div class="card-body">
@@ -110,8 +271,12 @@
                                     <th>#</th>
                                     <th>Image</th>
                                     <th>Material Name</th>
+                                    <th>Warehouse</th>
+                                    <th>Rack</th>
                                     <th>Quantity</th>
                                     <th>Unit</th>
+                                    <th>Unit Price</th>
+                                    <th>Total</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -134,8 +299,38 @@
                                         </td>
 
                                         <td>${detail.materialName}</td>
-                                        <td>${detail.quantity}</td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${not empty detail.rackId && not empty rackToWarehouseMap[detail.rackId]}">
+                                                    ${rackToWarehouseMap[detail.rackId]}
+                                                </c:when>
+                                                <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${not empty detail.rackCode}">${detail.rackCode}</c:when>
+                                                <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                        <td><fmt:formatNumber value="${detail.quantity}" maxFractionDigits="2" /></td>
                                         <td>${detail.unitName}</td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${not empty detail.unitPriceExport}">
+                                                    <fmt:formatNumber value="${detail.unitPriceExport}" type="currency" currencySymbol="VND" />
+                                                </c:when>
+                                                <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${not empty detail.unitPriceExport && not empty detail.quantity}">
+                                                    <fmt:formatNumber value="${detail.quantity * detail.unitPriceExport}" type="currency" currencySymbol="VND" />
+                                                </c:when>
+                                                <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                            </c:choose>
+                                        </td>
                                     </tr>
                                 </c:forEach>
                             </tbody>
@@ -144,7 +339,7 @@
                 </div>
             </div>
             <div class="d-flex gap-2 mb-2 justify-content-center">
-                <a href="ExportHistory" class="btn btn-cancel">← Back to Export History</a>
+                <a href="ExportList" class="btn btn-cancel">← Back to Export List</a>
             </div>
         </div>
         <jsp:include page="Footer.jsp" />

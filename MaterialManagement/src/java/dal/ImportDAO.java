@@ -24,7 +24,13 @@ public class ImportDAO extends DBContext {
     public int createImport(Import importObj) {
         String sql = "INSERT INTO Imports (import_code, import_date, imported_by, supplier_id, actual_arrival, note) VALUES (?, ?, ?, ?, ?, ?)";
         
-        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        java.sql.Connection conn = getConnection();
+        if (conn == null) {
+            LOGGER.log(Level.SEVERE, "Database connection is null in createImport");
+            return -1;
+        }
+        
+        try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, importObj.getImportCode());
             ps.setTimestamp(2, importObj.getImportDate() != null ? Timestamp.valueOf(importObj.getImportDate()) : Timestamp.valueOf(LocalDateTime.now()));
             ps.setInt(3, importObj.getImportedBy());
@@ -394,19 +400,21 @@ public class ImportDAO extends DBContext {
      */
     public List<entity.ImportDetail> getImportDetailsByImportId(int importId) throws SQLException {
         List<entity.ImportDetail> details = new ArrayList<>();
-        String sql = "SELECT id.*, m.material_name, m.material_code, wr.rack_name, wr.rack_code " +
+        String sql = "SELECT id.*, m.material_name, m.material_code, m.materials_url, " +
+                    "u.unit_name, wr.rack_name, wr.rack_code " +
                     "FROM Import_Details id " +
                     "JOIN Materials m ON id.material_id = m.material_id " +
+                    "LEFT JOIN Units u ON m.unit_id = u.unit_id " +
                     "LEFT JOIN Warehouse_Racks wr ON id.rack_id = wr.rack_id " +
                     "WHERE id.import_id = ? " +
-                    "ORDER BY id.detail_id";
+                    "ORDER BY id.import_detail_id";
         
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, importId);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 entity.ImportDetail detail = new entity.ImportDetail();
-                detail.setImportDetailId(rs.getInt("detail_id"));
+                detail.setImportDetailId(rs.getInt("import_detail_id"));
                 detail.setImportId(rs.getInt("import_id"));
                 detail.setMaterialId(rs.getInt("material_id"));
                 detail.setQuantity(rs.getBigDecimal("quantity"));
@@ -415,11 +423,36 @@ public class ImportDAO extends DBContext {
                 Integer rackId = rs.getObject("rack_id", Integer.class);
                 detail.setRackId(rackId);
                 
-                detail.setNote(rs.getString("note"));
+                // Note field may not exist in all schemas
+                try {
+                    detail.setNote(rs.getString("note"));
+                } catch (SQLException e) {
+                    // Column may not exist
+                    detail.setNote(null);
+                }
+                
+                // Status field
+                try {
+                    detail.setStatus(rs.getString("status"));
+                } catch (SQLException e) {
+                    // Column may not exist
+                    detail.setStatus(null);
+                }
+                
+                // Created_at field
+                try {
+                    if (rs.getTimestamp("created_at") != null) {
+                        detail.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+                    }
+                } catch (SQLException e) {
+                    // Column may not exist
+                }
                 
                 // Joined fields
                 detail.setMaterialName(rs.getString("material_name"));
                 detail.setMaterialCode(rs.getString("material_code"));
+                detail.setMaterialsUrl(rs.getString("materials_url"));
+                detail.setUnitName(rs.getString("unit_name"));
                 detail.setRackName(rs.getString("rack_name"));
                 detail.setRackCode(rs.getString("rack_code"));
                 

@@ -158,34 +158,30 @@ public class ExportRequestDAO extends DBContext {
     public ExportRequest getById(int id) {
         connection = getConnection();
         String sql = "SELECT er.*, COALESCE(u.full_name, 'Unknown') as userName, " +
+                     "COALESCE(r.recipient_name, 'Unknown') as recipientName, " +
                      "COALESCE(a.full_name, 'Unknown') as approverName " +
                      "FROM Export_Requests er " +
                      "LEFT JOIN Users u ON er.user_id = u.user_id " +
+                     "LEFT JOIN Recipients r ON er.recipient_id = r.recipient_id " +
                      "LEFT JOIN Users a ON er.approved_by = a.user_id " +
                      "WHERE er.export_request_id = ? AND er.disable = 0";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    ExportRequest request = new ExportRequest();
-                    request.setExportRequestId(rs.getInt("export_request_id"));
-                    request.setRequestCode(rs.getString("request_code"));
-                    request.setRequestDate(rs.getTimestamp("request_date"));
-                    request.setDeliveryDate(rs.getDate("delivery_date"));
-                    request.setStatus(rs.getString("status"));
-                    request.setReason(rs.getString("reason"));
-                    request.setUserId(rs.getInt("user_id"));
-                    request.setUserName(rs.getString("userName"));
-                    request.setApprovedBy(rs.getInt("approved_by"));
-                    request.setApproverName(rs.getString("approverName"));
-                    request.setApprovedAt(rs.getTimestamp("approved_at"));
-                    request.setApprovalReason(rs.getString("approval_reason"));
-                    request.setRejectionReason(rs.getString("rejection_reason"));
+                    ExportRequest request = mapResultSetToExportRequest(rs);
+                    // Also set recipient_id directly from the table
+                    Object recipientIdObj = rs.getObject("recipient_id");
+                    if (recipientIdObj != null) {
+                        request.setRecipientId(rs.getInt("recipient_id"));
+                    } else {
+                        request.setRecipientId(null);
+                    }
                     return request;
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting export request by ID: " + id, e);
         }
         return null;
     }
@@ -391,11 +387,56 @@ public class ExportRequestDAO extends DBContext {
         request.setReason(rs.getString("reason"));
         request.setUserId(rs.getInt("user_id"));
         request.setUserName(rs.getString("userName"));
+        
+        // Map recipient_id and recipientName
+        try {
+            Object recipientIdObj = rs.getObject("recipient_id");
+            if (recipientIdObj != null) {
+                request.setRecipientId(rs.getInt("recipient_id"));
+            } else {
+                request.setRecipientId(null);
+            }
+        } catch (SQLException e) {
+            // Column may not exist in all queries
+            request.setRecipientId(null);
+        }
+        
+        try {
+            String recipientName = rs.getString("recipientName");
+            request.setRecipientName(recipientName != null && !recipientName.equals("Unknown") ? recipientName : null);
+        } catch (SQLException e) {
+            // Column may not exist in all queries
+            request.setRecipientName(null);
+        }
+        
         request.setApprovedBy(rs.getInt("approved_by"));
         request.setApproverName(rs.getString("approverName"));
         request.setApprovedAt(rs.getTimestamp("approved_at"));
         request.setApprovalReason(rs.getString("approval_reason"));
         request.setRejectionReason(rs.getString("rejection_reason"));
+        
+        // Set other fields
+        try {
+            request.setUsed(rs.getBoolean("is_used"));
+        } catch (SQLException e) {
+            // Column may not exist
+        }
+        try {
+            request.setCreatedAt(rs.getTimestamp("created_at"));
+        } catch (SQLException e) {
+            // Column may not exist
+        }
+        try {
+            request.setUpdatedAt(rs.getTimestamp("updated_at"));
+        } catch (SQLException e) {
+            // Column may not exist
+        }
+        try {
+            request.setDisable(rs.getBoolean("disable"));
+        } catch (SQLException e) {
+            // Column may not exist
+        }
+        
         return request;
     }
 }

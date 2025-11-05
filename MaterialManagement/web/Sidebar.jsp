@@ -34,7 +34,7 @@
                         </a>
                     </li>
                 </c:if>
-                <c:if test="${sessionScope.userPermissions.contains('VIEW_INVENTORY')}">
+                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_INVENTORY')}">
                     <li class="nav-item mb-2">
                         <a class="nav-link text-uppercase secondary-font d-flex align-items-center" href="${pageContext.request.contextPath}/InventoryReport">
                             <i class="fas fa-warehouse fs-4 me-3"></i>
@@ -44,7 +44,7 @@
                 </c:if>
                 
                 <%-- WAREHOUSE MANAGEMENT --%>
-                <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_RACK') || sessionScope.userPermissions.contains('VIEW_LIST_VEHICLE')}">
+                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_LIST_RACK') || sessionScope.userPermissions.contains('VIEW_LIST_VEHICLE')}">
                     <li class="nav-item mb-2">
                         <a class="nav-link text-uppercase secondary-font d-flex align-items-center collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#warehouseMgmt" aria-expanded="false" aria-controls="warehouseMgmt">
                             <i class="fas fa-industry fs-4 me-3"></i>
@@ -52,14 +52,14 @@
                         </a>
                         <div class="collapse" id="warehouseMgmt">
                             <ul class="nav flex-column ms-3">
-                                <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_RACK')}">
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_LIST_RACK')}">
                                     <li class="nav-item">
                                         <a class="nav-link d-flex align-items-center ms-4" href="WarehouseRackList">
                                             <i class="fas fa-layer-group me-2"></i> Warehouse Racks
                                         </a>
                                     </li>
                                 </c:if>
-                                <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_VEHICLE')}">
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_LIST_VEHICLE')}">
                                     <li class="nav-item">
                                         <a class="nav-link d-flex align-items-center ms-4" href="VehicleList">
                                             <i class="fas fa-truck me-2"></i> Vehicles
@@ -72,7 +72,7 @@
                 </c:if>
                 
                 <%-- IMPORT/EXPORT OPERATIONS --%>
-                <c:if test="${sessionScope.userPermissions.contains('CREATE_IMPORT') || sessionScope.userPermissions.contains('CREATE_EXPORT') || sessionScope.userPermissions.contains('VIEW_IMPORT_LIST') || sessionScope.userPermissions.contains('VIEW_EXPORT_LIST')}">
+                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_IMPORT') || sessionScope.userPermissions.contains('CREATE_EXPORT') || sessionScope.userPermissions.contains('VIEW_IMPORT_LIST') || sessionScope.userPermissions.contains('VIEW_EXPORT_LIST')}">
                     <li class="nav-item mb-2">
                         <a class="nav-link text-uppercase secondary-font d-flex align-items-center collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#importExportMenu" aria-expanded="false" aria-controls="importExportMenu">
                             <i class="fas fa-exchange-alt fs-4 me-3"></i>
@@ -80,28 +80,28 @@
                         </a>
                         <div class="collapse" id="importExportMenu">
                             <ul class="nav flex-column ms-3">
-                                <c:if test="${sessionScope.userPermissions.contains('CREATE_IMPORT')}">
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_IMPORT')}">
                                     <li class="nav-item">
                                         <a class="nav-link d-flex align-items-center ms-4" href="ImportMaterial">
                                             <i class="fas fa-box-open me-2"></i> Import Material
                                         </a>
                                     </li>
                                 </c:if>
-                                <c:if test="${sessionScope.userPermissions.contains('VIEW_IMPORT_LIST')}">
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_IMPORT_LIST')}">
                                     <li class="nav-item">
                                         <a class="nav-link d-flex align-items-center ms-4" href="ImportList">
                                             <i class="fas fa-list me-2"></i> Import List
                                         </a>
                                     </li>
                                 </c:if>
-                                <c:if test="${sessionScope.userPermissions.contains('CREATE_EXPORT')}">
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_EXPORT')}">
                                     <li class="nav-item">
                                         <a class="nav-link d-flex align-items-center ms-4" href="ExportMaterial">
                                             <i class="fas fa-shipping-fast me-2"></i> Export Material
                                         </a>
                                     </li>
                                 </c:if>
-                                <c:if test="${sessionScope.userPermissions.contains('VIEW_EXPORT_LIST')}">
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_EXPORT_LIST')}">
                                     <li class="nav-item">
                                         <a class="nav-link d-flex align-items-center ms-4" href="ExportList">
                                             <i class="fas fa-clipboard-list me-2"></i> Export List
@@ -112,7 +112,7 @@
                         </div>
                     </li>
                 </c:if>
-                <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_USER')}">
+                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_LIST_USER')}">
                     <li class="nav-item mb-2">
                         <a class="nav-link text-uppercase secondary-font d-flex align-items-center" href="${pageContext.request.contextPath}/UserList">
                             <i class="fas fa-users fs-4 me-3"></i>
@@ -128,7 +128,7 @@
                         </a>
                     </li>
                 </c:if>                  
-                <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_DEPARTMENT')}">
+                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_LIST_DEPARTMENT')}">
                     <li class="nav-item mb-2">
                         <a class="nav-link text-uppercase secondary-font d-flex align-items-center" href="${pageContext.request.contextPath}/depairmentlist">
                             <i class="fas fa-building fs-4 me-3"></i>
@@ -136,7 +136,7 @@
                         </a>
                     </li>
                 </c:if>
-                <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_UNIT')}">
+                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_LIST_UNIT')}">
                     <li class="nav-item mb-2">
                         <a class="nav-link text-uppercase secondary-font d-flex align-items-center" href="${pageContext.request.contextPath}/UnitList">
                             <i class="fas fa-cubes fs-4 me-3"></i>
@@ -144,7 +144,7 @@
                         </a>
                     </li>
                 </c:if>
-                <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_MATERIAL')}">
+                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_LIST_MATERIAL')}">
                     <li class="nav-item mb-2">
                         <a class="nav-link text-uppercase secondary-font d-flex align-items-center" href="${pageContext.request.contextPath}/dashboardmaterial">
                             <i class="fas fa-shopping-cart fs-4 me-3"></i>
@@ -152,7 +152,7 @@
                         </a>
                     </li>
                 </c:if>
-                <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_CATEGORY')}">
+                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_LIST_CATEGORY')}">
                     <li class="nav-item mb-2">
                         <a class="nav-link text-uppercase secondary-font d-flex align-items-center" href="${pageContext.request.contextPath}/Category">
                             <i class="fas fa-list fs-4 me-3"></i>
@@ -160,12 +160,118 @@
                         </a>
                     </li>
                 </c:if>
-                <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_SUPPLIER')}">
+                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_LIST_SUPPLIER')}">
                     <li class="nav-item mb-2">
                         <a class="nav-link text-uppercase secondary-font d-flex align-items-center" href="${pageContext.request.contextPath}/Supplier">
                             <i class="fas fa-truck fs-4 me-3"></i>
                             Supplier
                         </a>
+                    </li>
+                </c:if>
+                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_LIST_RECIPIENT')}">
+                    <li class="nav-item mb-2">
+                        <a class="nav-link text-uppercase secondary-font d-flex align-items-center" href="${pageContext.request.contextPath}/Recipient">
+                            <i class="fas fa-user-tag fs-4 me-3"></i>
+                            Recipient
+                        </a>
+                    </li>
+                </c:if>
+                
+                <%-- REQUEST MANAGEMENT --%>
+                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_EXPORT_REQUEST_LIST') || sessionScope.userPermissions.contains('CREATE_EXPORT_REQUEST') || sessionScope.userPermissions.contains('HANDLE_REQUEST')}">
+                    <li class="nav-item mb-2">
+                        <a class="nav-link text-uppercase secondary-font d-flex align-items-center collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#requestMgmt" aria-expanded="false" aria-controls="requestMgmt">
+                            <i class="fas fa-file-alt fs-4 me-3"></i>
+                            Request Management
+                        </a>
+                        <div class="collapse" id="requestMgmt">
+                            <ul class="nav flex-column ms-3">
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_EXPORT_REQUEST')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="CreateExportRequest">
+                                            <i class="fas fa-plus-circle me-2"></i> Create Export Request
+                                        </a>
+                                    </li>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_EXPORT_REQUEST_LIST')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="ExportRequestList">
+                                            <i class="fas fa-list me-2"></i> Export Requests
+                                        </a>
+                                    </li>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_PURCHASE_REQUEST')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="CreatePurchaseRequest">
+                                            <i class="fas fa-plus-circle me-2"></i> Create Purchase Request
+                                        </a>
+                                    </li>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_PURCHASE_REQUEST_LIST')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="ListPurchaseRequests">
+                                            <i class="fas fa-list me-2"></i> Purchase Requests
+                                        </a>
+                                    </li>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_PURCHASE_ORDER')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="CreatePurchaseOrder">
+                                            <i class="fas fa-plus-circle me-2"></i> Create Purchase Order
+                                        </a>
+                                    </li>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_PURCHASE_ORDER_LIST')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="PurchaseOrderList">
+                                            <i class="fas fa-list me-2"></i> Purchase Orders
+                                        </a>
+                                    </li>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_REPAIR_REQUEST')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="CreateRepairRequest">
+                                            <i class="fas fa-plus-circle me-2"></i> Create Repair Request
+                                        </a>
+                                    </li>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_REPAIR_REQUEST_LIST')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="repairrequestlist">
+                                            <i class="fas fa-list me-2"></i> Repair Requests
+                                        </a>
+                                    </li>
+                                </c:if>
+                            </ul>
+                        </div>
+                    </li>
+                </c:if>
+                
+                <%-- HISTORY/REPORTS --%>
+                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_IMPORT_LIST') || sessionScope.userPermissions.contains('VIEW_EXPORT_LIST')}">
+                    <li class="nav-item mb-2">
+                        <a class="nav-link text-uppercase secondary-font d-flex align-items-center collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#historyMenu" aria-expanded="false" aria-controls="historyMenu">
+                            <i class="fas fa-history fs-4 me-3"></i>
+                            History
+                        </a>
+                        <div class="collapse" id="historyMenu">
+                            <ul class="nav flex-column ms-3">
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_IMPORT_LIST')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="ImportDetailHistory">
+                                            <i class="fas fa-box-open me-2"></i> Import Details
+                                        </a>
+                                    </li>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_EXPORT_LIST')}">
+                                    <li class="nav-item">
+                                        <a class="nav-link d-flex align-items-center ms-4" href="ExportDetailHistory">
+                                            <i class="fas fa-shipping-fast me-2"></i> Export Details
+                                        </a>
+                                    </li>
+                                </c:if>
+                            </ul>
+                        </div>
                     </li>
                 </c:if>
             </c:if>

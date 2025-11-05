@@ -4,9 +4,11 @@ import dal.ExportRequestDAO;
 import dal.ExportRequestDetailDAO;
 import dal.UserDAO;
 import dal.RolePermissionDAO;
+import dal.RecipientDAO;
 import entity.ExportRequest;
 import entity.ExportRequestDetail;
 import entity.User;
+import entity.Recipient;
 import java.io.IOException;
 import java.util.List;
 import jakarta.servlet.ServletException;
@@ -23,6 +25,7 @@ public class ViewExportRequestServlet extends HttpServlet {
     private ExportRequestDetailDAO exportRequestDetailDAO;
     private UserDAO userDAO;
     private RolePermissionDAO rolePermissionDAO;
+    private RecipientDAO recipientDAO;
 
     @Override
     public void init() throws ServletException {
@@ -30,6 +33,7 @@ public class ViewExportRequestServlet extends HttpServlet {
         exportRequestDetailDAO = new ExportRequestDetailDAO();
         userDAO = new UserDAO();
         rolePermissionDAO = new RolePermissionDAO();
+        recipientDAO = new RecipientDAO();
     }
 
     @Override
@@ -82,12 +86,20 @@ public class ViewExportRequestServlet extends HttpServlet {
                     : (sender.getUserPicture().startsWith("http") || sender.getUserPicture().startsWith("/")
                         ? sender.getUserPicture()
                         : "images/profiles/" + sender.getUserPicture());
+            
+            // Get recipient information if recipientId exists
+            Recipient recipient = null;
+            if (exportRequest.getRecipientId() != null) {
+                recipient = recipientDAO.getRecipientById(exportRequest.getRecipientId());
+            }
+            
             request.setAttribute("exportRequest", exportRequest);
             request.setAttribute("details", paginatedDetails);
             request.setAttribute("currentPage", currentPage);
             request.setAttribute("totalPages", totalPages);
             request.setAttribute("sender", sender);
             request.setAttribute("senderImg", senderImg);
+            request.setAttribute("recipient", recipient);
             request.setAttribute("roleId", user.getRoleId());
             request.setAttribute("user", user);
             request.getRequestDispatcher("ViewExportRequest.jsp").forward(request, response);

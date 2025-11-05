@@ -246,8 +246,9 @@
                         <th>Status</th>
                         <th>Category</th>
                         <th>Unit</th>
-                        <th>Created At</th>
-                        <th>Updated At</th>
+                        <th>Unit Volume (m³)</th>
+                        <th>Unit Weight (kg)</th>
+                        <th>Average Cost</th>
                         <th>Disable</th>
                         <th style="width: 150px">Actions</th>
                     </tr>
@@ -268,8 +269,37 @@
                             <td>${product.conditionPercentage}</td>
                             <td>${product.category != null ? product.category.category_name : 'N/A'}</td>
                             <td>${product.unit != null ? product.unit.unitName : 'N/A'}</td>
-                            <td>${product.createdAt}</td>
-                            <td>${product.updatedAt}</td>
+                            <td>
+                                <c:choose>
+                                    <c:when test="${product.unitVolume != null && product.unitVolume.doubleValue() > 0}">
+                                        <fmt:formatNumber value="${product.unitVolume}" maxFractionDigits="4"/> m³
+                                    </c:when>
+                                    <c:otherwise>
+                                        <span class="text-muted">-</span>
+                                    </c:otherwise>
+                                </c:choose>
+                            </td>
+                            <td>
+                                <c:choose>
+                                    <c:when test="${product.unitWeight != null && product.unitWeight.doubleValue() > 0}">
+                                        <fmt:formatNumber value="${product.unitWeight}" maxFractionDigits="4"/> kg
+                                    </c:when>
+                                    <c:otherwise>
+                                        <span class="text-muted">-</span>
+                                    </c:otherwise>
+                                </c:choose>
+                            </td>
+                            <td>
+                                <c:choose>
+                                    <c:when test="${product.averageCost != null && product.averageCost.doubleValue() > 0}">
+                                        <fmt:formatNumber value="${product.averageCost}" maxFractionDigits="2" type="currency" currencySymbol=""/>
+                                        <small class="text-muted">VND</small>
+                                    </c:when>
+                                    <c:otherwise>
+                                        <span class="text-muted">-</span>
+                                    </c:otherwise>
+                                </c:choose>
+                            </td>
                             <td>${product.disable ? 'Yes' : 'No'}</td>
                             <td>
                                 <a href="ProductDetail?id=${product.materialId}" class="btn btn-sm btn-primary">View Detail</a>

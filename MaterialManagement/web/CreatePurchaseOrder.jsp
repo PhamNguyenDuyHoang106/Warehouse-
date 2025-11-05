@@ -97,9 +97,10 @@
                                             <select class="form-select" id="purchaseRequestId" name="purchaseRequestId" onchange="loadPurchaseRequestDetails()">
                                                 <option value="">Select Purchase Request</option>
                                                 <c:forEach var="request" items="${purchaseRequests}">
+                                                    <c:set var="poStatus" value="${poStatusMap[request.purchaseRequestId]}" />
                                                     <option value="${request.purchaseRequestId}" 
                                                             ${submittedPurchaseRequestId == request.purchaseRequestId.toString() || selectedPurchaseRequestId == request.purchaseRequestId ? 'selected' : ''}>
-                                                        ${request.requestCode} - ${request.reason} (${request.status})
+                                                        ${request.requestCode} - ${request.reason}<c:if test="${not empty poStatus}"> (${poStatus})</c:if>
                                                     </option>
                                                 </c:forEach>
                                             </select>

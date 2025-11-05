@@ -70,7 +70,7 @@ public class ExportDAO extends DBContext {
         String sql = "SELECT e.*, " +
                     "r.recipient_name, r.location as recipient_location, " +
                     "v.license_plate, " +
-                    "er.export_request_code, " +
+                    "er.request_code, " +
                     "u.full_name as exported_by_name " +
                     "FROM Exports e " +
                     "LEFT JOIN Recipients r ON e.recipient_id = r.recipient_id " +
@@ -101,7 +101,7 @@ public class ExportDAO extends DBContext {
         String sql = "SELECT e.*, " +
                     "r.recipient_name, r.location as recipient_location, " +
                     "v.license_plate, " +
-                    "er.export_request_code, " +
+                    "er.request_code, " +
                     "u.full_name as exported_by_name " +
                     "FROM Exports e " +
                     "LEFT JOIN Recipients r ON e.recipient_id = r.recipient_id " +
@@ -134,7 +134,7 @@ public class ExportDAO extends DBContext {
         String sql = "SELECT e.*, " +
                     "r.recipient_name, r.location as recipient_location, " +
                     "v.license_plate, " +
-                    "er.export_request_code, " +
+                    "er.request_code, " +
                     "u.full_name as exported_by_name " +
                     "FROM Exports e " +
                     "LEFT JOIN Recipients r ON e.recipient_id = r.recipient_id " +
@@ -167,7 +167,7 @@ public class ExportDAO extends DBContext {
         String sql = "SELECT e.*, " +
                     "r.recipient_name, r.location as recipient_location, " +
                     "v.license_plate, " +
-                    "er.export_request_code, " +
+                    "er.request_code, " +
                     "u.full_name as exported_by_name " +
                     "FROM Exports e " +
                     "LEFT JOIN Recipients r ON e.recipient_id = r.recipient_id " +
@@ -199,7 +199,7 @@ public class ExportDAO extends DBContext {
         String sql = "SELECT e.*, " +
                     "r.recipient_name, r.location as recipient_location, " +
                     "v.license_plate, " +
-                    "er.export_request_code, " +
+                    "er.request_code, " +
                     "u.full_name as exported_by_name " +
                     "FROM Exports e " +
                     "LEFT JOIN Recipients r ON e.recipient_id = r.recipient_id " +
@@ -231,7 +231,7 @@ public class ExportDAO extends DBContext {
         String sql = "SELECT e.*, " +
                     "r.recipient_name, r.location as recipient_location, " +
                     "v.license_plate, " +
-                    "er.export_request_code, " +
+                    "er.request_code, " +
                     "u.full_name as exported_by_name " +
                     "FROM Exports e " +
                     "LEFT JOIN Recipients r ON e.recipient_id = r.recipient_id " +
@@ -331,7 +331,7 @@ public class ExportDAO extends DBContext {
         sql.append("SELECT DISTINCT e.*, ");
         sql.append("r.recipient_name, r.location as recipient_location, ");
         sql.append("v.license_plate, ");
-        sql.append("er.export_request_code, ");
+        sql.append("er.request_code, ");
         sql.append("u.full_name as exported_by_name ");
         sql.append("FROM Exports e ");
         sql.append("LEFT JOIN Recipients r ON e.recipient_id = r.recipient_id ");
@@ -451,19 +451,21 @@ public class ExportDAO extends DBContext {
      */
     public List<entity.ExportDetail> getExportDetailsByExportId(int exportId) throws java.sql.SQLException {
         List<entity.ExportDetail> details = new ArrayList<>();
-        String sql = "SELECT ed.*, m.material_name, m.material_code, m.materials_url, wr.rack_name, wr.rack_code " +
+        String sql = "SELECT ed.*, m.material_name, m.material_code, m.materials_url, " +
+                    "u.unit_name, wr.rack_name, wr.rack_code " +
                     "FROM Export_Details ed " +
                     "JOIN Materials m ON ed.material_id = m.material_id " +
+                    "LEFT JOIN Units u ON m.unit_id = u.unit_id " +
                     "LEFT JOIN Warehouse_Racks wr ON ed.rack_id = wr.rack_id " +
                     "WHERE ed.export_id = ? " +
-                    "ORDER BY ed.detail_id";
+                    "ORDER BY ed.export_detail_id";
         
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, exportId);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 entity.ExportDetail detail = new entity.ExportDetail();
-                detail.setExportDetailId(rs.getInt("detail_id"));
+                detail.setExportDetailId(rs.getInt("export_detail_id"));
                 detail.setExportId(rs.getInt("export_id"));
                 detail.setMaterialId(rs.getInt("material_id"));
                 detail.setQuantity(rs.getBigDecimal("quantity"));
@@ -471,12 +473,59 @@ public class ExportDAO extends DBContext {
                 Integer rackId = rs.getObject("rack_id", Integer.class);
                 detail.setRackId(rackId);
                 
-                detail.setNote(rs.getString("note"));
+                // Optional fields with null check
+                try {
+                    detail.setNote(rs.getString("note"));
+                } catch (SQLException e) {
+                    detail.setNote(null);
+                }
+                
+                try {
+                    detail.setStatus(rs.getString("status"));
+                } catch (SQLException e) {
+                    detail.setStatus(null);
+                }
+                
+                try {
+                    detail.setUnitPriceExport(rs.getBigDecimal("unit_price_export"));
+                } catch (SQLException e) {
+                    detail.setUnitPriceExport(null);
+                }
+                
+                try {
+                    detail.setTotalAmountExport(rs.getBigDecimal("total_amount_export"));
+                } catch (SQLException e) {
+                    detail.setTotalAmountExport(null);
+                }
+                
+                try {
+                    Integer exportRequestDetailId = rs.getObject("export_request_detail_id", Integer.class);
+                    detail.setExportRequestDetailId(exportRequestDetailId);
+                } catch (SQLException e) {
+                    detail.setExportRequestDetailId(null);
+                }
+                
+                try {
+                    if (rs.getTimestamp("created_at") != null) {
+                        detail.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+                    }
+                } catch (SQLException e) {
+                    // Column may not exist
+                }
+                
+                try {
+                    if (rs.getTimestamp("updated_at") != null) {
+                        detail.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
+                    }
+                } catch (SQLException e) {
+                    // Column may not exist
+                }
                 
                 // Joined fields
                 detail.setMaterialName(rs.getString("material_name"));
                 detail.setMaterialCode(rs.getString("material_code"));
                 detail.setMaterialsUrl(rs.getString("materials_url"));
+                detail.setUnitName(rs.getString("unit_name"));
                 detail.setRackName(rs.getString("rack_name"));
                 detail.setRackCode(rs.getString("rack_code"));
                 
@@ -548,7 +597,7 @@ public class ExportDAO extends DBContext {
         export.setRecipientName(rs.getString("recipient_name"));
         export.setRecipientLocation(rs.getString("recipient_location"));
         export.setVehicleLicensePlate(rs.getString("license_plate"));
-        export.setExportRequestCode(rs.getString("export_request_code"));
+        export.setExportRequestCode(rs.getString("request_code"));
         
         return export;
     }

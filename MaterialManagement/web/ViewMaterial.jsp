@@ -1,6 +1,6 @@
-<%@ page contentType="text/html;charset=UTF-8" language="java" %> <%@ taglib
-prefix="c" uri="http://java.sun.com/jsp/jstl/core" %> <%@ taglib prefix="fmt"
-uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <!DOCTYPE html>
 <html>
   <head>
@@ -237,6 +237,215 @@ uri="http://java.sun.com/jsp/jstl/fmt" %>
             </div>
           </div>
         </div>
+
+        <!-- V9.1: Material Physical Properties -->
+        <div class="info-section">
+          <h3><i class="fas fa-cube me-2"></i>Physical Properties (V9.1)</h3>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="detail-row">
+                <div class="detail-label">Thể tích 1 đơn vị</div>
+                <div>
+                  <c:choose>
+                    <c:when test="${m.unitVolume != null && m.unitVolume.doubleValue() > 0}">
+                      <fmt:formatNumber value="${m.unitVolume}" maxFractionDigits="4"/> m³
+                    </c:when>
+                    <c:otherwise>
+                      <span class="text-muted">Chưa cập nhật</span>
+                    </c:otherwise>
+                  </c:choose>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="detail-row">
+                <div class="detail-label">Khối lượng 1 đơn vị</div>
+                <div>
+                  <c:choose>
+                    <c:when test="${m.unitWeight != null && m.unitWeight.doubleValue() > 0}">
+                      <fmt:formatNumber value="${m.unitWeight}" maxFractionDigits="4"/> kg
+                    </c:when>
+                    <c:otherwise>
+                      <span class="text-muted">Chưa cập nhật</span>
+                    </c:otherwise>
+                  </c:choose>
+                </div>
+              </div>
+            </div>
+          </div>
+          <c:if test="${m.unitVolume != null && m.unitWeight != null && m.unitVolume.doubleValue() > 0 && m.unitWeight.doubleValue() > 0 && m.quantity != null && m.quantity.doubleValue() > 0}">
+            <div class="row mt-3 pt-3 border-top">
+              <div class="col-md-6">
+                <div class="detail-row">
+                  <div class="detail-label">Tổng thể tích (tính toán)</div>
+                  <div>
+                    <fmt:formatNumber value="${m.unitVolume.doubleValue() * m.quantity.doubleValue()}" maxFractionDigits="2"/> m³
+                    <br><small class="text-muted">(Thể tích 1 đơn vị × Tổng số lượng)</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="detail-row">
+                  <div class="detail-label">Tổng khối lượng (tính toán)</div>
+                  <div>
+                    <fmt:formatNumber value="${m.unitWeight.doubleValue() * m.quantity.doubleValue()}" maxFractionDigits="2"/> kg
+                    <br><small class="text-muted">(Khối lượng 1 đơn vị × Tổng số lượng)</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </c:if>
+        </div>
+
+        <!-- Inventory by Racks (V8 - Material can be in multiple racks) -->
+        <div class="info-section">
+          <h3><i class="fas fa-warehouse me-2"></i>Inventory by Racks</h3>
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <div class="alert alert-info">
+                <strong>Total Stock:</strong> 
+                <fmt:formatNumber value="${totalStock}" maxFractionDigits="2"/> 
+                ${not empty m.unit.unitName ? m.unit.unitName : ''}
+                <span class="text-muted ms-2">
+                  (Distributed across ${inventoryByRacks.size()} rack(s))
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <c:choose>
+            <c:when test="${empty inventoryByRacks}">
+              <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                No inventory records found for this material.
+              </div>
+            </c:when>
+            <c:otherwise>
+              <div class="table-responsive">
+                <table class="table table-hover table-bordered">
+                  <thead class="table-light">
+                    <tr>
+                      <th><i class="fas fa-warehouse me-1"></i>Warehouse</th>
+                      <th><i class="fas fa-barcode me-1"></i>Rack Code</th>
+                      <th class="text-center"><i class="fas fa-cubes me-1"></i>Stock</th>
+                      <th><i class="fas fa-balance-scale me-1"></i>Unit</th>
+                      <th><i class="fas fa-clock me-1"></i>Last Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <c:forEach var="inv" items="${inventoryByRacks}">
+                      <tr>
+                        <td><strong>${not empty inv.warehouseName ? inv.warehouseName : 'N/A'}</strong></td>
+                        <td><strong>${not empty inv.rackCode ? inv.rackCode : 'N/A'}</strong></td>
+                        <td class="text-center">
+                          <span class="badge ${inv.stock >= 100 ? 'bg-success' : (inv.stock >= 10 ? 'bg-warning' : 'bg-danger')}">
+                            <fmt:formatNumber value="${inv.stock}" maxFractionDigits="2"/>
+                          </span>
+                        </td>
+                        <td>${not empty inv.unitName ? inv.unitName : 'N/A'}</td>
+                        <td>
+                          <c:choose>
+                            <c:when test="${not empty inv.lastUpdated}">
+                              ${inv.lastUpdated.toString().replace('T', ' ').substring(0, 16)}
+                            </c:when>
+                            <c:otherwise>
+                              <span class="text-muted">-</span>
+                            </c:otherwise>
+                          </c:choose>
+                        </td>
+                      </tr>
+                    </c:forEach>
+                  </tbody>
+                </table>
+              </div>
+            </c:otherwise>
+          </c:choose>
+        </div>
+
+        <!-- Material Batches (FIFO Tracking - Different prices per batch) -->
+        <c:if test="${not empty batches}">
+          <div class="info-section">
+            <h3><i class="fas fa-boxes me-2"></i>Material Batches (FIFO Tracking)</h3>
+            <p class="text-muted mb-3">
+              <i class="fas fa-info-circle me-1"></i>
+              This material has multiple batches with different unit costs. Batches are allocated using FIFO (First In First Out) method.
+            </p>
+            
+            <div class="table-responsive">
+              <table class="table table-hover table-bordered">
+                <thead class="table-light">
+                  <tr>
+                    <th><i class="fas fa-hashtag me-1"></i>Batch ID</th>
+                    <th><i class="fas fa-warehouse me-1"></i>Warehouse</th>
+                    <th><i class="fas fa-barcode me-1"></i>Rack</th>
+                    <th class="text-center"><i class="fas fa-arrow-down me-1"></i>Quantity In</th>
+                    <th class="text-center"><i class="fas fa-arrow-right me-1"></i>Remaining</th>
+                    <th class="text-center"><i class="fas fa-dollar-sign me-1"></i>Unit Cost</th>
+                    <th class="text-center"><i class="fas fa-dollar-sign me-1"></i>Total Cost</th>
+                    <th><i class="fas fa-calendar me-1"></i>Received Date</th>
+                    <th><i class="fas fa-info-circle me-1"></i>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <c:forEach var="batch" items="${batches}">
+                    <tr>
+                      <td><strong>#${batch.batchId}</strong></td>
+                      <td><strong>${not empty batch.warehouseName ? batch.warehouseName : 'N/A'}</strong></td>
+                      <td>${not empty batch.rackCode ? batch.rackCode : 'N/A'}</td>
+                      <td class="text-center">
+                        <fmt:formatNumber value="${batch.quantityIn}" maxFractionDigits="2"/>
+                      </td>
+                      <td class="text-center">
+                        <span class="badge ${batch.quantityRemaining > 0 ? 'bg-success' : 'bg-secondary'}">
+                          <fmt:formatNumber value="${batch.quantityRemaining}" maxFractionDigits="2"/>
+                        </span>
+                      </td>
+                      <td class="text-center">
+                        <fmt:formatNumber value="${batch.unitCost}" maxFractionDigits="2" type="currency"/>
+                      </td>
+                      <td class="text-center">
+                        <strong>
+                          <fmt:formatNumber value="${batch.quantityIn * batch.unitCost}" maxFractionDigits="2" type="currency"/>
+                        </strong>
+                      </td>
+                      <td>
+                        <c:choose>
+                          <c:when test="${not empty batch.receivedDate}">
+                            ${batch.receivedDate.toString().replace('T', ' ').substring(0, 16)}
+                          </c:when>
+                          <c:otherwise>
+                            <span class="text-muted">-</span>
+                          </c:otherwise>
+                        </c:choose>
+                      </td>
+                      <td>
+                        <span class="badge ${batch.status == 'active' ? 'bg-success' : (batch.status == 'depleted' ? 'bg-secondary' : 'bg-warning')}">
+                          ${batch.status}
+                        </span>
+                      </td>
+                    </tr>
+                  </c:forEach>
+                </tbody>
+                <tfoot class="table-light">
+                  <tr>
+                    <td colspan="2"><strong>Total</strong></td>
+                    <td class="text-center">
+                      <strong>
+                        <fmt:formatNumber value="${totalBatchQuantityIn}" maxFractionDigits="2"/>
+                      </strong>
+                    </td>
+                    <td class="text-center">
+                      <strong>
+                        <fmt:formatNumber value="${totalBatchQuantityRemaining}" maxFractionDigits="2"/>
+                      </strong>
+                    </td>
+                    <td colspan="4"></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </c:if>
         <div
           class="action-buttons"
           style="justify-content: flex-start; margin-top: 32px"
