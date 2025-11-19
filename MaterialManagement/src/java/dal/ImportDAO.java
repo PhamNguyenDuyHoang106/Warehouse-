@@ -2,6 +2,9 @@ package dal;
 
 import entity.DBContext;
 import entity.Import;
+import entity.ImportDetail;
+import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -18,43 +21,47 @@ public class ImportDAO extends DBContext {
 
     private static final Logger LOGGER = Logger.getLogger(ImportDAO.class.getName());
 
+    private static final String BASE_SELECT =
+            "SELECT i.import_id, i.import_code, i.po_id, i.warehouse_id, i.import_date, " +
+            "i.received_by, i.total_quantity, i.total_amount, i.status, i.note, i.created_at, i.created_by, " +
+            "po.po_code, po.supplier_id, s.supplier_name, w.warehouse_name, " +
+            "creator.full_name AS created_by_name, receiver.full_name AS received_by_name " +
+            "FROM Imports i " +
+            "LEFT JOIN Purchase_Orders po ON i.po_id = po.po_id " +
+            "LEFT JOIN Suppliers s ON po.supplier_id = s.supplier_id " +
+            "LEFT JOIN Warehouses w ON i.warehouse_id = w.warehouse_id " +
+            "LEFT JOIN Users creator ON i.created_by = creator.user_id " +
+            "LEFT JOIN Users receiver ON i.received_by = receiver.user_id ";
+
     /**
-     * Create a new import record and return the generated import_id
+     * Create a new import record and return generated ID.
      */
     public int createImport(Import importObj) {
-        String sql = "INSERT INTO Imports (import_code, import_date, imported_by, supplier_id, actual_arrival, note) VALUES (?, ?, ?, ?, ?, ?)";
-        
-        java.sql.Connection conn = getConnection();
-        if (conn == null) {
-            LOGGER.log(Level.SEVERE, "Database connection is null in createImport");
-            return -1;
-        }
-        
-        try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        final String sql = "INSERT INTO Imports " +
+                "(import_code, po_id, warehouse_id, import_date, received_by, total_quantity, total_amount, status, note, created_by) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, importObj.getImportCode());
-            ps.setTimestamp(2, importObj.getImportDate() != null ? Timestamp.valueOf(importObj.getImportDate()) : Timestamp.valueOf(LocalDateTime.now()));
-            ps.setInt(3, importObj.getImportedBy());
-            
-            if (importObj.getSupplierId() != null) {
-                ps.setInt(4, importObj.getSupplierId());
-            } else {
-                ps.setNull(4, java.sql.Types.INTEGER);
-            }
-            
-            if (importObj.getActualArrival() != null) {
-                ps.setTimestamp(5, Timestamp.valueOf(importObj.getActualArrival()));
-            } else {
-                ps.setNull(5, java.sql.Types.TIMESTAMP);
-            }
-            
-            ps.setString(6, importObj.getNote());
-            
-            int result = ps.executeUpdate();
-            
-            if (result > 0) {
-                ResultSet rs = ps.getGeneratedKeys();
-                if (rs.next()) {
-                    return rs.getInt(1);
+            ps.setInt(2, importObj.getPoId());
+            ps.setInt(3, importObj.getWarehouseId());
+
+            LocalDate importDate = importObj.getImportDate() != null ? importObj.getImportDate() : LocalDate.now();
+            ps.setDate(4, Date.valueOf(importDate));
+
+            ps.setInt(5, importObj.getReceivedBy() != null ? importObj.getReceivedBy() : importObj.getCreatedBy());
+            ps.setBigDecimal(6, defaultBigDecimal(importObj.getTotalQuantity()));
+            ps.setBigDecimal(7, defaultBigDecimal(importObj.getTotalAmount()));
+            ps.setString(8, importObj.getStatus() != null ? importObj.getStatus() : "draft");
+            ps.setString(9, importObj.getNote());
+            ps.setInt(10, importObj.getCreatedBy());
+
+            int affected = ps.executeUpdate();
+            if (affected > 0) {
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        return rs.getInt(1);
+                    }
                 }
             }
         } catch (SQLException e) {
@@ -63,21 +70,35 @@ public class ImportDAO extends DBContext {
         return -1;
     }
 
-    /**
-     * Get import by ID with joined supplier and user information
-     */
+    public boolean updateImport(Import importObj) {
+        final String sql = "UPDATE Imports SET po_id = ?, warehouse_id = ?, import_date = ?, received_by = ?, " +
+                "total_quantity = ?, total_amount = ?, status = ?, note = ? WHERE import_id = ?";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, importObj.getPoId());
+            ps.setInt(2, importObj.getWarehouseId());
+            ps.setDate(3, Date.valueOf(importObj.getImportDate()));
+            ps.setInt(4, importObj.getReceivedBy());
+            ps.setBigDecimal(5, defaultBigDecimal(importObj.getTotalQuantity()));
+            ps.setBigDecimal(6, defaultBigDecimal(importObj.getTotalAmount()));
+            ps.setString(7, importObj.getStatus());
+            ps.setString(8, importObj.getNote());
+            ps.setInt(9, importObj.getImportId());
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error updating import", e);
+            return false;
+        }
+    }
+
     public Import getImportById(int importId) {
-        String sql = "SELECT i.*, s.supplier_name, u.full_name as imported_by_name " +
-                    "FROM Imports i " +
-                    "LEFT JOIN Suppliers s ON i.supplier_id = s.supplier_id " +
-                    "LEFT JOIN Users u ON i.imported_by = u.user_id " +
-                    "WHERE i.import_id = ?";
-        
+        final String sql = BASE_SELECT + "WHERE i.import_id = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, importId);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return mapResultSetToImport(rs);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSetToImport(rs);
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error getting import by ID: " + importId, e);
@@ -85,54 +106,35 @@ public class ImportDAO extends DBContext {
         return null;
     }
 
-    /**
-     * Get all imports with pagination
-     */
     public List<Import> getAllImports(int page, int pageSize) {
         List<Import> imports = new ArrayList<>();
         int offset = (page - 1) * pageSize;
-        
-        String sql = "SELECT i.*, s.supplier_name, u.full_name as imported_by_name " +
-                    "FROM Imports i " +
-                    "LEFT JOIN Suppliers s ON i.supplier_id = s.supplier_id " +
-                    "LEFT JOIN Users u ON i.imported_by = u.user_id " +
-                    "ORDER BY i.import_date DESC " +
-                    "LIMIT ? OFFSET ?";
-        
+        final String sql = BASE_SELECT + "ORDER BY i.import_date DESC LIMIT ? OFFSET ?";
+
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, pageSize);
             ps.setInt(2, offset);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Import importObj = mapResultSetToImport(rs);
-                imports.add(importObj);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    imports.add(mapResultSetToImport(rs));
+                }
             }
         } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error getting all imports", e);
+            LOGGER.log(Level.SEVERE, "Error getting imports", e);
         }
         return imports;
     }
 
-    /**
-     * Get imports by date range
-     */
     public List<Import> getImportsByDateRange(LocalDate startDate, LocalDate endDate) {
         List<Import> imports = new ArrayList<>();
-        
-        String sql = "SELECT i.*, s.supplier_name, u.full_name as imported_by_name " +
-                    "FROM Imports i " +
-                    "LEFT JOIN Suppliers s ON i.supplier_id = s.supplier_id " +
-                    "LEFT JOIN Users u ON i.imported_by = u.user_id " +
-                    "WHERE DATE(i.import_date) BETWEEN ? AND ? " +
-                    "ORDER BY i.import_date DESC";
-        
+        final String sql = BASE_SELECT + "WHERE i.import_date BETWEEN ? AND ? ORDER BY i.import_date DESC";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setDate(1, java.sql.Date.valueOf(startDate));
-            ps.setDate(2, java.sql.Date.valueOf(endDate));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Import importObj = mapResultSetToImport(rs);
-                imports.add(importObj);
+            ps.setDate(1, Date.valueOf(startDate));
+            ps.setDate(2, Date.valueOf(endDate));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    imports.add(mapResultSetToImport(rs));
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error getting imports by date range", e);
@@ -140,25 +142,15 @@ public class ImportDAO extends DBContext {
         return imports;
     }
 
-    /**
-     * Get imports by supplier
-     */
     public List<Import> getImportsBySupplier(int supplierId) {
         List<Import> imports = new ArrayList<>();
-        
-        String sql = "SELECT i.*, s.supplier_name, u.full_name as imported_by_name " +
-                    "FROM Imports i " +
-                    "LEFT JOIN Suppliers s ON i.supplier_id = s.supplier_id " +
-                    "LEFT JOIN Users u ON i.imported_by = u.user_id " +
-                    "WHERE i.supplier_id = ? " +
-                    "ORDER BY i.import_date DESC";
-        
+        final String sql = BASE_SELECT + "WHERE po.supplier_id = ? ORDER BY i.import_date DESC";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, supplierId);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Import importObj = mapResultSetToImport(rs);
-                imports.add(importObj);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    imports.add(mapResultSetToImport(rs));
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error getting imports by supplier", e);
@@ -166,27 +158,19 @@ public class ImportDAO extends DBContext {
         return imports;
     }
 
-    /**
-     * Search imports by code or supplier name
-     */
     public List<Import> searchImports(String searchQuery) {
         List<Import> imports = new ArrayList<>();
-        
-        String sql = "SELECT i.*, s.supplier_name, u.full_name as imported_by_name " +
-                    "FROM Imports i " +
-                    "LEFT JOIN Suppliers s ON i.supplier_id = s.supplier_id " +
-                    "LEFT JOIN Users u ON i.imported_by = u.user_id " +
-                    "WHERE i.import_code LIKE ? OR s.supplier_name LIKE ? " +
-                    "ORDER BY i.import_date DESC";
-        
+        final String sql = BASE_SELECT +
+                "WHERE i.import_code LIKE ? OR s.supplier_name LIKE ? " +
+                "ORDER BY i.import_date DESC";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            String searchPattern = "%" + searchQuery + "%";
-            ps.setString(1, searchPattern);
-            ps.setString(2, searchPattern);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Import importObj = mapResultSetToImport(rs);
-                imports.add(importObj);
+            String keyword = "%" + searchQuery + "%";
+            ps.setString(1, keyword);
+            ps.setString(2, keyword);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    imports.add(mapResultSetToImport(rs));
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error searching imports", e);
@@ -194,31 +178,25 @@ public class ImportDAO extends DBContext {
         return imports;
     }
 
-    /**
-     * Get total count of imports
-     */
     public int getTotalImportsCount() {
-        String sql = "SELECT COUNT(*) FROM Imports";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
+        final String sql = "SELECT COUNT(*) FROM Imports";
+        try (PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 return rs.getInt(1);
             }
         } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error getting total imports count", e);
+            LOGGER.log(Level.SEVERE, "Error counting imports", e);
         }
         return 0;
     }
 
-    /**
-     * Get total imported quantity across all imports (for dashboard)
-     */
     public int getTotalImportedQuantity() {
-        String sql = "SELECT COALESCE(SUM(quantity), 0) as total FROM Import_Details";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
+        final String sql = "SELECT COALESCE(SUM(total_quantity), 0) AS total FROM Imports";
+        try (PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
-                return rs.getInt("total");
+                return rs.getBigDecimal("total").intValue();
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error getting total imported quantity", e);
@@ -226,85 +204,55 @@ public class ImportDAO extends DBContext {
         return 0;
     }
 
-    /**
-     * Update import information
-     */
-    public boolean updateImport(Import importObj) {
-        String sql = "UPDATE Imports SET supplier_id = ?, actual_arrival = ?, note = ?, updated_at = NOW() WHERE import_id = ?";
-        
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            if (importObj.getSupplierId() != null) {
-                ps.setInt(1, importObj.getSupplierId());
-            } else {
-                ps.setNull(1, java.sql.Types.INTEGER);
-            }
-            
-            if (importObj.getActualArrival() != null) {
-                ps.setTimestamp(2, Timestamp.valueOf(importObj.getActualArrival()));
-            } else {
-                ps.setNull(2, java.sql.Types.TIMESTAMP);
-            }
-            
-            ps.setString(3, importObj.getNote());
-            ps.setInt(4, importObj.getImportId());
-            
-            int result = ps.executeUpdate();
-            return result > 0;
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error updating import", e);
-            return false;
-        }
-    }
-
-    /**
-     * Get import history with advanced filters (for ImportHistoryServlet)
-     */
-    public List<Import> getImportHistoryAdvanced(String fromDate, String toDate, String materialName, 
-                                                  String sortSupplier, String sortImportedBy, int page, int pageSize) {
+    public List<Import> getImportHistoryAdvanced(String fromDate, String toDate, String materialName,
+                                                 String sortSupplier, String sortReceivedBy,
+                                                 Integer supplierId, Integer warehouseId,
+                                                 String status, String searchKeyword,
+                                                 int page, int pageSize) {
         List<Import> imports = new ArrayList<>();
         int offset = (page - 1) * pageSize;
-        
-        StringBuilder sql = new StringBuilder();
-        sql.append("SELECT DISTINCT i.*, s.supplier_name, u.full_name as imported_by_name ");
-        sql.append("FROM Imports i ");
-        sql.append("LEFT JOIN Suppliers s ON i.supplier_id = s.supplier_id ");
-        sql.append("LEFT JOIN Users u ON i.imported_by = u.user_id ");
-        
-        // Join Import_Details and Materials if filtering by material name
+
+        StringBuilder sql = new StringBuilder(BASE_SELECT);
         if (materialName != null && !materialName.trim().isEmpty()) {
             sql.append("JOIN Import_Details id ON i.import_id = id.import_id ");
             sql.append("JOIN Materials m ON id.material_id = m.material_id ");
         }
-        
         sql.append("WHERE 1=1 ");
-        
-        // Date filters
         if (fromDate != null && !fromDate.trim().isEmpty()) {
-            sql.append("AND DATE(i.import_date) >= ? ");
+            sql.append("AND i.import_date >= ? ");
         }
         if (toDate != null && !toDate.trim().isEmpty()) {
-            sql.append("AND DATE(i.import_date) <= ? ");
+            sql.append("AND i.import_date <= ? ");
         }
-        
-        // Material name filter
         if (materialName != null && !materialName.trim().isEmpty()) {
             sql.append("AND m.material_name LIKE ? ");
         }
-        
-        // Sorting
+        if (supplierId != null) {
+            sql.append("AND po.supplier_id = ? ");
+        }
+        if (warehouseId != null) {
+            sql.append("AND i.warehouse_id = ? ");
+        }
+        if (status != null && !status.trim().isEmpty()) {
+            sql.append("AND i.status = ? ");
+        }
+        if (searchKeyword != null && !searchKeyword.trim().isEmpty()) {
+            sql.append("AND (i.import_code LIKE ? OR po.po_code LIKE ? OR s.supplier_name LIKE ?) ");
+        }
+
         if (sortSupplier != null && !sortSupplier.trim().isEmpty()) {
-            sql.append("ORDER BY s.supplier_name ").append(sortSupplier.equalsIgnoreCase("desc") ? "DESC" : "ASC").append(", i.import_date DESC ");
-        } else if (sortImportedBy != null && !sortImportedBy.trim().isEmpty()) {
-            sql.append("ORDER BY u.full_name ").append(sortImportedBy.equalsIgnoreCase("desc") ? "DESC" : "ASC").append(", i.import_date DESC ");
+            sql.append("ORDER BY s.supplier_name ").append(sortSupplier.equalsIgnoreCase("desc") ? "DESC" : "ASC");
+            sql.append(", i.import_date DESC ");
+        } else if (sortReceivedBy != null && !sortReceivedBy.trim().isEmpty()) {
+            sql.append("ORDER BY receiver.full_name ").append(sortReceivedBy.equalsIgnoreCase("desc") ? "DESC" : "ASC");
+            sql.append(", i.import_date DESC ");
         } else {
             sql.append("ORDER BY i.import_date DESC ");
         }
-        
         sql.append("LIMIT ? OFFSET ?");
-        
+
         try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
             int paramIndex = 1;
-            
             if (fromDate != null && !fromDate.trim().isEmpty()) {
                 ps.setString(paramIndex++, fromDate);
             }
@@ -314,49 +262,70 @@ public class ImportDAO extends DBContext {
             if (materialName != null && !materialName.trim().isEmpty()) {
                 ps.setString(paramIndex++, "%" + materialName + "%");
             }
-            
+            if (supplierId != null) {
+                ps.setInt(paramIndex++, supplierId);
+            }
+            if (warehouseId != null) {
+                ps.setInt(paramIndex++, warehouseId);
+            }
+            if (status != null && !status.trim().isEmpty()) {
+                ps.setString(paramIndex++, status.trim());
+            }
+            if (searchKeyword != null && !searchKeyword.trim().isEmpty()) {
+                String pattern = "%" + searchKeyword.trim() + "%";
+                ps.setString(paramIndex++, pattern);
+                ps.setString(paramIndex++, pattern);
+                ps.setString(paramIndex++, pattern);
+            }
             ps.setInt(paramIndex++, pageSize);
             ps.setInt(paramIndex, offset);
-            
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Import importObj = mapResultSetToImport(rs);
-                imports.add(importObj);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    imports.add(mapResultSetToImport(rs));
+                }
             }
         } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error getting import history with filters", e);
+            LOGGER.log(Level.SEVERE, "Error getting import history", e);
         }
         return imports;
     }
 
-    /**
-     * Count import history records with advanced filters
-     */
-    public int countImportHistoryAdvanced(String fromDate, String toDate, String materialName, String sortSupplier) {
-        StringBuilder sql = new StringBuilder();
-        sql.append("SELECT COUNT(DISTINCT i.import_id) as total ");
-        sql.append("FROM Imports i ");
-        
+    public int countImportHistoryAdvanced(String fromDate, String toDate, String materialName,
+                                          Integer supplierId, Integer warehouseId,
+                                          String status, String searchKeyword) {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(DISTINCT i.import_id) AS total FROM Imports i ");
+        sql.append("LEFT JOIN Purchase_Orders po ON i.po_id = po.po_id ");
+        sql.append("LEFT JOIN Suppliers s ON po.supplier_id = s.supplier_id ");
         if (materialName != null && !materialName.trim().isEmpty()) {
             sql.append("JOIN Import_Details id ON i.import_id = id.import_id ");
             sql.append("JOIN Materials m ON id.material_id = m.material_id ");
         }
-        
         sql.append("WHERE 1=1 ");
-        
         if (fromDate != null && !fromDate.trim().isEmpty()) {
-            sql.append("AND DATE(i.import_date) >= ? ");
+            sql.append("AND i.import_date >= ? ");
         }
         if (toDate != null && !toDate.trim().isEmpty()) {
-            sql.append("AND DATE(i.import_date) <= ? ");
+            sql.append("AND i.import_date <= ? ");
         }
         if (materialName != null && !materialName.trim().isEmpty()) {
             sql.append("AND m.material_name LIKE ? ");
         }
-        
+        if (supplierId != null) {
+            sql.append("AND po.supplier_id = ? ");
+        }
+        if (warehouseId != null) {
+            sql.append("AND i.warehouse_id = ? ");
+        }
+        if (status != null && !status.trim().isEmpty()) {
+            sql.append("AND i.status = ? ");
+        }
+        if (searchKeyword != null && !searchKeyword.trim().isEmpty()) {
+            sql.append("AND (i.import_code LIKE ? OR po.po_code LIKE ? OR s.supplier_name LIKE ?) ");
+        }
+
         try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
             int paramIndex = 1;
-            
             if (fromDate != null && !fromDate.trim().isEmpty()) {
                 ps.setString(paramIndex++, fromDate);
             }
@@ -366,10 +335,25 @@ public class ImportDAO extends DBContext {
             if (materialName != null && !materialName.trim().isEmpty()) {
                 ps.setString(paramIndex++, "%" + materialName + "%");
             }
-            
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("total");
+            if (supplierId != null) {
+                ps.setInt(paramIndex++, supplierId);
+            }
+            if (warehouseId != null) {
+                ps.setInt(paramIndex++, warehouseId);
+            }
+            if (status != null && !status.trim().isEmpty()) {
+                ps.setString(paramIndex++, status.trim());
+            }
+            if (searchKeyword != null && !searchKeyword.trim().isEmpty()) {
+                String pattern = "%" + searchKeyword.trim() + "%";
+                ps.setString(paramIndex++, pattern);
+                ps.setString(paramIndex++, pattern);
+                ps.setString(paramIndex++, pattern);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("total");
+                }
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error counting import history", e);
@@ -377,17 +361,22 @@ public class ImportDAO extends DBContext {
         return 0;
     }
 
-    /**
-     * Generate next import code (e.g., IMP0001, IMP0002)
-     */
+    public List<ImportDetail> getImportDetailsByImportId(int importId) {
+        ImportDetailDAO detailDAO = new ImportDetailDAO();
+        try {
+            return detailDAO.getDetailsByImportId(importId);
+        } finally {
+            detailDAO.close();
+        }
+    }
+
     public String generateNextImportCode() {
-        String sql = "SELECT COALESCE(MAX(CAST(SUBSTRING(import_code, 4) AS SIGNED)), 0) + 1 AS next_number FROM Imports WHERE import_code LIKE 'IMP%'";
-        
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
+        final String sql = "SELECT COALESCE(MAX(CAST(SUBSTRING(import_code, 4) AS SIGNED)), 0) + 1 AS next_number " +
+                "FROM Imports WHERE import_code LIKE 'IMP%'";
+        try (PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
-                int nextNumber = rs.getInt("next_number");
-                return String.format("IMP%04d", nextNumber);
+                return String.format("IMP%04d", rs.getInt("next_number"));
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error generating import code", e);
@@ -395,110 +384,44 @@ public class ImportDAO extends DBContext {
         return "IMP0001";
     }
 
-    /**
-     * Get import details by import ID
-     */
-    public List<entity.ImportDetail> getImportDetailsByImportId(int importId) throws SQLException {
-        List<entity.ImportDetail> details = new ArrayList<>();
-        String sql = "SELECT id.*, m.material_name, m.material_code, m.materials_url, " +
-                    "u.unit_name, wr.rack_name, wr.rack_code " +
-                    "FROM Import_Details id " +
-                    "JOIN Materials m ON id.material_id = m.material_id " +
-                    "LEFT JOIN Units u ON m.unit_id = u.unit_id " +
-                    "LEFT JOIN Warehouse_Racks wr ON id.rack_id = wr.rack_id " +
-                    "WHERE id.import_id = ? " +
-                    "ORDER BY id.import_detail_id";
-        
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, importId);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                entity.ImportDetail detail = new entity.ImportDetail();
-                detail.setImportDetailId(rs.getInt("import_detail_id"));
-                detail.setImportId(rs.getInt("import_id"));
-                detail.setMaterialId(rs.getInt("material_id"));
-                detail.setQuantity(rs.getBigDecimal("quantity"));
-                detail.setUnitPrice(rs.getBigDecimal("unit_price"));
-                
-                Integer rackId = rs.getObject("rack_id", Integer.class);
-                detail.setRackId(rackId);
-                
-                // Note field may not exist in all schemas
-                try {
-                    detail.setNote(rs.getString("note"));
-                } catch (SQLException e) {
-                    // Column may not exist
-                    detail.setNote(null);
-                }
-                
-                // Status field
-                try {
-                    detail.setStatus(rs.getString("status"));
-                } catch (SQLException e) {
-                    // Column may not exist
-                    detail.setStatus(null);
-                }
-                
-                // Created_at field
-                try {
-                    if (rs.getTimestamp("created_at") != null) {
-                        detail.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
-                    }
-                } catch (SQLException e) {
-                    // Column may not exist
-                }
-                
-                // Joined fields
-                detail.setMaterialName(rs.getString("material_name"));
-                detail.setMaterialCode(rs.getString("material_code"));
-                detail.setMaterialsUrl(rs.getString("materials_url"));
-                detail.setUnitName(rs.getString("unit_name"));
-                detail.setRackName(rs.getString("rack_name"));
-                detail.setRackCode(rs.getString("rack_code"));
-                
-                details.add(detail);
-            }
-        }
-        return details;
-    }
-
-    /**
-     * Map ResultSet to Import object
-     */
     private Import mapResultSetToImport(ResultSet rs) throws SQLException {
         Import importObj = new Import();
         importObj.setImportId(rs.getInt("import_id"));
         importObj.setImportCode(rs.getString("import_code"));
-        
-        if (rs.getTimestamp("import_date") != null) {
-            importObj.setImportDate(rs.getTimestamp("import_date").toLocalDateTime());
+        importObj.setPoId(rs.getObject("po_id", Integer.class));
+        importObj.setWarehouseId(rs.getObject("warehouse_id", Integer.class));
+
+        Date importDate = rs.getDate("import_date");
+        if (importDate != null) {
+            importObj.setImportDate(importDate.toLocalDate());
         }
-        
-        importObj.setImportedBy(rs.getInt("imported_by"));
-        
-        int supplierId = rs.getInt("supplier_id");
-        if (!rs.wasNull()) {
-            importObj.setSupplierId(supplierId);
+
+        importObj.setReceivedBy(rs.getObject("received_by", Integer.class));
+        importObj.setCreatedBy(rs.getInt("created_by"));
+
+        Timestamp createdAt = rs.getTimestamp("created_at");
+        if (createdAt != null) {
+            importObj.setCreatedAt(createdAt.toLocalDateTime());
+        } else {
+            importObj.setCreatedAt(LocalDateTime.now());
         }
-        
-        if (rs.getTimestamp("actual_arrival") != null) {
-            importObj.setActualArrival(rs.getTimestamp("actual_arrival").toLocalDateTime());
-        }
-        
+
+        importObj.setStatus(rs.getString("status"));
         importObj.setNote(rs.getString("note"));
-        
-        if (rs.getTimestamp("created_at") != null) {
-            importObj.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
-        }
-        
-        if (rs.getTimestamp("updated_at") != null) {
-            importObj.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
-        }
-        
-        // Joined fields
+        importObj.setTotalQuantity(rs.getBigDecimal("total_quantity"));
+        importObj.setTotalAmount(rs.getBigDecimal("total_amount"));
+
+        importObj.setSupplierId(rs.getObject("supplier_id", Integer.class));
         importObj.setSupplierName(rs.getString("supplier_name"));
-        importObj.setImportedByName(rs.getString("imported_by_name"));
-        
+        importObj.setWarehouseName(rs.getString("warehouse_name"));
+        importObj.setCreatedByName(rs.getString("created_by_name"));
+        importObj.setReceivedByName(rs.getString("received_by_name"));
+        importObj.setPoCode(rs.getString("po_code"));
+
         return importObj;
+    }
+
+    private BigDecimal defaultBigDecimal(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 }

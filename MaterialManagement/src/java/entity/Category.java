@@ -3,120 +3,175 @@ package entity;
 import java.io.Serializable;
 import java.sql.Timestamp;
 
+/**
+ * Đại diện bảng Categories (schema v11).
+ */
 public class Category implements Serializable {
-    private int category_id;
-    private String category_name;
-    private Integer parent_id;
-    private Timestamp created_at;
-    private int disable;
-    private String status;
+    private int categoryId;
+    private String categoryCode;
+    private String categoryName;
+    private Integer parentId;
+    private Integer levelDepth;
+    private String pathLtree;
     private String description;
-    private String priority;
-    private String code; 
+    private String status; // ENUM('active','inactive')
+    private Timestamp createdAt;
+    private Timestamp updatedAt;
+    private Timestamp deletedAt;
 
-    
     public Category() {
     }
 
-    public Category(int category_id, String category_name) {
-        this.category_id = category_id;
-        this.category_name = category_name;
+    public Category(int categoryId, String categoryName) {
+        this.categoryId = categoryId;
+        this.categoryName = categoryName;
     }
-    
-    public Category(int category_id, String category_name, Integer parent_id, Timestamp created_at, 
-            int disable, String status, String description, String priority, String code) {
-        this.category_id = category_id;
-        this.category_name = category_name;
-        this.parent_id = parent_id;
-        this.created_at = created_at;
-        this.disable = disable;
-        this.status = status;
-        this.description = description;
-        this.priority = priority;
-        this.code= code;
 
+    public Category(int categoryId, String categoryCode, String categoryName) {
+        this.categoryId = categoryId;
+        this.categoryCode = categoryCode;
+        this.categoryName = categoryName;
     }
-    
-    // Getters
-    public int getCategory_id() {
-        return category_id;
+
+    public int getCategoryId() {
+        return categoryId;
     }
-    
-    public String getCategory_name() {
-        return category_name;
+
+    public void setCategoryId(int categoryId) {
+        this.categoryId = categoryId;
     }
-    
-    public Integer getParent_id() {
-        return parent_id;
+
+    public String getCategoryCode() {
+        return categoryCode;
     }
-    
-    public Timestamp getCreated_at() {
-        return created_at;
+
+    public void setCategoryCode(String categoryCode) {
+        this.categoryCode = categoryCode;
     }
-    
-    public int getDisable() {
-        return disable;
+
+    public String getCategoryName() {
+        return categoryName;
     }
-    
-    public String getStatus() {
-        return status;
+
+    public void setCategoryName(String categoryName) {
+        this.categoryName = categoryName;
     }
-    
+
+    public Integer getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Integer parentId) {
+        this.parentId = parentId;
+    }
+
+    public Integer getLevelDepth() {
+        return levelDepth;
+    }
+
+    public void setLevelDepth(Integer levelDepth) {
+        this.levelDepth = levelDepth;
+    }
+
+    public String getPathLtree() {
+        return pathLtree;
+    }
+
+    public void setPathLtree(String pathLtree) {
+        this.pathLtree = pathLtree;
+    }
+
     public String getDescription() {
         return description;
     }
-    
-    public String getPriority() {
-        return priority;
-    }
-    
-    // Setters
-    public void setCategory_id(int category_id) {
-        this.category_id = category_id;
-    }
-    
-    public void setCategory_name(String category_name) {
-        this.category_name = category_name;
-    }
-    
-    public void setParent_id(Integer parent_id) {
-        this.parent_id = parent_id;
-    }
-    
-    public void setCreated_at(Timestamp created_at) {
-        this.created_at = created_at;
-    }
-    
-    public void setDisable(int disable) {
-        this.disable = disable;
-    }
-    
-    public void setStatus(String status) {
-        this.status = status;
-    }
-    
+
     public void setDescription(String description) {
         this.description = description;
     }
-    
-    public void setPriority(String priority) {
-        this.priority = priority;
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public Timestamp getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Timestamp createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Timestamp getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Timestamp updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public Timestamp getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Timestamp deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
+    // Các getter/setter giữ tên cũ để hạn chế sửa code
+    public int getCategory_id() {
+        return categoryId;
+    }
+
+    public void setCategory_id(int categoryId) {
+        this.categoryId = categoryId;
+    }
+
+    public String getCategory_name() {
+        return categoryName;
+    }
+
+    public void setCategory_name(String categoryName) {
+        this.categoryName = categoryName;
+    }
+
+    public Integer getParent_id() {
+        return parentId;
+    }
+
+    public void setParent_id(Integer parentId) {
+        this.parentId = parentId;
+    }
+
+    public Timestamp getCreated_at() {
+        return createdAt;
+    }
+
+    public void setCreated_at(Timestamp createdAt) {
+        this.createdAt = createdAt;
     }
 
     public String getCode() {
-        return code;
+        return categoryCode;
     }
 
     public void setCode(String code) {
-        this.code = code;
+        this.categoryCode = code;
     }
-
-  
-    
 
     @Override
     public String toString() {
-        return "Category{" + "category_id=" + category_id + ", category_name=" + category_name + ", parent_id=" + parent_id + ", created_at=" + created_at + ", disable=" + disable + ", status=" + status + ", description=" + description + ", priority=" + priority + ", code=" + code + '}';
+        return "Category{" +
+                "categoryId=" + categoryId +
+                ", categoryCode='" + categoryCode + '\'' +
+                ", categoryName='" + categoryName + '\'' +
+                ", parentId=" + parentId +
+                ", levelDepth=" + levelDepth +
+                ", pathLtree='" + pathLtree + '\'' +
+                ", status='" + status + '\'' +
+                '}';
     }
-   
-} 
+}

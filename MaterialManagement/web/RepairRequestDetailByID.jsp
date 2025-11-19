@@ -11,8 +11,8 @@
         rolePermissionDAO = new RolePermissionDAO();
     }
     User user = (User) session.getAttribute("user");
-    boolean canApprove = user != null && (user.getRoleId() == 1 || user.getRoleId() == 2 || rolePermissionDAO.hasPermission(user.getRoleId(), "APPROVE_REPAIR_REQUEST"));
-    boolean canReject = user != null && (user.getRoleId() == 1 || user.getRoleId() == 2 || rolePermissionDAO.hasPermission(user.getRoleId(), "REJECT_REPAIR_REQUEST"));
+    boolean canApprove = user != null && (user.getRoleId() == 1 || user.getRoleId() == 2 || rolePermissionDAO.hasPermission(user.getRoleId(), "Duyệt yêu cầu sửa"));
+    boolean canReject = user != null && (user.getRoleId() == 1 || user.getRoleId() == 2 || rolePermissionDAO.hasPermission(user.getRoleId(), "Duyệt yêu cầu sửa"));
     request.setAttribute("canApprove", canApprove);
     request.setAttribute("canReject", canReject);
 %>
@@ -207,13 +207,30 @@
                                             <c:set var="m" value="${d.material}"/>
                                             <tr>
                                                 <td>
-                                                    <img src="${pageContext.request.contextPath}/images/material/${m.materialsUrl}" 
-                                                         alt="Material Image" 
-                                                         class="img-fluid" 
-                                                         style="width: 100px; height: auto; object-fit: cover;">
+                                                    <c:set var="mediaUrl" value="${m.materialsUrl}" />
+                                                    <c:choose>
+                                                        <c:when test="${mediaUrl != null && mediaUrl != '' && (fn:startsWith(mediaUrl, 'http://') || fn:startsWith(mediaUrl, 'https://') || fn:startsWith(mediaUrl, '/'))}">
+                                                            <img src="${mediaUrl}" 
+                                                                 alt="Material Image" 
+                                                                 class="img-fluid" 
+                                                                 style="width: 100px; height: auto; object-fit: cover;">
+                                                        </c:when>
+                                                        <c:when test="${mediaUrl != null && mediaUrl != ''}">
+                                                            <img src="${pageContext.request.contextPath}/${mediaUrl}" 
+                                                                 alt="Material Image" 
+                                                                 class="img-fluid" 
+                                                                 style="width: 100px; height: auto; object-fit: cover;">
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <img src="${pageContext.request.contextPath}/images/material/default.jpg" 
+                                                                 alt="Material Image" 
+                                                                 class="img-fluid" 
+                                                                 style="width: 100px; height: auto; object-fit: cover;">
+                                                        </c:otherwise>
+                                                    </c:choose>
                                                     <br>
                                                     <span style="font-size:12px; color:#888;">
-                                                        ${m.materialsUrl}
+                                                        ${m.rawUrl}
                                                     </span>
                                                 </td>
                                                 <td>${m != null ? m.materialCode : "N/A"}</td>

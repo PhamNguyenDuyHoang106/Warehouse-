@@ -1,28 +1,32 @@
 package entity;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 public class Export {
 
     private int exportId;
     private String exportCode;
+    private Integer soId;  // FK to Sales_Orders table (v11)
+    private Integer erId;  // FK to Export_Requests table (v11)
+    private int warehouseId;  // Required FK to Warehouses table (v11)
     private LocalDateTime exportDate;
-    private int exportedBy;
-    private Integer recipientId;  // FK to Recipients table
-    private Integer vehicleId;  // FK to Vehicles table
-    private Integer exportRequestId;  // FK to Export_Requests table
+    private int exportedBy;  // FK to Users table
+    private BigDecimal totalQuantity;  // DECIMAL(15,4) in v11
+    private String status;  // ENUM in v11
     private String note;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime deletedAt;
+    private Integer createdBy;  // FK to Users table
 
     // Joined fields for display
     private String exportedByName;
-    private String recipientName;
-    private String recipientLocation;
-    private String vehicleLicensePlate;
+    private String salesOrderCode;
     private String exportRequestCode;
-    private int totalQuantity;
-    private double totalValue;
+    private String warehouseName;
+    private String customerName;  // From SO
+    private BigDecimal totalValue;  // Calculated from Export_Details
 
     public int getExportId() {
         return exportId;
@@ -48,6 +52,30 @@ public class Export {
         this.exportDate = exportDate;
     }
 
+    public Integer getSoId() {
+        return soId;
+    }
+
+    public void setSoId(Integer soId) {
+        this.soId = soId;
+    }
+
+    public Integer getErId() {
+        return erId;
+    }
+
+    public void setErId(Integer erId) {
+        this.erId = erId;
+    }
+
+    public int getWarehouseId() {
+        return warehouseId;
+    }
+
+    public void setWarehouseId(int warehouseId) {
+        this.warehouseId = warehouseId;
+    }
+
     public int getExportedBy() {
         return exportedBy;
     }
@@ -56,28 +84,20 @@ public class Export {
         this.exportedBy = exportedBy;
     }
 
-    public Integer getRecipientId() {
-        return recipientId;
+    public BigDecimal getTotalQuantity() {
+        return totalQuantity;
     }
 
-    public void setRecipientId(Integer recipientId) {
-        this.recipientId = recipientId;
+    public void setTotalQuantity(BigDecimal totalQuantity) {
+        this.totalQuantity = totalQuantity;
     }
 
-    public Integer getVehicleId() {
-        return vehicleId;
+    public String getStatus() {
+        return status;
     }
 
-    public void setVehicleId(Integer vehicleId) {
-        this.vehicleId = vehicleId;
-    }
-
-    public Integer getExportRequestId() {
-        return exportRequestId;
-    }
-
-    public void setExportRequestId(Integer exportRequestId) {
-        this.exportRequestId = exportRequestId;
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public String getNote() {
@@ -104,6 +124,22 @@ public class Export {
         this.updatedAt = updatedAt;
     }
 
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
+    public Integer getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(Integer createdBy) {
+        this.createdBy = createdBy;
+    }
+
     public String getExportedByName() {
         return exportedByName;
     }
@@ -112,28 +148,12 @@ public class Export {
         this.exportedByName = exportedByName;
     }
 
-    public String getRecipientName() {
-        return recipientName;
+    public String getSalesOrderCode() {
+        return salesOrderCode;
     }
 
-    public void setRecipientName(String recipientName) {
-        this.recipientName = recipientName;
-    }
-
-    public String getRecipientLocation() {
-        return recipientLocation;
-    }
-
-    public void setRecipientLocation(String recipientLocation) {
-        this.recipientLocation = recipientLocation;
-    }
-
-    public String getVehicleLicensePlate() {
-        return vehicleLicensePlate;
-    }
-
-    public void setVehicleLicensePlate(String vehicleLicensePlate) {
-        this.vehicleLicensePlate = vehicleLicensePlate;
+    public void setSalesOrderCode(String salesOrderCode) {
+        this.salesOrderCode = salesOrderCode;
     }
 
     public String getExportRequestCode() {
@@ -144,19 +164,52 @@ public class Export {
         this.exportRequestCode = exportRequestCode;
     }
 
-    public int getTotalQuantity() {
-        return totalQuantity;
+    public String getWarehouseName() {
+        return warehouseName;
     }
 
-    public void setTotalQuantity(int totalQuantity) {
-        this.totalQuantity = totalQuantity;
+    public void setWarehouseName(String warehouseName) {
+        this.warehouseName = warehouseName;
     }
 
-    public double getTotalValue() {
+    public String getCustomerName() {
+        return customerName;
+    }
+
+    public void setCustomerName(String customerName) {
+        this.customerName = customerName;
+    }
+
+    public BigDecimal getTotalValue() {
         return totalValue;
     }
 
-    public void setTotalValue(double totalValue) {
+    public void setTotalValue(BigDecimal totalValue) {
         this.totalValue = totalValue;
+    }
+
+    // Compatibility methods for backward compatibility
+    public Integer getRecipientId() {
+        return null; // Not used in v11
+    }
+
+    public void setRecipientId(Integer recipientId) {
+        // Not used in v11
+    }
+
+    public Integer getVehicleId() {
+        return null; // Not used in v11
+    }
+
+    public void setVehicleId(Integer vehicleId) {
+        // Not used in v11
+    }
+
+    public Integer getExportRequestId() {
+        return erId; // Map to erId
+    }
+
+    public void setExportRequestId(Integer exportRequestId) {
+        this.erId = exportRequestId;
     }
 }

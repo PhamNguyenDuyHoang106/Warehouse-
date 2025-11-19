@@ -39,6 +39,9 @@
         .tabcontent {
             display: none;
         }
+        .tabcontent.active {
+            display: block;
+        }
         .table th, .table td {
             vertical-align: middle;
         }
@@ -207,8 +210,8 @@
                     <input type="hidden" name="selectedModule" value="${selectedModule}">
                     <div class="table-responsive">
                         <c:choose>
-                            <c:when test="${selectedModule == ''}">
-                                <div id="module_all" class="tabcontent">
+                            <c:when test="${selectedModule == '' || empty selectedModule}">
+                                <div id="module_all" class="tabcontent" style="display: block;">
                                     <c:forEach var="module" items="${modules}">
                                         <c:if test="${not empty permissionsByModule[module.moduleId]}">
                                             <h4 class="mt-4">${module.moduleName}</h4>
@@ -371,10 +374,12 @@
             let tabcontents = document.getElementsByClassName("tabcontent");
             for (let i = 0; i < tabcontents.length; i++) {
                 tabcontents[i].style.display = "none";
+                tabcontents[i].classList.remove("active");
             }
             let selectedTab = document.getElementById("module_" + moduleId);
             if (selectedTab) {
                 selectedTab.style.display = "block";
+                selectedTab.classList.add("active");
             }
 
             let sidebarItems = document.getElementsByClassName("nav-link");
@@ -396,17 +401,33 @@
 
         window.onload = function() {
             let selectedModule = "${selectedModule}";
-            if (selectedModule === "" && document.getElementById("module_all")) {
-                openModule("all");
+            console.log("Selected module:", selectedModule);
+            
+            // Show module_all by default if no module selected
+            if (!selectedModule || selectedModule === "" || selectedModule === "all") {
+                let moduleAll = document.getElementById("module_all");
+                if (moduleAll) {
+                    moduleAll.style.display = "block";
+                    moduleAll.classList.add("active");
+                    console.log("Showing module_all");
+                } else {
+                    console.error("module_all element not found");
+                }
             } else if (selectedModule && document.getElementById("module_" + selectedModule)) {
                 openModule(selectedModule);
-            } else if (document.getElementById("sidebar_0")) {
+                console.log("Showing module_" + selectedModule);
+            } else if (selectedModule === "0" && document.getElementById("module_0")) {
                 openModule("0");
+                console.log("Showing module_0");
             } else {
-                let firstItem = document.getElementsByClassName("nav-link")[0];
-                if (firstItem) {
-                    let moduleId = firstItem.id.replace("sidebar_", "");
-                    openModule(moduleId);
+                // Fallback: show first available module
+                let firstTab = document.querySelector(".tabcontent");
+                if (firstTab) {
+                    firstTab.style.display = "block";
+                    firstTab.classList.add("active");
+                    console.log("Showing first available tab");
+                } else {
+                    console.error("No tabcontent elements found");
                 }
             }
         };

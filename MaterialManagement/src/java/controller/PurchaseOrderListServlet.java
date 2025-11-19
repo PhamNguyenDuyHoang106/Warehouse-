@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import utils.EmailUtils;
+import utils.PermissionHelper;
 
 @WebServlet(name = "PurchaseOrderListServlet", urlPatterns = {"/PurchaseOrderList"})
 public class PurchaseOrderListServlet extends HttpServlet {
@@ -44,16 +45,21 @@ public class PurchaseOrderListServlet extends HttpServlet {
                 return;
             }
 
-            boolean hasPermission = rolePermissionDAO.hasPermission(user.getRoleId(), "VIEW_PURCHASE_ORDER_LIST");
+            // Admin có toàn quyền
+            boolean hasPermission = PermissionHelper.hasPermission(user, "DS đơn đặt hàng");
             request.setAttribute("hasViewPurchaseOrderListPermission", hasPermission);
             if (!hasPermission) {
                 LOGGER.log(Level.WARNING, "User {0} attempted to access PurchaseOrderList without permission.", user.getUsername());
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
+                request.setAttribute("error", "Bạn không có quyền xem danh sách đơn đặt hàng.");
+                request.getRequestDispatcher("error.jsp").forward(request, response);
                 return;
             }
 
-            boolean hasSendToSupplierPermission = rolePermissionDAO.hasPermission(user.getRoleId(), "SENT_TO_SUPPLIER");
+            // Admin có toàn quyền - PermissionHelper đã xử lý
+            boolean hasSendToSupplierPermission = PermissionHelper.hasPermission(user, "Gửi PO");
             request.setAttribute("hasSendToSupplierPermission", hasSendToSupplierPermission);
+            boolean hasHandleRequestPermission = PermissionHelper.hasPermission(user, "Xác nhận PO") || user.getRoleId() == 1;
+            request.setAttribute("hasHandleRequestPermission", hasHandleRequestPermission);
 
             String status = request.getParameter("status");
             String poCode = request.getParameter("poCode");
@@ -154,37 +160,35 @@ public class PurchaseOrderListServlet extends HttpServlet {
                 String approvalReason = request.getParameter("approvalReason");
                 String rejectionReason = request.getParameter("rejectionReason");
 
-                if ("sent_to_supplier".equals(status)) {
-                    boolean hasSendToSupplierPermission = rolePermissionDAO.hasPermission(user.getRoleId(), "SENT_TO_SUPPLIER");
+                LOGGER.log(Level.INFO, "Updating PO status - poId: {0}, status: {1}, approvalReason: {2}, rejectionReason: {3}", 
+                    new Object[]{poId, status, approvalReason, rejectionReason});
+
+                if ("sent".equalsIgnoreCase(status)) {
+                    // Admin có toàn quyền - PermissionHelper đã xử lý
+                    boolean hasSendToSupplierPermission = PermissionHelper.hasPermission(user, "Gửi PO");
                     if (!hasSendToSupplierPermission) {
-                        response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
+                        request.setAttribute("error", "Bạn không có quyền gửi đơn đặt hàng.");
+                        request.getRequestDispatcher("error.jsp").forward(request, response);
                         return;
                     }
                 }
 
                 boolean success = purchaseOrderDAO.updatePurchaseOrderStatus(poId, status, user.getUserId(), approvalReason, rejectionReason);
+                LOGGER.log(Level.INFO, "Update PO status result - poId: {0}, status: {1}, success: {2}", 
+                    new Object[]{poId, status, success});
 
                 if (success) {
-                    if ("sent_to_supplier".equals(status)) {
+                    if ("sent".equalsIgnoreCase(status)) {
                         try {
                             PurchaseOrder po = purchaseOrderDAO.getPurchaseOrderById(poId);
-                            Set<Integer> supplierIds = new HashSet<>();
-                            if (po != null && po.getDetails() != null) {
-                                for (entity.PurchaseOrderDetail detail : po.getDetails()) {
-                                    if (detail.getSupplierId() != null) {
-                                        supplierIds.add(detail.getSupplierId());
-                                    }
-                                }
-                            }
-                            for (Integer supplierId : supplierIds) {
-                                entity.Supplier supplier = new SupplierDAO().getSupplierByID(supplierId);
+                            if (po != null && po.getSupplierId() != null) {
+                                entity.Supplier supplier = new SupplierDAO().getSupplierByID(po.getSupplierId());
                                 if (supplier != null && supplier.getEmail() != null && !supplier.getEmail().trim().isEmpty()) {
-                                    String subject = "[Notification] New Purchase Order Sent To You";
+                                    String subject = "[Notification] Purchase Order Sent";
                                     String content = "Dear Supplier,<br><br>You have a new purchase order (PO Code: " + po.getPoCode() + ") sent to you. Please log in to the system to view details.<br><br>Thank you.";
                                     try {
                                         EmailUtils.sendEmail(supplier.getEmail(), subject, content);
                                     } catch (Exception e) {
-                                        // Log individual email failures but continue
                                         LOGGER.log(Level.WARNING, "[MAIL] Failed to send email to supplier {0}: {1}", new Object[]{supplier.getEmail(), e.getMessage()});
                                     }
                                 } else {
@@ -192,15 +196,14 @@ public class PurchaseOrderListServlet extends HttpServlet {
                                 }
                             }
                         } catch (Exception e) {
-                            // Log notification errors but don't crash the application
-                            LOGGER.log(Level.WARNING, "[MAIL] Error when sending email to suppliers for PO {0}: {1}", new Object[]{poId, e.getMessage()});
+                            LOGGER.log(Level.WARNING, "[MAIL] Error when sending email to supplier for PO {0}: {1}", new Object[]{poId, e.getMessage()});
                         }
                     }
-                    response.sendRedirect(request.getContextPath() + "/PurchaseOrderList?message=Status updated successfully");
+                    response.sendRedirect(request.getContextPath() + "/PurchaseOrderList?success=Status updated successfully");
                     return;
                 } else {
                     LOGGER.log(Level.WARNING, "Failed to update status for purchase order ID: " + poId + " to " + status);
-                    response.sendRedirect(request.getContextPath() + "/PurchaseOrderList?message=Error updating status");
+                    response.sendRedirect(request.getContextPath() + "/PurchaseOrderList?error=Error updating status");
                     return;
                 }
             } else {
@@ -209,10 +212,10 @@ public class PurchaseOrderListServlet extends HttpServlet {
             }
         } catch (NumberFormatException e) {
             LOGGER.log(Level.WARNING, "Invalid PO ID or other number format in doPost: " + e.getMessage(), e);
-            response.sendRedirect(request.getContextPath() + "/PurchaseOrderList?message=Error: Invalid input format");
+            response.sendRedirect(request.getContextPath() + "/PurchaseOrderList?error=Error: Invalid input format");
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error in doPost for PurchaseOrderListServlet.", e);
-            response.sendRedirect(request.getContextPath() + "/PurchaseOrderList?message=Error: An unexpected error occurred");
+            response.sendRedirect(request.getContextPath() + "/PurchaseOrderList?error=Error: An unexpected error occurred");
         }
     }
 

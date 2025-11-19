@@ -242,14 +242,15 @@
                         <th style="width: 200px">Image</th>
                         <th>Material Code</th>
                         <th>Material Name</th>
-                        <th>Status</th>
+                        <th>Barcode</th>
                         <th>Status</th>
                         <th>Category</th>
-                        <th>Unit</th>
-                        <th>Unit Volume (m³)</th>
-                        <th>Unit Weight (kg)</th>
-                        <th>Average Cost</th>
-                        <th>Disable</th>
+                        <th>Default Unit</th>
+                        <th>Stock On Hand</th>
+                        <th>Reserved</th>
+                        <th>Available</th>
+                        <th>Min Stock</th>
+                        <th>Max Stock</th>
                         <th style="width: 150px">Actions</th>
                     </tr>
                     </thead>
@@ -257,50 +258,40 @@
                     <c:forEach var="product" items="${productList}">
                         <tr>
                             <td>
-                                <img src="images/material1/${product.materialsUrl}" alt="${product.materialName}">
+                                <c:set var="mediaUrl" value="${product.materialsUrl}" />
+                                <c:choose>
+                                    <c:when test="${fn:startsWith(mediaUrl, 'http://') || fn:startsWith(mediaUrl, 'https://') || fn:startsWith(mediaUrl, '/')}">
+                                        <img src="${mediaUrl}" alt="${product.materialName}">
+                                    </c:when>
+                                    <c:otherwise>
+                                        <img src="${pageContext.request.contextPath}/${mediaUrl}" alt="${product.materialName}">
+                                    </c:otherwise>
+                                </c:choose>
                             </td>
                             <td>${product.materialCode}</td>
                             <td>${product.materialName}</td>
+                            <td>${empty product.barcode ? '-' : product.barcode}</td>
                             <td>
-                                <span class="badge ${product.materialStatus == 'new' ? 'bg-success' : (product.materialStatus == 'used' ? 'bg-warning' : 'bg-danger')}">
-                                    ${product.materialStatus == 'new' ? 'New' : (product.materialStatus == 'used' ? 'Used' : 'Damaged')}
+                                <c:set var="statusClass"
+                                       value="${product.materialStatus == 'active' ? 'bg-success' :
+                                                (product.materialStatus == 'inactive' ? 'bg-secondary' :
+                                                (product.materialStatus == 'discontinued' ? 'bg-danger' : 'bg-dark'))}" />
+                                <span class="badge ${statusClass}">
+                                    <c:choose>
+                                        <c:when test="${product.materialStatus == 'active'}">Active</c:when>
+                                        <c:when test="${product.materialStatus == 'inactive'}">Inactive</c:when>
+                                        <c:when test="${product.materialStatus == 'discontinued'}">Discontinued</c:when>
+                                        <c:otherwise>Unknown</c:otherwise>
+                                    </c:choose>
                                 </span>
                             </td>
-                            <td>${product.conditionPercentage}</td>
-                            <td>${product.category != null ? product.category.category_name : 'N/A'}</td>
+                            <td>${product.category != null ? product.category.categoryName : 'N/A'}</td>
                             <td>${product.unit != null ? product.unit.unitName : 'N/A'}</td>
-                            <td>
-                                <c:choose>
-                                    <c:when test="${product.unitVolume != null && product.unitVolume.doubleValue() > 0}">
-                                        <fmt:formatNumber value="${product.unitVolume}" maxFractionDigits="4"/> m³
-                                    </c:when>
-                                    <c:otherwise>
-                                        <span class="text-muted">-</span>
-                                    </c:otherwise>
-                                </c:choose>
-                            </td>
-                            <td>
-                                <c:choose>
-                                    <c:when test="${product.unitWeight != null && product.unitWeight.doubleValue() > 0}">
-                                        <fmt:formatNumber value="${product.unitWeight}" maxFractionDigits="4"/> kg
-                                    </c:when>
-                                    <c:otherwise>
-                                        <span class="text-muted">-</span>
-                                    </c:otherwise>
-                                </c:choose>
-                            </td>
-                            <td>
-                                <c:choose>
-                                    <c:when test="${product.averageCost != null && product.averageCost.doubleValue() > 0}">
-                                        <fmt:formatNumber value="${product.averageCost}" maxFractionDigits="2" type="currency" currencySymbol=""/>
-                                        <small class="text-muted">VND</small>
-                                    </c:when>
-                                    <c:otherwise>
-                                        <span class="text-muted">-</span>
-                                    </c:otherwise>
-                                </c:choose>
-                            </td>
-                            <td>${product.disable ? 'Yes' : 'No'}</td>
+                            <td><fmt:formatNumber value="${product.stockOnHand}" maxFractionDigits="2"/></td>
+                            <td><fmt:formatNumber value="${product.reservedStock}" maxFractionDigits="2"/></td>
+                            <td><fmt:formatNumber value="${product.availableStock}" maxFractionDigits="2"/></td>
+                            <td><fmt:formatNumber value="${product.minStock}" maxFractionDigits="2"/></td>
+                            <td><fmt:formatNumber value="${product.maxStock}" maxFractionDigits="2"/></td>
                             <td>
                                 <a href="ProductDetail?id=${product.materialId}" class="btn btn-sm btn-primary">View Detail</a>
                             </td>

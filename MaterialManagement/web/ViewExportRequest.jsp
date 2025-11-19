@@ -139,29 +139,23 @@
             </div>
         </div>
 
-        <c:if test="${not empty recipient}">
+        <c:if test="${not empty customer}">
             <div class="card">
-                <div class="card-header">Recipient</div>
+                <div class="card-header">Customer</div>
                 <div class="card-body">
-                    <p><strong>Recipient Code:</strong> ${recipient.recipientCode}</p>
-                    <p><strong>Recipient Name:</strong> ${recipient.recipientName}</p>
-                    <c:if test="${not empty recipient.contactPerson}">
-                        <p><strong>Contact Person:</strong> ${recipient.contactPerson}</p>
+                    <p><strong>Customer Code:</strong> ${customer.customerCode}</p>
+                    <p><strong>Customer Name:</strong> ${customer.customerName}</p>
+                    <c:if test="${not empty customer.contactPerson}">
+                        <p><strong>Contact Person:</strong> ${customer.contactPerson}</p>
                     </c:if>
-                    <c:if test="${not empty recipient.phoneNumber}">
-                        <p><strong>Phone Number:</strong> ${recipient.phoneNumber}</p>
+                    <c:if test="${not empty customer.phone}">
+                        <p><strong>Phone Number:</strong> ${customer.phone}</p>
                     </c:if>
-                    <c:if test="${not empty recipient.email}">
-                        <p><strong>Email:</strong> ${recipient.email}</p>
+                    <c:if test="${not empty customer.email}">
+                        <p><strong>Email:</strong> ${customer.email}</p>
                     </c:if>
-                    <c:if test="${not empty recipient.address}">
-                        <p><strong>Address:</strong> ${recipient.address}</p>
-                    </c:if>
-                    <c:if test="${not empty recipient.location}">
-                        <p><strong>Location:</strong> ${recipient.location}</p>
-                    </c:if>
-                    <c:if test="${not empty recipient.description}">
-                        <p><strong>Description:</strong> ${recipient.description}</p>
+                    <c:if test="${not empty customer.address}">
+                        <p><strong>Address:</strong> ${customer.address}</p>
                     </c:if>
                 </div>
             </div>
@@ -221,15 +215,15 @@
                     <nav class="mt-3">
                         <ul class="pagination justify-content-center">
                             <li class="page-item ${currentPage == 1 ? 'disabled' : ''}">
-                                <a class="page-link" href="${pageContext.request.contextPath}/ViewExportRequest?id=${exportRequest.exportRequestId}&page=${currentPage - 1}&status=${listStatus}&search=${listSearch}&searchRecipient=${listSearchRecipient}">Previous</a>
+                                <a class="page-link" href="${pageContext.request.contextPath}/ViewExportRequest?id=${exportRequest.exportRequestId}&page=${currentPage - 1}&status=${listStatus}&search=${listSearch}&searchCustomer=${listSearchRecipient}">Previous</a>
                             </li>
                             <c:forEach begin="1" end="${totalPages}" var="i">
                                 <li class="page-item ${currentPage == i ? 'active' : ''}">
-                                    <a class="page-link" href="${pageContext.request.contextPath}/ViewExportRequest?id=${exportRequest.exportRequestId}&page=${i}&status=${listStatus}&search=${listSearch}&searchRecipient=${listSearchRecipient}">${i}</a>
+                                    <a class="page-link" href="${pageContext.request.contextPath}/ViewExportRequest?id=${exportRequest.exportRequestId}&page=${i}&status=${listStatus}&search=${listSearch}&searchCustomer=${listSearchRecipient}">${i}</a>
                                 </li>
                             </c:forEach>
                             <li class="page-item ${currentPage == totalPages ? 'disabled' : ''}">
-                                <a class="page-link" href="${pageContext.request.contextPath}/ViewExportRequest?id=${exportRequest.exportRequestId}&page=${currentPage + 1}&status=${listStatus}&search=${listSearch}&searchRecipient=${listSearchRecipient}">Next</a>
+                                <a class="page-link" href="${pageContext.request.contextPath}/ViewExportRequest?id=${exportRequest.exportRequestId}&page=${currentPage + 1}&status=${listStatus}&search=${listSearch}&searchCustomer=${listSearchRecipient}">Next</a>
                             </li>
                         </ul>
                     </nav>
@@ -244,67 +238,9 @@
             <div class="alert alert-success">${message}</div>
         </c:if>
 
-        <c:if test="${hasHandleRequestPermission && exportRequest.status == 'pending'}">
-            <div class="d-flex gap-2 mb-2">
-                <button type="button" class="btn" style="background-color: #198754; color: #fff; border: none;" onclick="updateStatus('approved')">Approve</button>
-                <button type="button" class="btn" style="background-color: #dc3545; color: #fff; border: none;" onclick="updateStatus('rejected')">Reject</button>
-                <a href="${pageContext.request.contextPath}/ExportRequestList?page=${listPage}&status=${listStatus}&search=${listSearch}&searchRecipient=${listSearchRecipient}" class="btn btn-warning">Cancel</a>
-            </div>
-        </c:if>
-
-        <c:if test="${!(hasHandleRequestPermission && exportRequest.status == 'pending')}">
-            <div class="mb-2">
-                <a href="${pageContext.request.contextPath}/ExportRequestList?page=${listPage}&status=${listStatus}&search=${listSearch}&searchRecipient=${listSearchRecipient}" class="btn btn-warning">Cancel</a>
-            </div>
-        </c:if>
-    </div>
-    <!-- Status Update Modal -->
-    <div class="modal fade" id="statusModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Update Export Request Status</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form id="statusForm" method="POST">
-                    <div class="modal-body">
-                        <input type="hidden" name="requestId" value="${exportRequest.exportRequestId}">
-                        <!-- Chỉ hiện 1 ô nhập lý do, không còn select status -->
-                        <div class="mb-3" id="approvalReasonDiv" style="display: none;">
-                            <label for="approvalReason" class="form-label">Approval Reason</label>
-                            <textarea class="form-control" name="approvalReason" id="approvalReason" rows="3" placeholder="Enter approval reason..."></textarea>
-                        </div>
-                        <div class="mb-3" id="rejectionReasonDiv" style="display: none;">
-                            <label for="rejectionReason" class="form-label">Rejection Reason</label>
-                            <textarea class="form-control" name="rejectionReason" id="rejectionReason" rows="3" placeholder="Enter rejection reason..." required></textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Update Status</button>
-                    </div>
-                </form>
-            </div>
+        <div class="mb-2">
+            <a href="${pageContext.request.contextPath}/ExportRequestList?page=${listPage}&status=${listStatus}&search=${listSearch}&searchCustomer=${listSearchRecipient}" class="btn btn-warning">Back to List</a>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function updateStatus(status) {
-            if (status === 'approved') {
-                document.getElementById('approvalReasonDiv').style.display = 'block';
-                document.getElementById('rejectionReasonDiv').style.display = 'none';
-                document.getElementById('statusForm').action = '${pageContext.request.contextPath}/ApproveExportRequest';
-                document.getElementById('approvalReason').setAttribute('required', 'required');
-                document.getElementById('rejectionReason').removeAttribute('required');
-            } else if (status === 'rejected') {
-                document.getElementById('approvalReasonDiv').style.display = 'none';
-                document.getElementById('rejectionReasonDiv').style.display = 'block';
-                document.getElementById('statusForm').action = '${pageContext.request.contextPath}/RejectExportRequest';
-                document.getElementById('rejectionReason').setAttribute('required', 'required');
-                document.getElementById('approvalReason').removeAttribute('required');
-            }
-            new bootstrap.Modal(document.getElementById('statusModal')).show();
-        }
-    </script>
 </body>
 </html>

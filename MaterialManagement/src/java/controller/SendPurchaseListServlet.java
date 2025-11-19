@@ -78,8 +78,8 @@ public class SendPurchaseListServlet extends HttpServlet {
             body.append("----------------------------------------------------------------------------------\n");
             for (PurchaseRequest pr : purchaseRequests) {
                 body.append(String.format("%-10d | %-18s | %-12s | %s\n", 
-                    pr.getPurchaseRequestId(), 
-                    pr.getRequestCode(), 
+                    pr.getId(), 
+                    pr.getCode(), 
                     pr.getStatus(),
                     pr.getReason()));
             }

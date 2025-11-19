@@ -1,32 +1,34 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package entity;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- *
- * @author Admin
+ * Entity aligned with Imports table (schema v12.0 ULTRA).
  */
 public class Import {
 
     private int importId;
     private String importCode;
-    private LocalDateTime importDate;
-    private int importedBy;
-    private Integer supplierId;
-    private String destination;
-    private LocalDateTime actualArrival;
-    private String note;
+    private Integer poId;
+    private Integer warehouseId;
+    private LocalDate importDate;
+    private Integer receivedBy;
+    private Integer createdBy;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-    private String importedByName;
-    private String supplierName;
-    private int totalQuantity;
-    private double totalValue;
+    private String status;
+    private String note;
+    private BigDecimal totalQuantity;
+    private BigDecimal totalAmount;
 
+    // Joined fields / derived information
+    private Integer supplierId;
+    private String supplierName;
+    private String warehouseName;
+    private String createdByName;
+    private String receivedByName;
+    private String poCode;
 
     public int getImportId() {
         return importId;
@@ -44,20 +46,20 @@ public class Import {
         this.importCode = importCode;
     }
 
-    public LocalDateTime getImportDate() {
-        return importDate;
+    public Integer getPoId() {
+        return poId;
     }
 
-    public void setImportDate(LocalDateTime importDate) {
-        this.importDate = importDate;
+    public void setPoId(Integer poId) {
+        this.poId = poId;
     }
 
-    public int getImportedBy() {
-        return importedBy;
+    public Integer getWarehouseId() {
+        return warehouseId;
     }
 
-    public void setImportedBy(int importedBy) {
-        this.importedBy = importedBy;
+    public void setWarehouseId(Integer warehouseId) {
+        this.warehouseId = warehouseId;
     }
 
     public Integer getSupplierId() {
@@ -68,28 +70,28 @@ public class Import {
         this.supplierId = supplierId;
     }
 
-    public String getDestination() {
-        return destination;
+    public LocalDate getImportDate() {
+        return importDate;
     }
 
-    public void setDestination(String destination) {
-        this.destination = destination;
+    public void setImportDate(LocalDate importDate) {
+        this.importDate = importDate;
     }
 
-    public LocalDateTime getActualArrival() {
-        return actualArrival;
+    public Integer getReceivedBy() {
+        return receivedBy;
     }
 
-    public void setActualArrival(LocalDateTime actualArrival) {
-        this.actualArrival = actualArrival;
+    public void setReceivedBy(Integer receivedBy) {
+        this.receivedBy = receivedBy;
     }
 
-    public String getNote() {
-        return note;
+    public Integer getCreatedBy() {
+        return createdBy;
     }
 
-    public void setNote(String note) {
-        this.note = note;
+    public void setCreatedBy(Integer createdBy) {
+        this.createdBy = createdBy;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -100,20 +102,36 @@ public class Import {
         this.createdAt = createdAt;
     }
 
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
+    public String getNote() {
+        return note;
     }
 
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
+    public void setNote(String note) {
+        this.note = note;
     }
 
-    public String getImportedByName() {
-        return importedByName;
+    public String getStatus() {
+        return status;
     }
 
-    public void setImportedByName(String importedByName) {
-        this.importedByName = importedByName;
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public BigDecimal getTotalQuantity() {
+        return totalQuantity;
+    }
+
+    public void setTotalQuantity(BigDecimal totalQuantity) {
+        this.totalQuantity = totalQuantity;
+    }
+
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(BigDecimal totalAmount) {
+        this.totalAmount = totalAmount;
     }
 
     public String getSupplierName() {
@@ -124,20 +142,35 @@ public class Import {
         this.supplierName = supplierName;
     }
 
-    public int getTotalQuantity() {
-        return totalQuantity;
+    public String getWarehouseName() {
+        return warehouseName;
     }
 
-    public void setTotalQuantity(int totalQuantity) {
-        this.totalQuantity = totalQuantity;
+    public void setWarehouseName(String warehouseName) {
+        this.warehouseName = warehouseName;
     }
 
-    public double getTotalValue() {
-        return totalValue;
+    public String getCreatedByName() {
+        return createdByName;
     }
 
-    public void setTotalValue(double totalValue) {
-        this.totalValue = totalValue;
+    public void setCreatedByName(String createdByName) {
+        this.createdByName = createdByName;
     }
 
+    public String getReceivedByName() {
+        return receivedByName;
+    }
+
+    public void setReceivedByName(String receivedByName) {
+        this.receivedByName = receivedByName;
+    }
+
+    public String getPoCode() {
+        return poCode;
+    }
+
+    public void setPoCode(String poCode) {
+        this.poCode = poCode;
+    }
 }

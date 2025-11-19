@@ -5,29 +5,33 @@
 package entity;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.sql.Date;
+import java.sql.Timestamp;
 
-/**
- *
- * @author Admin
- */
 public class ImportDetail {
 
     private int importDetailId;
     private int importId;
+    private int poDetailId;
     private int materialId;
-    private Integer rackId;  // Nullable - warehouse rack location
-    private BigDecimal quantity;  // Changed to BigDecimal for DECIMAL(10,2)
-    private BigDecimal unitPrice;  // Changed to BigDecimal for DECIMAL(15,2)
+    private Integer rackId;
+    private Integer unitId;
+    private BigDecimal quantity;
+    private BigDecimal unitCost;
+    private BigDecimal totalCost;
+    private String batchCode;
+    private Date expiryDate;
     private String status;
-    private LocalDateTime createdAt;
+    private Integer importedBy;
+    private Timestamp importedAt;
+    private Timestamp createdAt;
+
+    // Joined fields
     private String materialName;
-    private String materialCode;  // For display purposes
+    private String materialCode;
     private String unitName;
-    private String materialsUrl;
-    private String rackCode;  // For display purposes
-    private String rackName;  // For display purposes
-    private String note;  // Import detail note
+    private String rackCode;
+    private String rackName;
 
     public int getImportDetailId() {
         return importDetailId;
@@ -37,21 +41,20 @@ public class ImportDetail {
         this.importDetailId = importDetailId;
     }
 
-    public String getMaterialsUrl() {
-        return materialsUrl;
-    }
-
-    public void setMaterialsUrl(String materialsUrl) {
-        this.materialsUrl = materialsUrl;
-    }
-
-
     public int getImportId() {
         return importId;
     }
 
     public void setImportId(int importId) {
         this.importId = importId;
+    }
+
+    public int getPoDetailId() {
+        return poDetailId;
+    }
+
+    public void setPoDetailId(int poDetailId) {
+        this.poDetailId = poDetailId;
     }
 
     public int getMaterialId() {
@@ -70,6 +73,14 @@ public class ImportDetail {
         this.rackId = rackId;
     }
 
+    public Integer getUnitId() {
+        return unitId;
+    }
+
+    public void setUnitId(Integer unitId) {
+        this.unitId = unitId;
+    }
+
     public BigDecimal getQuantity() {
         return quantity;
     }
@@ -78,12 +89,36 @@ public class ImportDetail {
         this.quantity = quantity;
     }
 
-    public BigDecimal getUnitPrice() {
-        return unitPrice;
+    public BigDecimal getUnitCost() {
+        return unitCost;
     }
 
-    public void setUnitPrice(BigDecimal unitPrice) {
-        this.unitPrice = unitPrice;
+    public void setUnitCost(BigDecimal unitCost) {
+        this.unitCost = unitCost;
+    }
+
+    public BigDecimal getTotalCost() {
+        return totalCost;
+    }
+
+    public void setTotalCost(BigDecimal totalCost) {
+        this.totalCost = totalCost;
+    }
+
+    public String getBatchCode() {
+        return batchCode;
+    }
+
+    public void setBatchCode(String batchCode) {
+        this.batchCode = batchCode;
+    }
+
+    public Date getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(Date expiryDate) {
+        this.expiryDate = expiryDate;
     }
 
     public String getStatus() {
@@ -94,11 +129,27 @@ public class ImportDetail {
         this.status = status;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public Integer getImportedBy() {
+        return importedBy;
+    }
+
+    public void setImportedBy(Integer importedBy) {
+        this.importedBy = importedBy;
+    }
+
+    public Timestamp getImportedAt() {
+        return importedAt;
+    }
+
+    public void setImportedAt(Timestamp importedAt) {
+        this.importedAt = importedAt;
+    }
+
+    public Timestamp getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(Timestamp createdAt) {
         this.createdAt = createdAt;
     }
 
@@ -108,6 +159,14 @@ public class ImportDetail {
 
     public void setMaterialName(String materialName) {
         this.materialName = materialName;
+    }
+
+    public String getMaterialCode() {
+        return materialCode;
+    }
+
+    public void setMaterialCode(String materialCode) {
+        this.materialCode = materialCode;
     }
 
     public String getUnitName() {
@@ -133,21 +192,4 @@ public class ImportDetail {
     public void setRackName(String rackName) {
         this.rackName = rackName;
     }
-
-    public String getMaterialCode() {
-        return materialCode;
-    }
-
-    public void setMaterialCode(String materialCode) {
-        this.materialCode = materialCode;
-    }
-
-    public String getNote() {
-        return note;
-    }
-
-    public void setNote(String note) {
-        this.note = note;
-    }
-
 }

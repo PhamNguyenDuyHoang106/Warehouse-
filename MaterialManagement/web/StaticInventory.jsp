@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ page import="entity.User" %>
 <%
     User user = (User) session.getAttribute("user");
@@ -174,7 +175,7 @@
           <jsp:include page="Sidebar.jsp" />
         </div>
         <div class="col-md-9 col-lg-10 content px-md-4">
-          <c:set var="hasViewInventoryPermission" value="${rolePermissionDAO.hasPermission(roleId, 'VIEW_INVENTORY')}" scope="request" />
+          <c:set var="hasViewInventoryPermission" value="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'Báo cáo tồn kho')}" scope="request" />
           <c:if test="${!hasViewInventoryPermission}">
             <div class="alert alert-danger text-center my-5">
                 <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
@@ -237,12 +238,16 @@
                       <td><strong>${loop.index + 1}</strong></td>
                       <td><span class="material-code">${inv.materialCode}</span></td>
                       <td>
+                        <c:set var="mediaUrl" value="${inv.materialsUrl}" />
                         <c:choose>
-                          <c:when test="${not empty inv.materialsUrl}">
-                            <img src="images/material/${inv.materialsUrl}" alt="Material Image" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc;" />
+                          <c:when test="${not empty mediaUrl && (fn:startsWith(mediaUrl, 'http://') || fn:startsWith(mediaUrl, 'https://') || fn:startsWith(mediaUrl, '/'))}">
+                            <img src="${mediaUrl}" alt="Material Image" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc;" />
+                          </c:when>
+                          <c:when test="${not empty mediaUrl}">
+                            <img src="${pageContext.request.contextPath}/${mediaUrl}" alt="Material Image" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc;" />
                           </c:when>
                           <c:otherwise>
-                            <img src="images/material/default.jpg" alt="Material Image" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc;" />
+                            <img src="${pageContext.request.contextPath}/images/material/default.jpg" alt="Material Image" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc;" />
                           </c:otherwise>
                         </c:choose>
                       </td>

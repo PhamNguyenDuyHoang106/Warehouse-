@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -17,11 +18,11 @@ public class RepairRequestDAO extends DBContext {
     private static final Logger LOGGER = Logger.getLogger(RepairRequestDAO.class.getName());
 
     public boolean createRepairRequest(RepairRequest request, List<RepairRequestDetail> details) throws SQLException {
-        String requestSql = "INSERT INTO Repair_Requests (request_code, user_id, reason, status, request_date, created_at, updated_at, disable) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String requestSql = "INSERT INTO Repair_Requests (rr_code, request_by, material_id, batch_id, rack_id, department_id, request_date, issue_description, priority, status, created_at, updated_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         String detailSql = "INSERT INTO Repair_Request_Details "
-                + "(repair_request_id, material_id, quantity, damage_description, repair_cost, supplier_id, created_at, updated_at) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                + "(rr_id, spare_material_id, quantity_needed, note, created_at, updated_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement psRequest = connection.prepareStatement(requestSql, Statement.RETURN_GENERATED_KEYS); PreparedStatement psDetail = connection.prepareStatement(detailSql)) {
             // Validate input
@@ -32,13 +33,32 @@ public class RepairRequestDAO extends DBContext {
             // Insert into Repair_Requests
             psRequest.setString(1, request.getRequestCode());
             psRequest.setInt(2, request.getUserId());
-            // Đã loại bỏ setDate cho estimatedReturnDate
-            psRequest.setString(3, request.getReason());
-            psRequest.setString(4, request.getStatus());
-            psRequest.setTimestamp(5, request.getRequestDate());
-            psRequest.setTimestamp(6, request.getCreatedAt());
-            psRequest.setTimestamp(7, request.getUpdatedAt());
-            psRequest.setBoolean(8, request.isDisable());
+            if (request.getMaterialId() != null) {
+                psRequest.setInt(3, request.getMaterialId());
+            } else {
+                psRequest.setNull(3, Types.INTEGER);
+            }
+            if (request.getBatchId() != null) {
+                psRequest.setInt(4, request.getBatchId());
+            } else {
+                psRequest.setNull(4, Types.INTEGER);
+            }
+            if (request.getRackId() != null) {
+                psRequest.setInt(5, request.getRackId());
+            } else {
+                psRequest.setNull(5, Types.INTEGER);
+            }
+            if (request.getDepartmentId() != null) {
+                psRequest.setInt(6, request.getDepartmentId());
+            } else {
+                psRequest.setNull(6, Types.INTEGER);
+            }
+            psRequest.setTimestamp(7, request.getRequestDate());
+            psRequest.setString(8, request.getReason()); // issue_description
+            psRequest.setString(9, request.getPriority() != null ? request.getPriority() : "medium");
+            psRequest.setString(10, request.getStatus());
+            psRequest.setTimestamp(11, request.getCreatedAt());
+            psRequest.setTimestamp(12, request.getUpdatedAt());
             psRequest.executeUpdate();
 
             // Get generated repair request ID
@@ -50,17 +70,15 @@ public class RepairRequestDAO extends DBContext {
 
                 // Insert details into Repair_Request_Details
                 for (RepairRequestDetail detail : details) {
-                    if (detail == null || detail.getMaterialId() <= 0 || detail.getQuantity() == null || detail.getQuantity().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                    if (detail == null || detail.getMaterialId() == null || detail.getQuantity() == null || detail.getQuantity().compareTo(java.math.BigDecimal.ZERO) <= 0) {
                         throw new IllegalArgumentException("Invalid repair request detail data.");
                     }
                     psDetail.setInt(1, repairRequestId);
                     psDetail.setInt(2, detail.getMaterialId());
                     psDetail.setBigDecimal(3, detail.getQuantity());
-                    psDetail.setString(4, detail.getDamageDescription());
-                    psDetail.setObject(5, detail.getRepairCost(), java.sql.Types.DOUBLE);
-                    psDetail.setObject(6, detail.getSupplierId() > 0 ? detail.getSupplierId() : null, java.sql.Types.INTEGER);
-                    psDetail.setTimestamp(7, detail.getCreatedAt());
-                    psDetail.setTimestamp(8, detail.getUpdatedAt());
+                    psDetail.setString(4, detail.getNote() != null ? detail.getNote() : detail.getDamageDescription());
+                    psDetail.setTimestamp(5, detail.getCreatedAt());
+                    psDetail.setTimestamp(6, detail.getUpdatedAt());
                     psDetail.executeUpdate();
                 }
             }
@@ -73,11 +91,11 @@ public class RepairRequestDAO extends DBContext {
         StringBuilder sql = new StringBuilder(
                 "SELECT rr.*, u.full_name "
                 + "FROM Repair_Requests rr "
-                + "JOIN Users u ON rr.user_id = u.user_id "
-                + "WHERE rr.disable = 0 AND rr.status != 'cancel'"
+                + "JOIN Users u ON rr.request_by = u.user_id "
+                + "WHERE rr.deleted_at IS NULL AND rr.status != 'cancelled'"
         );
         if (searchKeyword != null && !searchKeyword.trim().isEmpty()) {
-            sql.append(" AND rr.reason LIKE ?");
+            sql.append(" AND rr.issue_description LIKE ?");
         }
         if (status != null && !status.equalsIgnoreCase("all")) {
             sql.append(" AND rr.status = ?");
@@ -91,12 +109,12 @@ public class RepairRequestDAO extends DBContext {
         }
         if (sortByName != null && !sortByName.isEmpty()) {
             if ("oldest".equalsIgnoreCase(sortByName)) {
-                sql.append(" ORDER BY rr.created_at ASC, rr.repair_request_id ASC");
+                sql.append(" ORDER BY rr.created_at ASC, rr.rr_id ASC");
             } else if ("newest".equalsIgnoreCase(sortByName)) {
-                sql.append(" ORDER BY rr.created_at DESC, rr.repair_request_id DESC");
+                sql.append(" ORDER BY rr.created_at DESC, rr.rr_id DESC");
             }
         } else {
-            sql.append(" ORDER BY rr.created_at DESC, rr.repair_request_id DESC");
+            sql.append(" ORDER BY rr.created_at DESC, rr.rr_id DESC");
         }
         sql.append(" LIMIT ? OFFSET ?");
 
@@ -122,20 +140,20 @@ public class RepairRequestDAO extends DBContext {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     RepairRequest request = new RepairRequest();
-                    request.setRepairRequestId(rs.getInt("repair_request_id"));
-                    request.setRequestCode(rs.getString("request_code"));
-                    request.setUserId(rs.getInt("user_id"));
+                    request.setRepairRequestId(rs.getInt("rr_id"));
+                    request.setRequestCode(rs.getString("rr_code"));
+                    request.setUserId(rs.getInt("request_by"));
                     request.setFullName(rs.getString("full_name"));
                     request.setRequestDate(rs.getTimestamp("request_date"));
                     request.setStatus(rs.getString("status"));
-                    request.setReason(rs.getString("reason"));
+                    request.setReason(rs.getString("issue_description"));
                     request.setApprovedBy(rs.getObject("approved_by") != null ? rs.getInt("approved_by") : null);
                     request.setApprovalReason(rs.getString("approval_reason"));
                     request.setApprovedAt(rs.getTimestamp("approved_at"));
                     request.setRejectionReason(rs.getString("rejection_reason"));
                     request.setCreatedAt(rs.getTimestamp("created_at"));
                     request.setUpdatedAt(rs.getTimestamp("updated_at"));
-                    request.setDisable(rs.getBoolean("disable"));
+                    request.setDeletedAt(rs.getTimestamp("deleted_at"));
                     requests.add(request);
                 }
             }
@@ -146,12 +164,12 @@ public class RepairRequestDAO extends DBContext {
     public int getTotalRepairRequestCount(String searchKeyword, String status, String requestDateFrom, String requestDateTo) throws SQLException {
         StringBuilder sql = new StringBuilder(
                 "SELECT COUNT(*) "
-                + "FROM Repair_Requests rr "
-                + "JOIN Users u ON rr.user_id = u.user_id "
-                + "WHERE rr.disable = 0 AND rr.status != 'cancel'"
+                + "FROM `Repair_Requests` rr "
+                + "JOIN `Users` u ON rr.request_by = u.user_id "
+                + "WHERE rr.deleted_at IS NULL AND rr.status != 'cancelled'"
         );
         if (searchKeyword != null && !searchKeyword.trim().isEmpty()) {
-            sql.append(" AND rr.reason LIKE ?");
+            sql.append(" AND rr.issue_description LIKE ?");
         }
         if (status != null && !status.equalsIgnoreCase("all")) {
             sql.append(" AND rr.status = ?");
@@ -198,7 +216,7 @@ public class RepairRequestDAO extends DBContext {
             throw new IllegalArgumentException("ID người duyệt không hợp lệ.");
         }
 
-        String checkSql = "SELECT status FROM Repair_Requests WHERE repair_request_id = ?";
+        String checkSql = "SELECT status FROM Repair_Requests WHERE rr_id = ?";
         try (PreparedStatement checkPs = connection.prepareStatement(checkSql)) {
             checkPs.setInt(1, repairRequestId);
             try (ResultSet rs = checkPs.executeQuery()) {
@@ -217,10 +235,10 @@ public class RepairRequestDAO extends DBContext {
         String status;
         if ("approve".equalsIgnoreCase(action)) {
             status = "approved";
-            sql = "UPDATE Repair_Requests SET status = ?, approved_by = ?, approved_at = CURRENT_TIMESTAMP, approval_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE repair_request_id = ?";
+            sql = "UPDATE Repair_Requests SET status = ?, approved_by = ?, approved_at = CURRENT_TIMESTAMP, approval_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE rr_id = ?";
         } else {
             status = "rejected";
-            sql = "UPDATE Repair_Requests SET status = ?, approved_by = ?, approved_at = CURRENT_TIMESTAMP, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE repair_request_id = ?";
+            sql = "UPDATE Repair_Requests SET status = ?, approved_by = ?, approved_at = CURRENT_TIMESTAMP, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP WHERE rr_id = ?";
         }
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -235,19 +253,19 @@ public class RepairRequestDAO extends DBContext {
     public List<RepairRequest> searchByReason(String reason) throws SQLException {
         List<RepairRequest> list = new ArrayList<>();
         String sql = "SELECT rr.*, u.full_name FROM Repair_Requests rr "
-                + "JOIN Users u ON rr.user_id = u.user_id "
-                + "WHERE rr.disable = 0 AND rr.status != 'cancel' AND rr.reason LIKE ?";
+                + "JOIN Users u ON rr.request_by = u.user_id "
+                + "WHERE rr.deleted_at IS NULL AND rr.status != 'cancelled' AND rr.issue_description LIKE ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, "%" + (reason == null ? "" : reason) + "%");
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     RepairRequest req = new RepairRequest();
-                    req.setRepairRequestId(rs.getInt("repair_request_id"));
-                    req.setRequestCode(rs.getString("request_code"));
-                    req.setUserId(rs.getInt("user_id"));
+                    req.setRepairRequestId(rs.getInt("rr_id"));
+                    req.setRequestCode(rs.getString("rr_code"));
+                    req.setUserId(rs.getInt("request_by"));
                     req.setFullName(rs.getString("full_name"));
                     req.setRequestDate(rs.getTimestamp("request_date"));
-                    req.setReason(rs.getString("reason"));
+                    req.setReason(rs.getString("issue_description"));
                     req.setStatus(rs.getString("status"));
                     list.add(req);
                 }
@@ -259,19 +277,19 @@ public class RepairRequestDAO extends DBContext {
     public List<RepairRequest> filterByStatus(String status) throws SQLException {
         List<RepairRequest> list = new ArrayList<>();
         String sql = "SELECT rr.*, u.full_name FROM Repair_Requests rr "
-                + "JOIN Users u ON rr.user_id = u.user_id "
-                + "WHERE rr.disable = 0 AND rr.status != 'cancel' AND rr.status = ?";
+                + "JOIN Users u ON rr.request_by = u.user_id "
+                + "WHERE rr.deleted_at IS NULL AND rr.status != 'cancelled' AND rr.status = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, status);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     RepairRequest req = new RepairRequest();
-                    req.setRepairRequestId(rs.getInt("repair_request_id"));
-                    req.setRequestCode(rs.getString("request_code"));
-                    req.setUserId(rs.getInt("user_id"));
+                    req.setRepairRequestId(rs.getInt("rr_id"));
+                    req.setRequestCode(rs.getString("rr_code"));
+                    req.setUserId(rs.getInt("request_by"));
                     req.setFullName(rs.getString("full_name"));
                     req.setRequestDate(rs.getTimestamp("request_date"));
-                    req.setReason(rs.getString("reason"));
+                    req.setReason(rs.getString("issue_description"));
                     req.setStatus(rs.getString("status"));
                     list.add(req);
                 }
@@ -282,27 +300,27 @@ public class RepairRequestDAO extends DBContext {
 
     public RepairRequest getRepairRequestById(int repairRequestId) throws SQLException {
         String sql = "SELECT rr.*, u.full_name FROM Repair_Requests rr "
-                + "JOIN Users u ON rr.user_id = u.user_id "
-                + "WHERE rr.repair_request_id = ? AND rr.disable = 0";
+                + "JOIN Users u ON rr.request_by = u.user_id "
+                + "WHERE rr.rr_id = ? AND rr.deleted_at IS NULL";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, repairRequestId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     RepairRequest request = new RepairRequest();
-                    request.setRepairRequestId(rs.getInt("repair_request_id"));
-                    request.setRequestCode(rs.getString("request_code"));
-                    request.setUserId(rs.getInt("user_id"));
+                    request.setRepairRequestId(rs.getInt("rr_id"));
+                    request.setRequestCode(rs.getString("rr_code"));
+                    request.setUserId(rs.getInt("request_by"));
                     request.setFullName(rs.getString("full_name"));
                     request.setRequestDate(rs.getTimestamp("request_date"));
                     request.setStatus(rs.getString("status"));
-                    request.setReason(rs.getString("reason"));
+                    request.setReason(rs.getString("issue_description"));
                     request.setApprovedBy(rs.getObject("approved_by") != null ? rs.getInt("approved_by") : null);
                     request.setApprovalReason(rs.getString("approval_reason"));
                     request.setApprovedAt(rs.getTimestamp("approved_at"));
                     request.setRejectionReason(rs.getString("rejection_reason"));
                     request.setCreatedAt(rs.getTimestamp("created_at"));
                     request.setUpdatedAt(rs.getTimestamp("updated_at"));
-                    request.setDisable(rs.getBoolean("disable"));
+                    request.setDeletedAt(rs.getTimestamp("deleted_at"));
                     return request;
                 }
             }
@@ -325,13 +343,13 @@ public class RepairRequestDAO extends DBContext {
     public String generateNextRequestCode() {
         String nextCode = "RR1";
         try {
-            String sql = "SELECT request_code FROM Repair_Requests WHERE disable = 0 ORDER BY request_code";
+            String sql = "SELECT rr_code FROM Repair_Requests WHERE deleted_at IS NULL ORDER BY rr_code";
             PreparedStatement ps = connection.prepareStatement(sql);
             ResultSet rs = ps.executeQuery();
-            
+
             List<String> existingCodes = new ArrayList<>();
             while (rs.next()) {
-                String code = rs.getString("request_code");
+                String code = rs.getString("rr_code");
                 if (code != null && code.startsWith("RR")) {
                     existingCodes.add(code);
                 }

@@ -4,14 +4,14 @@ import dal.ExportDAO;
 import dal.ExportDetailDAO;
 import dal.ExportRequestDAO;
 import dal.MaterialDAO;
-import dal.RecipientDAO;
+import dal.CustomerDAO;
 import dal.VehicleDAO;
 import dal.WarehouseDAO;
 import dal.WarehouseRackDAO;
 import entity.Export;
 import entity.ExportRequest;
 import entity.Material;
-import entity.Recipient;
+import entity.Customer;
 import entity.User;
 import entity.Vehicle;
 import entity.Warehouse;
@@ -206,8 +206,8 @@ public class ExportMaterialServlet extends HttpServlet {
             return;
         }
 
-        // Check permission: Admin has full access, others need CREATE_EXPORT permission
-        if (!PermissionHelper.hasPermission(user, "CREATE_EXPORT")) {
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(user, "Tạo xuất kho")) {
             request.setAttribute("error", "You do not have permission to export materials.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
@@ -216,7 +216,7 @@ public class ExportMaterialServlet extends HttpServlet {
         ExportDAO exportDAO = null;
         ExportRequestDAO exportRequestDAO = null;
         MaterialDAO materialDAO = null;
-        RecipientDAO recipientDAO = null;
+        CustomerDAO customerDAO = null;
         VehicleDAO vehicleDAO = null;
         WarehouseDAO warehouseDAO = null;
 
@@ -224,7 +224,7 @@ public class ExportMaterialServlet extends HttpServlet {
             exportDAO = new ExportDAO();
             exportRequestDAO = new ExportRequestDAO();
             materialDAO = new MaterialDAO();
-            recipientDAO = new RecipientDAO();
+            customerDAO = new CustomerDAO();
             vehicleDAO = new VehicleDAO();
             warehouseDAO = new WarehouseDAO();
 
@@ -240,9 +240,9 @@ public class ExportMaterialServlet extends HttpServlet {
             List<Material> materials = materialDAO.getAllProducts();
             request.setAttribute("materials", materials);
 
-            // Get all recipients
-            List<Recipient> recipients = recipientDAO.getAllRecipients();
-            request.setAttribute("recipients", recipients);
+            // Get all customers
+            List<Customer> customers = customerDAO.getAllCustomers();
+            request.setAttribute("customers", customers);
 
             // Get available vehicles
             List<Vehicle> vehicles = vehicleDAO.getAllVehicles();
@@ -262,7 +262,7 @@ public class ExportMaterialServlet extends HttpServlet {
             if (exportDAO != null) exportDAO.close();
             if (exportRequestDAO != null) exportRequestDAO.close();
             if (materialDAO != null) materialDAO.close();
-            if (recipientDAO != null) recipientDAO.close();
+            if (customerDAO != null) customerDAO.close();
             if (vehicleDAO != null) vehicleDAO.close();
             if (warehouseDAO != null) warehouseDAO.close();
         }
@@ -279,8 +279,8 @@ public class ExportMaterialServlet extends HttpServlet {
             return;
         }
 
-        // Check permission: Admin has full access, others need CREATE_EXPORT permission
-        if (!PermissionHelper.hasPermission(user, "CREATE_EXPORT")) {
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(user, "Tạo xuất kho")) {
             request.setAttribute("error", "You do not have permission to export materials.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
@@ -289,7 +289,7 @@ public class ExportMaterialServlet extends HttpServlet {
         // Read form data
         String exportCode = request.getParameter("exportCode");
         String exportRequestIdStr = request.getParameter("exportRequestId");
-        String recipientIdStr = request.getParameter("recipientId");
+        String customerIdStr = request.getParameter("customerId");
         String vehicleIdStr = request.getParameter("vehicleId");
         String exportDateStr = request.getParameter("exportDate");
         String note = request.getParameter("note");
@@ -308,8 +308,8 @@ public class ExportMaterialServlet extends HttpServlet {
             return;
         }
 
-        if (recipientIdStr == null || recipientIdStr.trim().isEmpty()) {
-            request.setAttribute("error", "Recipient is required");
+        if (customerIdStr == null || customerIdStr.trim().isEmpty()) {
+            request.setAttribute("error", "Customer is required");
             doGet(request, response);
             return;
         }
@@ -347,11 +347,8 @@ public class ExportMaterialServlet extends HttpServlet {
             Export export = new Export();
             export.setExportCode(exportCode);
             export.setExportedBy(user.getUserId());
-            export.setRecipientId(Integer.parseInt(recipientIdStr));
-
-            if (vehicleIdStr != null && !vehicleIdStr.trim().isEmpty()) {
-                export.setVehicleId(Integer.parseInt(vehicleIdStr));
-            }
+            // Note: customerId is not directly stored in Exports table in v11
+            // It is linked through Export_Requests (erId) or Sales_Orders (soId)
 
             if (exportRequestIdStr != null && !exportRequestIdStr.trim().isEmpty()) {
                 export.setExportRequestId(Integer.parseInt(exportRequestIdStr));

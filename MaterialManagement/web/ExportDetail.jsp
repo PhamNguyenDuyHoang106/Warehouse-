@@ -1,6 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -104,10 +105,28 @@
                                     <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
                                 </c:choose>
                             </p>
-                            <p><strong><i class="fas fa-money-bill me-1"></i>Total Value:</strong> 
+                            <p><strong><i class="fas fa-money-bill me-1"></i>Total Revenue:</strong> 
                                 <c:choose>
-                                    <c:when test="${not empty totalValue}">
-                                        <fmt:formatNumber value="${totalValue}" type="currency" currencySymbol="VND" />
+                                    <c:when test="${not empty totalRevenue}">
+                                        <fmt:formatNumber value="${totalRevenue}" type="currency" currencySymbol="VND" />
+                                    </c:when>
+                                    <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                </c:choose>
+                            </p>
+                            <p><strong><i class="fas fa-dollar-sign me-1"></i>Total Cost:</strong> 
+                                <c:choose>
+                                    <c:when test="${not empty totalCost}">
+                                        <fmt:formatNumber value="${totalCost}" type="currency" currencySymbol="VND" />
+                                    </c:when>
+                                    <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                </c:choose>
+                            </p>
+                            <p><strong><i class="fas fa-chart-line me-1"></i>Total Profit:</strong> 
+                                <c:choose>
+                                    <c:when test="${not empty totalProfit}">
+                                        <span class="text-success fw-bold">
+                                            <fmt:formatNumber value="${totalProfit}" type="currency" currencySymbol="VND" />
+                                        </span>
                                     </c:when>
                                     <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
                                 </c:choose>
@@ -128,24 +147,24 @@
                 </div>
             </div>
             
-            <!-- Recipient Information Card -->
-            <c:if test="${not empty recipient}">
+            <!-- Customer Information Card -->
+            <c:if test="${not empty customer}">
                 <div class="card">
-                    <div class="card-header"><i class="fas fa-user-tag me-1"></i>Recipient Information</div>
+                    <div class="card-header"><i class="fas fa-user-tag me-1"></i>Customer Information</div>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-6">
-                                <p><strong>Recipient Code:</strong> ${recipient.recipientCode}</p>
-                                <p><strong>Recipient Name:</strong> ${recipient.recipientName}</p>
+                                <p><strong>Customer Code:</strong> ${customer.customerCode}</p>
+                                <p><strong>Customer Name:</strong> ${customer.customerName}</p>
                                 <p><strong>Contact Person:</strong> 
                                     <c:choose>
-                                        <c:when test="${not empty recipient.contactPerson}">${recipient.contactPerson}</c:when>
+                                        <c:when test="${not empty customer.contactPerson}">${customer.contactPerson}</c:when>
                                         <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
                                     </c:choose>
                                 </p>
                                 <p><strong>Phone:</strong> 
                                     <c:choose>
-                                        <c:when test="${not empty recipient.phoneNumber}">${recipient.phoneNumber}</c:when>
+                                        <c:when test="${not empty customer.phone}">${customer.phone}</c:when>
                                         <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
                                     </c:choose>
                                 </p>
@@ -153,24 +172,18 @@
                             <div class="col-md-6">
                                 <p><strong>Email:</strong> 
                                     <c:choose>
-                                        <c:when test="${not empty recipient.email}">${recipient.email}</c:when>
+                                        <c:when test="${not empty customer.email}">${customer.email}</c:when>
                                         <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
                                     </c:choose>
                                 </p>
                                 <p><strong>Address:</strong> 
                                     <c:choose>
-                                        <c:when test="${not empty recipient.address}">${recipient.address}</c:when>
+                                        <c:when test="${not empty customer.address}">${customer.address}</c:when>
                                         <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
                                     </c:choose>
                                 </p>
-                                <p><strong>Location:</strong> 
-                                    <c:choose>
-                                        <c:when test="${not empty recipient.location}">${recipient.location}</c:when>
-                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
-                                    </c:choose>
-                                </p>
-                                <c:if test="${not empty recipient.description}">
-                                    <p><strong>Description:</strong> ${recipient.description}</p>
+                                <c:if test="${not empty customer.taxCode}">
+                                    <p><strong>Tax Code:</strong> ${customer.taxCode}</p>
                                 </c:if>
                             </div>
                         </div>
@@ -275,8 +288,11 @@
                                     <th>Rack</th>
                                     <th>Quantity</th>
                                     <th>Unit</th>
-                                    <th>Unit Price</th>
-                                    <th>Total</th>
+                                    <th>Unit Price (Export)</th>
+                                    <th>Unit Cost</th>
+                                    <th>Revenue</th>
+                                    <th>Cost</th>
+                                    <th>Profit</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -284,14 +300,20 @@
                                     <tr>
                                         <td>${loop.index + 1}</td>
                                         <td class="img-cell">
+                                            <c:set var="mediaUrl" value="${detail.materialsUrl}" />
                                             <c:choose>
-                                                <c:when test="${not empty detail.materialsUrl}">
-                                                    <img src="${pageContext.request.contextPath}/images/material/${detail.materialsUrl}" 
+                                                <c:when test="${not empty mediaUrl && (fn:startsWith(mediaUrl, 'http://') || fn:startsWith(mediaUrl, 'https://') || fn:startsWith(mediaUrl, '/'))}">
+                                                    <img src="${mediaUrl}" 
+                                                         alt="${detail.materialName}" 
+                                                         class="material-img">
+                                                </c:when>
+                                                <c:when test="${not empty mediaUrl}">
+                                                    <img src="${pageContext.request.contextPath}/${mediaUrl}" 
                                                          alt="${detail.materialName}" 
                                                          class="material-img">
                                                 </c:when>
                                                 <c:otherwise>
-                                                    <img src="${pageContext.request.contextPath}/images/default-material.png" 
+                                                    <img src="${pageContext.request.contextPath}/images/material/default.jpg" 
                                                          alt="No Image" 
                                                          class="material-img">
                                                 </c:otherwise>
@@ -325,8 +347,34 @@
                                         </td>
                                         <td>
                                             <c:choose>
+                                                <c:when test="${not empty pricingMap[detail.exportDetailId] && not empty pricingMap[detail.exportDetailId].unitCost}">
+                                                    <fmt:formatNumber value="${pricingMap[detail.exportDetailId].unitCost}" type="currency" currencySymbol="VND" />
+                                                </c:when>
+                                                <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                        <td>
+                                            <c:choose>
                                                 <c:when test="${not empty detail.unitPriceExport && not empty detail.quantity}">
                                                     <fmt:formatNumber value="${detail.quantity * detail.unitPriceExport}" type="currency" currencySymbol="VND" />
+                                                </c:when>
+                                                <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${not empty pricingMap[detail.exportDetailId] && not empty pricingMap[detail.exportDetailId].unitCost && not empty pricingMap[detail.exportDetailId].quantity}">
+                                                    <fmt:formatNumber value="${pricingMap[detail.exportDetailId].unitCost * pricingMap[detail.exportDetailId].quantity}" type="currency" currencySymbol="VND" />
+                                                </c:when>
+                                                <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${not empty pricingMap[detail.exportDetailId] && not empty pricingMap[detail.exportDetailId].profit}">
+                                                    <span class="text-success fw-bold">
+                                                        <fmt:formatNumber value="${pricingMap[detail.exportDetailId].profit}" type="currency" currencySymbol="VND" />
+                                                    </span>
                                                 </c:when>
                                                 <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
                                             </c:choose>

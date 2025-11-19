@@ -133,20 +133,10 @@
                                                     <label for="phoneNumber" class="form-label text-muted">Phone Number</label>
                                                     <input type="text" class="form-control <% if(errors != null && errors.containsKey("phoneNumber")) { %>is-invalid<% } %>" 
                                                            name="phoneNumber" id="phoneNumber"
-                                                           placeholder="Enter Phone Number" maxlength="15"
+                                                           placeholder="Enter Phone Number" maxlength="20"
                                                            value="${fn:escapeXml(enteredUser != null && enteredUser.getPhoneNumber() != null ? enteredUser.getPhoneNumber() : '')}" required>
                                                     <% if (errors != null && errors.containsKey("phoneNumber")) { %>
                                                     <div class="invalid-feedback">${fn:escapeXml(errors.get("phoneNumber"))}</div>
-                                                    <% } %>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="address" class="form-label text-muted">Address</label>
-                                                    <input type="text" class="form-control <% if(errors != null && errors.containsKey("address")) { %>is-invalid<% } %>" 
-                                                           name="address" id="address"
-                                                           placeholder="Enter Address"
-                                                           value="${fn:escapeXml(enteredUser != null && enteredUser.getAddress() != null ? enteredUser.getAddress() : '')}" required>
-                                                    <% if (errors != null && errors.containsKey("address")) { %>
-                                                    <div class="invalid-feedback">${fn:escapeXml(errors.get("address"))}</div>
                                                     <% } %>
                                                 </div>
                                             </div>
@@ -379,25 +369,17 @@
                 }
 
                 const phoneNumber = document.getElementById('phoneNumber').value;
+                const phoneRegex = /^\+?[0-9]{1,20}$/;
                 if (!phoneNumber) {
                     errors.push('Phone number is required.');
                     document.getElementById('phoneNumber').classList.add('is-invalid');
                     document.getElementById('phoneNumber').nextElementSibling.textContent = 'Phone number is required.';
+                } else if (!phoneRegex.test(phoneNumber)) {
+                    errors.push('Phone number must be 1-20 digits, optionally starting with "+".');
+                    document.getElementById('phoneNumber').classList.add('is-invalid');
+                    document.getElementById('phoneNumber').nextElementSibling.textContent = 'Phone number must be 1-20 digits, optionally starting with "+".';
                 } else {
                     document.getElementById('phoneNumber').classList.remove('is-invalid');
-                }
-
-                const address = document.getElementById('address').value;
-                if (!address) {
-                    errors.push('Address is required.');
-                    document.getElementById('address').classList.add('is-invalid');
-                    document.getElementById('address').nextElementSibling.textContent = 'Address is required.';
-                } else if (address.length > 25) {
-                    errors.push('Address must not exceed 25 characters.');
-                    document.getElementById('address').classList.add('is-invalid');
-                    document.getElementById('address').nextElementSibling.textContent = 'Address must not exceed 25 characters.';
-                } else {
-                    document.getElementById('address').classList.remove('is-invalid');
                 }
 
                 if (!roleId) {

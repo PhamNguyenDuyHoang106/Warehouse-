@@ -4,6 +4,7 @@ import dal.DepartmentDAO;
 import dal.RolePermissionDAO;
 import entity.Department;
 import entity.User;
+import utils.PermissionHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -44,8 +45,9 @@ public class EditDepartmentServlet extends HttpServlet {
 
         User user = (User) session.getAttribute("user");
         int roleId = user.getRoleId();
-        if (!rolePermissionDAO.hasPermission(roleId, "UPDATE_DEPARTMENT")) {
-            request.setAttribute("error", "You do not have permission to edit departments.");
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(user, "Sửa phòng ban")) {
+            request.setAttribute("error", "Bạn không có quyền chỉnh sửa phòng ban.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }
@@ -85,8 +87,9 @@ public class EditDepartmentServlet extends HttpServlet {
 
         User user = (User) session.getAttribute("user");
         int roleId = user.getRoleId();
-        if (!rolePermissionDAO.hasPermission(roleId, "UPDATE_DEPARTMENT")) {
-            request.setAttribute("error", "You do not have permission to edit departments.");
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(user, "Sửa phòng ban")) {
+            request.setAttribute("error", "Bạn không có quyền chỉnh sửa phòng ban.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }

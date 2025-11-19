@@ -77,7 +77,8 @@
                 <!-- Page Content -->
                 <div class="col-md-9 col-lg-10 px-md-4">
                     <c:set var="roleId" value="${sessionScope.user.roleId}" />
-                    <c:set var="hasViewListPermission" value="${rolePermissionDAO.hasPermission(roleId, 'VIEW_LIST_USER')}" scope="request" />
+                    <c:set var="isAdmin" value="${sessionScope.user.roleId == 1}" />
+                    <c:set var="hasViewListPermission" value="${isAdmin || rolePermissionDAO.hasPermission(roleId, 'Danh sách người dùng')}" scope="request" />
 
                     <c:if test="${!hasViewListPermission}">
                         <div class="alert alert-danger">You do not have permission to view the user list.</div>
@@ -85,7 +86,7 @@
                     <c:if test="${hasViewListPermission}">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h2 class="text-primary fw-bold display-6 border-bottom pb-2">👤 User List</h2>
-                            <c:if test="${rolePermissionDAO.hasPermission(roleId, 'CREATE_USER')}">
+                            <c:if test="${isAdmin || rolePermissionDAO.hasPermission(roleId, 'Tạo người dùng')}">
                                 <button type="button" class="btn btn-primary" onclick="window.location.href = 'CreateUser'">Create User</button>
                             </c:if>
                         </div>
@@ -151,7 +152,7 @@
                                         <th>Department</th>
                                         <th>Role</th>
                                         <th>Status</th>
-                                        <c:if test="${rolePermissionDAO.hasPermission(roleId, 'UPDATE_USER') || rolePermissionDAO.hasPermission(roleId, 'DELETE_USER') || rolePermissionDAO.hasPermission(roleId, 'VIEW_DETAIL_USER')}">
+                                        <c:if test="${isAdmin || rolePermissionDAO.hasPermission(roleId, 'Sửa người dùng') || rolePermissionDAO.hasPermission(roleId, 'Xóa người dùng') || rolePermissionDAO.hasPermission(roleId, 'Xem chi tiết')}">
                                             <th>Action</th>
                                         </c:if>
                                     </tr>
@@ -169,7 +170,7 @@
                                                         <c:when test="${user.roleId == 2}">
                                                             No Department
                                                         </c:when>
-                                                        <c:when test="${rolePermissionDAO.hasPermission(roleId, 'UPDATE_USER') && user.roleId != 2}">
+                                                        <c:when test="${isAdmin || rolePermissionDAO.hasPermission(roleId, 'Sửa người dùng')}">
                                                             <form method="post" action="UserList" style="display:inline;">
                                                                 <input type="hidden" name="userId" value="${user.userId}"/>
                                                                 <input type="hidden" name="action" value="updateDepartment"/>
@@ -202,8 +203,8 @@
                                                 </td>
                                                 <td>
                                                     <c:choose>
-                                                        <c:when test="${rolePermissionDAO.hasPermission(roleId, 'UPDATE_USER')}">
-                                                            <form method="post" action="UserList" style="display:inline;">
+                                                        <c:when test="${isAdmin || rolePermissionDAO.hasPermission(roleId, 'Sửa người dùng')}">
+                                                            <form method="post" action="UserList" style="display:inline;" id="roleForm_${user.userId}">
                                                                 <input type="hidden" name="userId" value="${user.userId}"/>
                                                                 <input type="hidden" name="action" value="updateRole"/>
                                                                 <input type="hidden" name="usernameFilter" value="${usernameFilter}"/>
@@ -211,12 +212,19 @@
                                                                 <input type="hidden" name="roleIdFilter" value="${roleIdFilter}"/>
                                                                 <input type="hidden" name="departmentIdFilter" value="${departmentIdFilter}"/>
                                                                 <input type="hidden" name="page" value="${currentPage}"/>
-                                                                <select name="roleId" class="form-select form-select-sm d-inline w-auto" onchange="this.form.submit()">
-                                                                    <c:forEach var="role" items="${roleList}">
-                                                                        <c:if test="${role.roleId != 1}">
-                                                                            <option value="${role.roleId}" ${user.roleId == role.roleId ? 'selected' : ''}>${role.roleName}</option>
-                                                                        </c:if>
-                                                                    </c:forEach>
+                                                                <select name="roleId" class="form-select form-select-sm d-inline w-auto" onchange="handleRoleChange(this, ${user.userId}, ${user.roleId})">
+                                                                    <c:choose>
+                                                                        <c:when test="${empty roleList}">
+                                                                            <option value="${user.roleId}">${user.roleName != null ? user.roleName : 'Unknown'}</option>
+                                                                        </c:when>
+                                                                        <c:otherwise>
+                                                                            <c:forEach var="role" items="${roleList}">
+                                                                                <c:if test="${role.roleId != 1}">
+                                                                                    <option value="${role.roleId}" ${user.roleId == role.roleId ? 'selected' : ''}>${role.roleName}</option>
+                                                                                </c:if>
+                                                                            </c:forEach>
+                                                                        </c:otherwise>
+                                                                    </c:choose>
                                                                 </select>
                                                             </form>
                                                         </c:when>
@@ -231,7 +239,7 @@
                                                 </td>
                                                 <td>
                                                     <c:choose>
-                                                        <c:when test="${rolePermissionDAO.hasPermission(roleId, 'UPDATE_USER')}">
+                                                        <c:when test="${isAdmin || rolePermissionDAO.hasPermission(roleId, 'Sửa người dùng')}">
                                                             <form method="post" action="UserList" style="display:inline;">
                                                                 <input type="hidden" name="userId" value="${user.userId}"/>
                                                                 <input type="hidden" name="action" value="updateStatus"/>
@@ -251,15 +259,20 @@
                                                         </c:otherwise>
                                                     </c:choose>
                                                 </td>
-                                                <c:if test="${rolePermissionDAO.hasPermission(roleId, 'UPDATE_USER') || rolePermissionDAO.hasPermission(roleId, 'DELETE_USER') || rolePermissionDAO.hasPermission(roleId, 'VIEW_DETAIL_USER')}">
+                                                <c:if test="${isAdmin || rolePermissionDAO.hasPermission(roleId, 'Sửa người dùng') || rolePermissionDAO.hasPermission(roleId, 'Xóa người dùng') || rolePermissionDAO.hasPermission(roleId, 'Xem chi tiết')}">
                                                     <td>
                                                         <div class="d-flex justify-content-center">
-                                                            <c:if test="${rolePermissionDAO.hasPermission(roleId, 'VIEW_DETAIL_USER')}">
+                                                            <c:if test="${isAdmin || rolePermissionDAO.hasPermission(roleId, 'Xem chi tiết')}">
                                                                 <a href="UserDetail?userId=${user.userId}" class="btn btn-info btn-action" title="View Details">
                                                                     <i class="fas fa-eye"></i>
                                                                 </a>
                                                             </c:if>
-                                                            <c:if test="${rolePermissionDAO.hasPermission(roleId, 'DELETE_USER')}">
+                                                            <c:if test="${isAdmin || rolePermissionDAO.hasPermission(roleId, 'Sửa người dùng')}">
+                                                                <a href="EditUser?userId=${user.userId}" class="btn btn-warning btn-action" title="Edit User">
+                                                                    <i class="fas fa-edit"></i>
+                                                                </a>
+                                                            </c:if>
+                                                            <c:if test="${isAdmin || rolePermissionDAO.hasPermission(roleId, 'Xóa người dùng')}">
                                                                 <form method="post" action="UserList" style="display:inline;">
                                                                     <input type="hidden" name="userId" value="${user.userId}"/>
                                                                     <input type="hidden" name="action" value="delete"/>
@@ -305,7 +318,21 @@
 
         <jsp:include page="Footer.jsp" />
 
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js" integrity="sha512-yFjZbTYRCJodnuyGlsKamNE/LlEaEAxSUDe5+u61mV8zzqJVFOH7TnULE2/PP/l5vKWpUNnF4VGVkXh3MjgLsg==" crossorigin="anonymous"></script>
+        <script>
+            function handleRoleChange(selectElement, userId, currentRoleId) {
+                var newRoleId = selectElement.value;
+                if (newRoleId == currentRoleId) {
+                    return; // Không thay đổi gì
+                }
+                if (confirm('Are you sure you want to change this user\'s role?')) {
+                    selectElement.form.submit();
+                } else {
+                    // Reset về giá trị cũ
+                    selectElement.value = currentRoleId;
+                }
+            }
+        </script>
     </body>
 </html>

@@ -9,8 +9,8 @@ public class ExportRequest {
     private String requestCode;
     private int userId;
     private String userName;
-    private Integer recipientId; // Changed to Integer to allow null
-    private String recipientName;
+    private Integer customerId; // Changed from recipientId to customerId - Customer replaces Recipient
+    private String customerName;
     private Timestamp requestDate;
     private String status;
     private Date deliveryDate;
@@ -23,7 +23,7 @@ public class ExportRequest {
     private boolean isUsed;
     private Timestamp createdAt;
     private Timestamp updatedAt;
-    private boolean disable;
+    private Timestamp deletedAt;
     private List<ExportRequestDetail> details;
 
     public int getExportRequestId() {
@@ -58,20 +58,41 @@ public class ExportRequest {
         this.userName = userName;
     }
 
+    public Integer getCustomerId() {
+        return customerId;
+    }
+
+    public void setCustomerId(Integer customerId) {
+        this.customerId = customerId;
+    }
+
+    public String getCustomerName() {
+        return customerName;
+    }
+
+    public void setCustomerName(String customerName) {
+        this.customerName = customerName;
+    }
+    
+    // Legacy methods for backward compatibility (deprecated)
+    @Deprecated
     public Integer getRecipientId() {
-        return recipientId;
+        return customerId;
     }
 
+    @Deprecated
     public void setRecipientId(Integer recipientId) {
-        this.recipientId = recipientId;
+        this.customerId = recipientId;
     }
 
+    @Deprecated
     public String getRecipientName() {
-        return recipientName;
+        return customerName;
     }
 
+    @Deprecated
     public void setRecipientName(String recipientName) {
-        this.recipientName = recipientName;
+        this.customerName = recipientName;
     }
 
     public Timestamp getRequestDate() {
@@ -178,11 +199,20 @@ public class ExportRequest {
         this.updatedAt = updatedAt;
     }
 
+    public Timestamp getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Timestamp deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+    
+    // Compatibility method
     public boolean isDisable() {
-        return disable;
+        return deletedAt != null;
     }
 
     public void setDisable(boolean disable) {
-        this.disable = disable;
+        this.deletedAt = disable ? new Timestamp(System.currentTimeMillis()) : null;
     }
 } 

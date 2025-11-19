@@ -125,27 +125,34 @@
             <div class="col">
                 <div class="card h-100 shadow-sm product-card">
                     <c:choose>
-                        <c:when test="${not empty material.materialsUrl}">
-                            <img src="${material.materialsUrl}" class="card-img-top" alt="${material.materialName}"
-                                 style="height: 220px; width: 100%; object-fit: contain; background-color: #fff; padding: 10px;">
-                        </c:when>
-                        <c:otherwise>
-                            <img src="images/default.jpg" class="card-img-top" alt="No Image"
-                                 style="height: 220px; width: 100%; object-fit: contain; background-color: #f0f0f0; padding: 10px;">
-                        </c:otherwise>
+                        <c:set var="mediaUrl" value="${material.materialsUrl}" />
+                        <c:choose>
+                            <c:when test="${not empty mediaUrl && (fn:startsWith(mediaUrl, 'http://') || fn:startsWith(mediaUrl, 'https://') || fn:startsWith(mediaUrl, '/'))}">
+                                <img src="${mediaUrl}" class="card-img-top" alt="${material.materialName}"
+                                     style="height: 220px; width: 100%; object-fit: contain; background-color: #fff; padding: 10px;">
+                            </c:when>
+                            <c:when test="${not empty mediaUrl}">
+                                <img src="${pageContext.request.contextPath}/${mediaUrl}" class="card-img-top" alt="${material.materialName}"
+                                     style="height: 220px; width: 100%; object-fit: contain; background-color: #fff; padding: 10px;">
+                            </c:when>
+                            <c:otherwise>
+                                <img src="${pageContext.request.contextPath}/images/material/default.jpg" class="card-img-top" alt="No Image"
+                                     style="height: 220px; width: 100%; object-fit: contain; background-color: #f0f0f0; padding: 10px;">
+                            </c:otherwise>
+                        </c:choose>
                     </c:choose>
                     <div class="card-body">
                         <h5 class="card-title">${material.materialName}</h5>
                         <p class="card-text mb-1">Code: <strong>${material.materialCode}</strong></p>
                         <p class="card-text mb-1">
                             Status: 
-                            <span class="status-${material.materialStatus == 'new' ? 'new' : material.materialStatus == 'used' ? 'used' : 'damaged'}">
+                            <span class="status-${material.materialStatus == 'active' ? 'active' : material.materialStatus == 'inactive' ? 'inactive' : 'discontinued'}">
                                 ${material.materialStatus}
                             </span>
                         </p>
                         <p class="card-text mb-1 condition-text">
-  Status: <span class="badge ${material.materialStatus == 'new' ? 'bg-success' : (material.materialStatus == 'used' ? 'bg-warning' : 'bg-danger')}">
-    ${material.materialStatus == 'new' ? 'New' : (material.materialStatus == 'used' ? 'Used' : 'Damaged')}
+  Status: <span class="badge ${material.materialStatus == 'active' ? 'bg-success' : (material.materialStatus == 'inactive' ? 'bg-warning' : 'bg-secondary')}">
+    ${material.materialStatus == 'active' ? 'Active' : (material.materialStatus == 'inactive' ? 'Inactive' : 'Discontinued')}
   </span>
 </p>
                         <p class="card-text mb-1">Unit ID: ${material.unit != null ? material.unit.id : 'N/A'}</p>

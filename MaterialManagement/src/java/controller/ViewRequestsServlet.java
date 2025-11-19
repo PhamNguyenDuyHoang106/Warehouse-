@@ -1,11 +1,13 @@
 package controller;
 
 import dal.RequestDAO;
+import dal.RolePermissionDAO;
 import entity.ExportRequest;
 import entity.PurchaseOrder;
 import entity.PurchaseRequest;
 import entity.RepairRequest;
 import entity.User;
+import utils.PermissionHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -16,7 +18,6 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import dal.RolePermissionDAO;
 
 @WebServlet(name = "ViewRequestsServlet", urlPatterns = {"/ViewRequests"})
 public class ViewRequestsServlet extends HttpServlet {
@@ -33,8 +34,15 @@ public class ViewRequestsServlet extends HttpServlet {
         }
 
         User user = (User) session.getAttribute("user");
-        if (!rolePermissionDAO.hasPermission(user.getRoleId(), "VIEW_APPLICATION")) {
-            request.setAttribute("error", "You do not have permission to view requests.");
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        // ViewRequests hiển thị nhiều loại requests, cần check từng loại
+        // Tạm thời cho phép nếu có ít nhất một trong các quyền sau
+        boolean hasAnyPermission = PermissionHelper.hasPermission(user, "DS yêu cầu xuất") ||
+                                    PermissionHelper.hasPermission(user, "DS yêu cầu mua") ||
+                                    PermissionHelper.hasPermission(user, "DS yêu cầu sửa") ||
+                                    PermissionHelper.hasPermission(user, "DS đơn đặt hàng");
+        if (!hasAnyPermission) {
+            request.setAttribute("error", "Bạn không có quyền xem các yêu cầu.");
             request.getRequestDispatcher("ViewRequests.jsp").forward(request, response);
             return;
         }
@@ -106,7 +114,12 @@ public class ViewRequestsServlet extends HttpServlet {
         }
 
         User user = (User) session.getAttribute("user");
-        if (!rolePermissionDAO.hasPermission(user.getRoleId(), "VIEW_APPLICATION")) {
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        boolean hasAnyPermission = PermissionHelper.hasPermission(user, "DS yêu cầu xuất") ||
+                                    PermissionHelper.hasPermission(user, "DS yêu cầu mua") ||
+                                    PermissionHelper.hasPermission(user, "DS yêu cầu sửa") ||
+                                    PermissionHelper.hasPermission(user, "DS đơn đặt hàng");
+        if (!hasAnyPermission) {
             request.setAttribute("error", "You do not have permission to view or manage requests.");
             request.getRequestDispatcher("ViewRequests.jsp").forward(request, response);
             return;

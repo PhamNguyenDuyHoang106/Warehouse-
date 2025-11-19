@@ -131,19 +131,29 @@
                                 <tr>
                                     <td class="text-center">${loop.count}</td>
                                     <td class="text-center">
-                                        <img src="images/material/${not empty material.materialsUrl ? material.materialsUrl : 'https://via.placeholder.com/100x80?text=No+Image'}"
-                                             alt="Image ${material.materialName}">
+                                        <c:set var="mediaUrl" value="${material.materialsUrl}" />
+                                        <c:choose>
+                                            <c:when test="${not empty mediaUrl && (fn:startsWith(mediaUrl, 'http://') || fn:startsWith(mediaUrl, 'https://') || fn:startsWith(mediaUrl, '/'))}">
+                                                <img src="${mediaUrl}" alt="Image ${material.materialName}">
+                                            </c:when>
+                                            <c:when test="${not empty mediaUrl}">
+                                                <img src="${pageContext.request.contextPath}/${mediaUrl}" alt="Image ${material.materialName}">
+                                            </c:when>
+                                            <c:otherwise>
+                                                <img src="https://via.placeholder.com/100x80?text=No+Image" alt="Image ${material.materialName}">
+                                            </c:otherwise>
+                                        </c:choose>
                                     </td>
                                     <td>${material.materialName}</td>
                                     <td class="text-center">${material.materialCode}</td>
                                     <td class="text-center">
-                                        <span class="badge ${material.materialStatus == 'new' ? 'bg-success' : (material.materialStatus == 'used' ? 'bg-warning' : 'bg-danger')}">
-                                            ${material.materialStatus == 'new' ? 'Mới' : (material.materialStatus == 'used' ? 'Đã sử dụng' : 'Hỏng')}
+                                        <span class="badge ${material.materialStatus == 'active' ? 'bg-success' : (material.materialStatus == 'inactive' ? 'bg-warning' : 'bg-secondary')}">
+                                            ${material.materialStatus == 'active' ? 'Hoạt động' : (material.materialStatus == 'inactive' ? 'Tạm ngưng' : 'Ngưng kinh doanh')}
                                         </span>
                                     </td>
                                     <td class="text-end">
-                                        <span class="badge ${material.materialStatus == 'new' ? 'bg-success' : (material.materialStatus == 'used' ? 'bg-warning' : 'bg-danger')}">
-                                            ${material.materialStatus == 'new' ? 'New' : (material.materialStatus == 'used' ? 'Used' : 'Damaged')}
+                                        <span class="badge ${material.materialStatus == 'active' ? 'bg-success' : (material.materialStatus == 'inactive' ? 'bg-warning' : 'bg-secondary')}">
+                                            ${material.materialStatus == 'active' ? 'Active' : (material.materialStatus == 'inactive' ? 'Inactive' : 'Discontinued')}
                                         </span>
                                     </td>
                                     <td class="text-center">${material.unit != null ? material.unit.unitName : 'N/A'}</td>

@@ -105,9 +105,14 @@
     </style>
 </head>
 <body>
+    <c:set var="statusLower" value="${fn:toLowerCase(purchaseRequest.status)}"/>
+    <c:set var="statusClass"
+           value="${statusLower == 'approved' ? 'status-approved' :
+                   statusLower == 'rejected' ? 'status-rejected' : 'status-pending'}"/>
     <div class="container">
-        <h2>${purchaseRequest.requestCode} <span class="status-tag status-${purchaseRequest.status}">${purchaseRequest.status}</span></h2>
-        <p>Created at: ${purchaseRequest.requestDate}</p>
+        <h2>${purchaseRequest.requestCode} <span class="status-tag ${statusClass}">${fn:toUpperCase(purchaseRequest.status)}</span></h2>
+        <p>Request date: ${purchaseRequest.requestDate}</p>
+        <p>Expected date: ${purchaseRequest.expectedDate != null ? purchaseRequest.expectedDate : 'N/A'}</p>
 
         <div class="card">
             <div class="card-header">Requester</div>
@@ -115,7 +120,7 @@
                 <div style="flex: 1;">
                     <p><strong>Full Name:</strong> ${requester.fullName}</p>
                     <p><strong>Email:</strong> ${requester.email}</p>
-                    <p><strong>Phone Number:</strong> ${requester.phoneNumber}</p>
+                    <p><strong>Phone Number:</strong> ${requester.phone}</p>
                     <p><strong>Department:</strong> ${requester.departmentName}</p>
                     <p><strong>Role:</strong> ${requester.roleName}</p>
                 </div>
@@ -130,12 +135,10 @@
             <div class="card-body">
                 <p>Request Reason:</p>
                 <p>${purchaseRequest.reason != null ? purchaseRequest.reason : "N/A"}</p>
-                <c:if test="${not empty purchaseRequest.approvalReason}">
-                    <p><strong>Approval Reason:</strong> ${purchaseRequest.approvalReason}</p>
+                <p><strong>Total Amount:</strong> ${purchaseRequest.totalAmount}</p>
+                <c:if test="${purchaseRequest.approvedBy != null}">
+                    <p><strong>Approved By:</strong> ${purchaseRequest.approvedBy}</p>
                     <p><strong>Approved At:</strong> ${purchaseRequest.approvedAt}</p>
-                </c:if>
-                <c:if test="${not empty purchaseRequest.rejectionReason}">
-                    <p><strong>Rejection Reason:</strong> ${purchaseRequest.rejectionReason}</p>
                 </c:if>
             </div>
         </div>
@@ -153,9 +156,9 @@
                                 <th>Material Name</th>
                                 <th>Image</th>
                                 <th>Quantity</th>
-                                <th>Notes</th>
+                                <th>Unit</th>
+                                <th>Note</th>
                                 <th>Created</th>
-                                <th>Updated</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -164,17 +167,26 @@
                                     <td>${detail.materialId}</td>
                                     <td>${detail.materialName}</td>
                                     <td>
-                                        <img src="images/material/${materialImages[detail.materialId]}" alt="${detail.materialName}" style="width: 100px; height: auto; object-fit: cover;">
+                                        <c:set var="mediaUrl" value="${materialImages[detail.materialId]}" />
+                                        <c:choose>
+                                            <c:when test="${mediaUrl != null && mediaUrl != '' && (fn:startsWith(mediaUrl, 'http://') || fn:startsWith(mediaUrl, 'https://') || fn:startsWith(mediaUrl, '/'))}">
+                                                <img src="${mediaUrl}" alt="${detail.materialName}" style="width: 100px; height: auto; object-fit: cover;">
+                                            </c:when>
+                                            <c:otherwise>
+                                                <img src="${pageContext.request.contextPath}/${mediaUrl}" alt="${detail.materialName}" style="width: 100px; height: auto; object-fit: cover;">
+                                            </c:otherwise>
+                                        </c:choose>
                                         <br>
                                         <span style="font-size:12px; color:#888;">
                                             ${materialImages[detail.materialId]}
                                         </span>
                                     </td>
                                     <td>${detail.quantity}</td>
+                                    <td>${detail.unitName != null ? detail.unitName : 'N/A'}</td>
                                     <td>
                                         <c:choose>
-                                            <c:when test="${not empty detail.notes}">
-                                                ${detail.notes}
+                                            <c:when test="${not empty detail.note}">
+                                                ${detail.note}
                                             </c:when>
                                             <c:otherwise>
                                                 <span class="text-muted fst-italic">No notes</span>
@@ -182,7 +194,6 @@
                                         </c:choose>
                                     </td>
                                     <td>${detail.createdAt}</td>
-                                    <td>${detail.updatedAt}</td>
                                 </tr>
                             </c:forEach>
                         </tbody>
@@ -210,59 +221,8 @@
         </div>
 
         <div class="card">
-            <div class="card-header">Action</div>
             <div class="card-body">
-                <!-- Nút Approve/Reject mở modal -->
-                <div class="d-flex gap-2 mb-2">
-                    <c:choose>
-                        <c:when test="${purchaseRequest.status eq 'pending' && hasHandleRequestPermission}">
-                            <button type="button" class="btn btn-approve" data-bs-toggle="modal" data-bs-target="#updateStatusModal" onclick="setModalAction('approved')">Approve</button>
-                            <button type="button" class="btn btn-reject" data-bs-toggle="modal" data-bs-target="#updateStatusModal" onclick="setModalAction('rejected')">Reject</button>
-                            <a href="ListPurchaseRequests" class="btn btn-cancel">Cancel</a>
-                        </c:when>
-                        <c:otherwise>
-                            <a href="ListPurchaseRequests" class="btn btn-cancel">Cancel</a>
-                        </c:otherwise>
-                    </c:choose>
-                </div>
-                <!-- Modal nhập lý do duyệt/từ chối giống purchase order -->
-                <div class="modal fade" id="updateStatusModal" tabindex="-1" aria-labelledby="updateStatusModalLabel" aria-hidden="true">
-                  <div class="modal-dialog">
-                    <div class="modal-content">
-                      <form action="PurchaseRequestDetail" method="post" id="updateStatusForm">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="updateStatusModalLabel">Update Purchase Request Status</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                          <input type="hidden" name="id" value="${purchaseRequest.purchaseRequestId}" />
-                          <input type="hidden" id="modalStatus" name="modalStatus" value="" />
-                          <div class="mb-3">
-                            <label for="modalReason" class="form-label" id="reasonLabel">Approval Reason <span style="color:#DEAD6F">*</span></label>
-                            <textarea class="form-control" id="modalReason" name="reason" rows="3" placeholder="Enter reason..." required></textarea>
-                          </div>
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn" style="background-color:#DEAD6F; color:#fff;" data-bs-dismiss="modal">Cancel</button>
-                          <button type="submit" id="updateStatusBtn" class="btn" style="background-color:#DEAD6F; color:#fff;">Update Status</button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-                <script>
-                  function setModalAction(status) {
-                    document.getElementById('modalStatus').value = status;
-                    document.getElementById('reasonLabel').innerText = status === 'approved' ? 'Approval Reason *' : 'Rejection Reason *';
-                    document.getElementById('modalReason').value = '';
-                  }
-                  document.getElementById('updateStatusForm').addEventListener('submit', function(e) {
-                    if (!document.getElementById('modalReason').value.trim()) {
-                      document.getElementById('modalReason').focus();
-                      e.preventDefault();
-                    }
-                  });
-                </script>
+                <a href="ListPurchaseRequests" class="btn btn-cancel">Back to List</a>
             </div>
         </div>
     </div>

@@ -15,12 +15,11 @@ public class RepairRequestDetail {
 
     private int detailId;
     private int repairRequestId;
-    private int materialId;
+    private Integer materialId; // Nullable for spare_material_id
+    private Integer unitId; // Nullable for unit_id
     private BigDecimal quantity;
-    private String damageDescription;
-    private Double repairCost;
-    private int supplierId;
-    private String supplierName;
+    private String note; // Changed from damageDescription to match schema v11
+    private String damageDescription; // Keep for compatibility
     private Timestamp createdAt;
     private Timestamp updatedAt;
     private String materialName;
@@ -31,13 +30,12 @@ public class RepairRequestDetail {
     public RepairRequestDetail() {
     }
 
-    public RepairRequestDetail(int detailId, int repairRequestId, int materialId, java.math.BigDecimal quantity, String damageDescription, Double repairCost, Timestamp createdAt, Timestamp updatedAt) {
+    public RepairRequestDetail(int detailId, int repairRequestId, Integer materialId, java.math.BigDecimal quantity, String damageDescription, Timestamp createdAt, Timestamp updatedAt) {
         this.detailId = detailId;
         this.repairRequestId = repairRequestId;
         this.materialId = materialId;
         this.quantity = quantity;
         this.damageDescription = damageDescription;
-        this.repairCost = repairCost;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -54,21 +52,6 @@ public class RepairRequestDetail {
         this.material = material;
     }
 
-    public int getSupplierId() {
-        return supplierId;
-    }
-
-    public void setSupplierId(int supplierId) {
-        this.supplierId = supplierId;
-    }
-
-    public String getSupplierName() {
-        return supplierName;
-    }
-
-    public void setSupplierName(String supplierName) {
-        this.supplierName = supplierName;
-    }
 
     public void setDetailId(int detailId) {
         this.detailId = detailId;
@@ -82,12 +65,33 @@ public class RepairRequestDetail {
         this.repairRequestId = repairRequestId;
     }
 
-    public int getMaterialId() {
+    public Integer getMaterialId() {
         return materialId;
     }
 
     public void setMaterialId(int materialId) {
         this.materialId = materialId;
+    }
+
+    public void setMaterialId(Integer materialId) {
+        this.materialId = materialId;
+    }
+
+    public Integer getUnitId() {
+        return unitId;
+    }
+
+    public void setUnitId(Integer unitId) {
+        this.unitId = unitId;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
+        this.damageDescription = note; // Keep compatibility
     }
 
     public BigDecimal getQuantity() {
@@ -106,13 +110,6 @@ public class RepairRequestDetail {
         this.damageDescription = damageDescription;
     }
 
-    public Double getRepairCost() {
-        return repairCost;
-    }
-
-    public void setRepairCost(Double repairCost) {
-        this.repairCost = repairCost;
-    }
 
     public Timestamp getCreatedAt() {
         return createdAt;
@@ -160,9 +157,9 @@ public class RepairRequestDetail {
                 + "detailId=" + detailId
                 + ", repairRequestId=" + repairRequestId
                 + ", materialId=" + materialId
+                + ", unitId=" + unitId
                 + ", quantity=" + quantity
-                + ", damageDescription='" + damageDescription + '\''
-                + ", repairCost=" + repairCost
+                + ", note='" + note + '\''
                 + ", createdAt=" + createdAt
                 + ", updatedAt=" + updatedAt
                 + '}';

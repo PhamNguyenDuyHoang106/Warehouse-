@@ -34,7 +34,10 @@ public class CleanupScheduler implements ServletContextListener {
                             return;
                         }
                         
-                        String sql = "DELETE FROM Users WHERE status = 'inactive' AND verification_status = 'pending' AND verification_expiry < CURRENT_TIMESTAMP";
+                        String sql = 
+                            "DELETE FROM Users " +
+                            "WHERE deleted_at IS NOT NULL " +
+                            "AND deleted_at < DATE_SUB(NOW(), INTERVAL 90 DAY)";
                         try (PreparedStatement ps = conn.prepareStatement(sql)) {
                             int rowsAffected = ps.executeUpdate();
                             if (rowsAffected > 0) {

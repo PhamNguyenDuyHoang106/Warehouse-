@@ -196,7 +196,7 @@
                                                     </c:if>
                                                 </div>
                                                 <div class="col-md-2">
-                                                    <img class="material-image" src="images/material/default.jpg" alt="Material Image">
+                                                    <img class="material-image" src="${pageContext.request.contextPath}/images/material/default.jpg" alt="Material Image">
                                                 </div>
                                                 <div class="col-md-1 d-flex align-items-center">
                                                     <button type="button" class="btn btn-outline-danger remove-material">Remove</button>
@@ -225,6 +225,17 @@
         <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
         <script>
+            const contextPath = '${pageContext.request.contextPath}';
+            function resolveMediaUrl(url) {
+                if (!url || url === 'null') {
+                    return `${contextPath}/images/material/default.jpg`;
+                }
+                if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')) {
+                    return url;
+                }
+                return `${contextPath}/${url}`;
+            }
+
             // Autocomplete for material names with IDs
             const materialsData = [
             <c:forEach var="m" items="${materialList}" varStatus="loop">
@@ -263,14 +274,7 @@
                     select: function(event, ui) {
                         idInput.value = ui.item.id;
                         nameInput.value = ui.item.name;
-                        let imgUrl = ui.item.imageUrl && ui.item.imageUrl !== 'null' ? ui.item.imageUrl : '';
-                        if (imgUrl.startsWith('http') || imgUrl.startsWith('/') || imgUrl.startsWith('images/material/')) {
-                            img.src = imgUrl;
-                        } else if (imgUrl) {
-                            img.src = 'images/material/' + imgUrl;
-                        } else {
-                            img.src = 'images/material/default.jpg';
-                        }
+                        img.src = resolveMediaUrl(ui.item.imageUrl);
                         return false;
                     },
                     focus: function(event, ui) {
@@ -280,10 +284,7 @@
                     minLength: 0 // Cho phép hiển thị danh sách khi click (chưa gõ gì)
                 }).autocomplete("instance")._renderItem = function(ul, item) {
                     // Custom render với ảnh thumbnail
-                    let imgUrl = item.imageUrl && item.imageUrl !== 'null' ? item.imageUrl : '';
-                    if (!imgUrl.startsWith('http') && !imgUrl.startsWith('/') && !imgUrl.startsWith('images/material/')) {
-                        imgUrl = imgUrl ? 'images/material/' + imgUrl : 'images/material/default.jpg';
-                    }
+                    let imgUrl = resolveMediaUrl(item.imageUrl);
                     
                     return $("<li>")
                         .append(
@@ -364,7 +365,7 @@
                 newRow.querySelector('.material-id-input').value = '';
                 newRow.querySelector('input[name="quantity[]"]').value = '1';
                 newRow.querySelector('input[name="damageDescription[]"]').value = '';
-                newRow.querySelector('.material-image').src = 'images/material/default.jpg';
+                newRow.querySelector('.material-image').src = resolveMediaUrl(null);
                 
                 materialList.appendChild(newRow);
                 updateMaterialRowAutocomplete(newRow);

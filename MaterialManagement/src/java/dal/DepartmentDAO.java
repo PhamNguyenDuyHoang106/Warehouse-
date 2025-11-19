@@ -5,8 +5,8 @@ import entity.Department;
 import entity.Material;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -19,18 +19,44 @@ public class DepartmentDAO extends DBContext {
         String sql = "SELECT * FROM Departments";
 
         try (PreparedStatement ps = connection.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+            ResultSetMetaData metaData = rs.getMetaData();
+            int columnCount = metaData.getColumnCount();
+            boolean hasDescription = false;
+            boolean hasUpdatedAt = false;
+            
+            // Check which columns exist
+            for (int i = 1; i <= columnCount; i++) {
+                String columnName = metaData.getColumnName(i).toLowerCase();
+                if (columnName.equals("description")) {
+                    hasDescription = true;
+                }
+                if (columnName.equals("updated_at")) {
+                    hasUpdatedAt = true;
+                }
+            }
+            
             while (rs.next()) {
                 Department dept = new Department();
                 dept.setDepartmentId(rs.getInt("department_id"));
                 dept.setDepartmentName(rs.getString("department_name"));
                 dept.setDepartmentCode(rs.getString("department_code"));
-                dept.setPhoneNumber(rs.getString("phone_number"));
+                dept.setPhoneNumber(rs.getString("phone"));
                 dept.setEmail(rs.getString("email"));
                 dept.setLocation(rs.getString("location"));
-                dept.setDescription(rs.getString("description"));
+                // Schema: description column may not exist
+                if (hasDescription) {
+                    dept.setDescription(rs.getString("description"));
+                } else {
+                    dept.setDescription(null);
+                }
                 dept.setStatus(rs.getString("status") != null ? Department.Status.valueOf(rs.getString("status")) : null);
                 dept.setCreatedAt(rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toLocalDateTime() : null);
-                dept.setUpdatedAt(rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null);
+                // Schema: updated_at column may not exist
+                if (hasUpdatedAt) {
+                    dept.setUpdatedAt(rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null);
+                } else {
+                    dept.setUpdatedAt(null);
+                }
                 departmentList.add(dept);
             }
         } catch (Exception e) {
@@ -73,18 +99,44 @@ public class DepartmentDAO extends DBContext {
             ps.setInt(paramIndex, offset);
 
             try (ResultSet rs = ps.executeQuery()) {
+                ResultSetMetaData metaData = rs.getMetaData();
+                int columnCount = metaData.getColumnCount();
+                boolean hasDescription = false;
+                boolean hasUpdatedAt = false;
+                
+                // Check which columns exist (only need to check once before the loop)
+                for (int i = 1; i <= columnCount; i++) {
+                    String columnName = metaData.getColumnName(i).toLowerCase();
+                    if (columnName.equals("description")) {
+                        hasDescription = true;
+                    }
+                    if (columnName.equals("updated_at")) {
+                        hasUpdatedAt = true;
+                    }
+                }
+                
                 while (rs.next()) {
                     Department dept = new Department();
                     dept.setDepartmentId(rs.getInt("department_id"));
                     dept.setDepartmentName(rs.getString("department_name"));
                     dept.setDepartmentCode(rs.getString("department_code"));
-                    dept.setPhoneNumber(rs.getString("phone_number"));
+                    dept.setPhoneNumber(rs.getString("phone"));
                     dept.setEmail(rs.getString("email"));
                     dept.setLocation(rs.getString("location"));
-                    dept.setDescription(rs.getString("description"));
+                    // Schema: description column may not exist
+                    if (hasDescription) {
+                        dept.setDescription(rs.getString("description"));
+                    } else {
+                        dept.setDescription(null);
+                    }
                     dept.setStatus(rs.getString("status") != null ? Department.Status.valueOf(rs.getString("status")) : null);
                     dept.setCreatedAt(rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toLocalDateTime() : null);
-                    dept.setUpdatedAt(rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null);
+                    // Schema: updated_at column may not exist
+                    if (hasUpdatedAt) {
+                        dept.setUpdatedAt(rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null);
+                    } else {
+                        dept.setUpdatedAt(null);
+                    }
                     departmentList.add(dept);
                 }
             }
@@ -147,14 +199,14 @@ public class DepartmentDAO extends DBContext {
 
     public List<Material> getMaterials() throws SQLException {
         List<Material> materials = new ArrayList<>();
-        String sql = "SELECT material_id, material_code, material_name, materials_url FROM Materials WHERE disable = 0";
+        String sql = "SELECT material_id, material_code, material_name, url FROM Materials WHERE deleted_at IS NULL";
         try (PreparedStatement stmt = connection.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
                 Material material = new Material();
                 material.setMaterialId(rs.getInt("material_id"));
                 material.setMaterialCode(rs.getString("material_code"));
                 material.setMaterialName(rs.getString("material_name"));
-                material.setMaterialsUrl(rs.getString("materials_url"));
+                material.setMaterialsUrl(rs.getString("url"));
                 materials.add(material);
             }
             System.out.println("✅ Get list of materials successfully, quantity: " + materials.size());
@@ -166,18 +218,17 @@ public class DepartmentDAO extends DBContext {
     }
 
     public void addDepartment(Department dept) {
-        String sql = "INSERT INTO Departments (department_name, department_code, phone_number, email, location, description, status, created_at, updated_at) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        // Schema: description and updated_at columns may not exist
+        String sql = "INSERT INTO Departments (department_name, department_code, phone, email, location, status, created_at) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, dept.getDepartmentName());
             ps.setString(2, dept.getDepartmentCode());
             ps.setString(3, dept.getPhoneNumber());
             ps.setString(4, dept.getEmail());
             ps.setString(5, dept.getLocation());
-            ps.setString(6, dept.getDescription());
-            ps.setString(7, dept.getStatus().toString());
-            ps.setTimestamp(8, java.sql.Timestamp.valueOf(dept.getCreatedAt()));
-            ps.setTimestamp(9, java.sql.Timestamp.valueOf(dept.getUpdatedAt()));
+            ps.setString(6, dept.getStatus().toString());
+            ps.setTimestamp(7, dept.getCreatedAt() != null ? java.sql.Timestamp.valueOf(dept.getCreatedAt()) : new java.sql.Timestamp(System.currentTimeMillis()));
             ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -185,18 +236,17 @@ public class DepartmentDAO extends DBContext {
     }
 
     public void updateDepartment(Department dept) {
-        String sql = "UPDATE Departments SET department_name = ?, department_code = ?, phone_number = ?, email = ?, location = ?, description = ?, "
-                + "status = ?, updated_at = ? WHERE department_id = ?";
+        // Schema: description and updated_at columns may not exist
+        String sql = "UPDATE Departments SET department_name = ?, department_code = ?, phone = ?, email = ?, location = ?, "
+                + "status = ? WHERE department_id = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, dept.getDepartmentName());
             ps.setString(2, dept.getDepartmentCode());
             ps.setString(3, dept.getPhoneNumber());
             ps.setString(4, dept.getEmail());
             ps.setString(5, dept.getLocation());
-            ps.setString(6, dept.getDescription());
-            ps.setString(7, dept.getStatus().toString());
-            ps.setTimestamp(8, java.sql.Timestamp.valueOf(dept.getUpdatedAt()));
-            ps.setInt(9, dept.getDepartmentId());
+            ps.setString(6, dept.getStatus().toString());
+            ps.setInt(7, dept.getDepartmentId());
             ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -255,17 +305,43 @@ public class DepartmentDAO extends DBContext {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
+                    ResultSetMetaData metaData = rs.getMetaData();
+                    int columnCount = metaData.getColumnCount();
+                    boolean hasDescription = false;
+                    boolean hasUpdatedAt = false;
+                    
+                    // Check which columns exist
+                    for (int i = 1; i <= columnCount; i++) {
+                        String columnName = metaData.getColumnName(i).toLowerCase();
+                        if (columnName.equals("description")) {
+                            hasDescription = true;
+                        }
+                        if (columnName.equals("updated_at")) {
+                            hasUpdatedAt = true;
+                        }
+                    }
+                    
                     Department d = new Department();
                     d.setDepartmentId(rs.getInt("department_id"));
                     d.setDepartmentName(rs.getString("department_name"));
                     d.setDepartmentCode(rs.getString("department_code"));
-                    d.setPhoneNumber(rs.getString("phone_number"));
+                    d.setPhoneNumber(rs.getString("phone"));
                     d.setEmail(rs.getString("email"));
                     d.setLocation(rs.getString("location"));
-                    d.setDescription(rs.getString("description"));
+                    // Schema: description column may not exist
+                    if (hasDescription) {
+                        d.setDescription(rs.getString("description"));
+                    } else {
+                        d.setDescription(null);
+                    }
                     d.setStatus(Department.Status.valueOf(rs.getString("status")));
-                    d.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
-                    d.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
+                    d.setCreatedAt(rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toLocalDateTime() : null);
+                    // Schema: updated_at column may not exist
+                    if (hasUpdatedAt) {
+                        d.setUpdatedAt(rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null);
+                    } else {
+                        d.setUpdatedAt(null);
+                    }
                     return d;
                 }
             }

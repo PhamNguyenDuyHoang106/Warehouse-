@@ -1,5 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ page import="java.util.Map" %>
 <!DOCTYPE html>
 <html>
@@ -120,7 +122,7 @@
                                      <form action="${pageContext.request.contextPath}/editmaterial" method="POST" enctype="multipart/form-data" novalidate>
 
                                         <!-- Ẩn input chứa ID vật tư để biết sửa cái nào -->
-                                        <input type="hidden" name="materialId" value="${m.materialId}">
+                                        <input type="hidden" name="materialId" value="${m != null ? m.materialId : param.materialId}">
 
                                         <!-- Thông tin cơ bản -->
                                         <div class="row mb-3">
@@ -142,13 +144,13 @@
                                                      <c:choose>
                                                          <c:when test="${m != null && m.materialsUrl != null && m.materialsUrl != ''}">
                                                              <c:set var="imagePath" value="${m.materialsUrl}" />
-                                                             <c:if test="${!m.materialsUrl.startsWith('images/material/') && !m.materialsUrl.startsWith('http')}">
-                                                                 <c:set var="imagePath" value="images/material/${m.materialsUrl}" />
+                                                             <c:if test="${!fn:startsWith(imagePath, 'http://') && !fn:startsWith(imagePath, 'https://') && !fn:startsWith(imagePath, '/')}">
+                                                                 <c:set var="imagePath" value="${pageContext.request.contextPath}/${imagePath}" />
                                                              </c:if>
-                                                             <img id="previewImg" class="img-thumbnail" src="${imagePath}" alt="Material Image" onerror="this.src='images/material/default.jpg'">
+                                                             <img id="previewImg" class="img-thumbnail" src="${imagePath}" alt="Material Image" onerror="this.src='${pageContext.request.contextPath}/images/material/default.jpg'">
                                                          </c:when>
                                                          <c:otherwise>
-                                                             <img id="previewImg" class="img-thumbnail" src="images/material/default.jpg" alt="Material Image">
+                                                             <img id="previewImg" class="img-thumbnail" src="${pageContext.request.contextPath}/images/material/default.jpg" alt="Material Image">
                                                          </c:otherwise>
                                                      </c:choose>
                                                  </div>
@@ -170,7 +172,7 @@
                                                     <input type="file" class="form-control" id="imageFile" name="imageFile" accept="image/*">
                                                 </div>
                                                                                                  <div class="tab-pane fade" id="url-content" role="tabpanel">
-                                                     <input type="text" class="form-control" id="materialsUrl" name="materialsUrl" placeholder="Enter image URL" value="${param.materialsUrl != null ? param.materialsUrl : (materialsUrl != null ? materialsUrl : (m != null ? m.materialsUrl : ''))}">
+                                                     <input type="text" class="form-control" id="materialsUrl" name="materialsUrl" placeholder="Enter image URL" value="${param.materialsUrl != null ? param.materialsUrl : (materialsUrl != null ? materialsUrl : (m != null ? m.rawUrl : ''))}">
                                                  </div>
                                             </div>
                                         </div>
@@ -181,9 +183,9 @@
                                                 <label for="materialStatus" class="form-label">Material Status</label>
                                                                                                  <select class="form-select" id="materialStatus" name="materialStatus">
                                                     <option value="">Select Status</option>
-                                                    <option value="new" ${param.materialStatus == 'new' ? 'selected' : (materialStatus != null && materialStatus == 'new' ? 'selected' : (m != null && m.materialStatus == 'new' ? 'selected' : ''))}>New</option>
-                                                    <option value="used" ${param.materialStatus == 'used' ? 'selected' : (materialStatus != null && materialStatus == 'used' ? 'selected' : (m != null && m.materialStatus == 'used' ? 'selected' : ''))}>Used</option>
-                                                    <option value="damaged" ${param.materialStatus == 'damaged' ? 'selected' : (materialStatus != null && materialStatus == 'damaged' ? 'selected' : (m != null && m.materialStatus == 'damaged' ? 'selected' : ''))}>Damaged</option>
+                                                    <option value="active" ${param.materialStatus == 'active' ? 'selected' : (materialStatus != null && materialStatus == 'active' ? 'selected' : (m != null && m.materialStatus == 'active' ? 'selected' : ''))}>Active</option>
+                                                    <option value="inactive" ${param.materialStatus == 'inactive' ? 'selected' : (materialStatus != null && materialStatus == 'inactive' ? 'selected' : (m != null && m.materialStatus == 'inactive' ? 'selected' : ''))}>Inactive</option>
+                                                    <option value="discontinued" ${param.materialStatus == 'discontinued' ? 'selected' : (materialStatus != null && materialStatus == 'discontinued' ? 'selected' : (m != null && m.materialStatus == 'discontinued' ? 'selected' : ''))}>Discontinued</option>
                                                 </select>
                                             </div>
                                             <div class="col-md-6">
@@ -195,15 +197,27 @@
                                         <div class="row mb-3">
                                             <div class="col-md-6">
                                                 <label for="categoryInput" class="form-label">Category</label>
-                                                <input type="text" class="form-control" id="categoryInput" placeholder="Type category name" value="${param.categoryName != null ? param.categoryName : (categoryName != null ? categoryName : (m != null ? m.category.category_name : ''))}">
-                                                <input type="hidden" id="categoryId" name="categoryId" value="${param.categoryId != null ? param.categoryId : (categoryId != null ? categoryId : (m != null ? m.category.category_id : ''))}">
+                                                <input type="text" class="form-control" id="categoryInput" placeholder="Type category name" value="${param.categoryName != null ? param.categoryName : (categoryName != null ? categoryName : (m != null && m.category != null ? m.category.category_name : ''))}">
+                                                <input type="hidden" id="categoryId" name="categoryId" value="${param.categoryId != null ? param.categoryId : (categoryId != null ? categoryId : (m != null && m.category != null ? m.category.category_id : ''))}">
                                                 <div id="categorySuggestions" class="list-group" style="position: absolute; z-index: 1000; width: 100%; max-height: 200px; overflow-y: auto; display: none;"></div>
                                             </div>
                                             <div class="col-md-6">
                                                 <label for="unitInput" class="form-label">Unit</label>
-                                                <input type="text" class="form-control" id="unitInput" placeholder="Type unit name" value="${param.unitName != null ? param.unitName : (unitName != null ? unitName : (m != null ? m.unit.unitName : ''))}">
-                                                <input type="hidden" id="unitId" name="unitId" value="${param.unitId != null ? param.unitId : (unitId != null ? unitId : (m != null ? m.unit.id : ''))}">
+                                                <input type="text" class="form-control" id="unitInput" placeholder="Type unit name" value="${param.unitName != null ? param.unitName : (unitName != null ? unitName : (m != null && m.unit != null ? m.unit.unitName : ''))}">
+                                                <input type="hidden" id="unitId" name="unitId" value="${param.unitId != null ? param.unitId : (unitId != null ? unitId : (m != null && m.unit != null ? m.unit.id : ''))}">
                                                 <div id="unitSuggestions" class="list-group" style="position: absolute; z-index: 1000; width: 100%; max-height: 200px; overflow-y: auto; display: none;"></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Unit Volume và Unit Weight -->
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <label for="volumePerUnit" class="form-label">Unit Volume (m³)</label>
+                                                <input type="number" step="0.0001" min="0" class="form-control" id="volumePerUnit" name="volumePerUnit" placeholder="Enter volume per unit" value="${param.volumePerUnit != null ? param.volumePerUnit : (volumePerUnit != null ? volumePerUnit : (m != null && m.volumePerUnit != null ? m.volumePerUnit : ''))}">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="weightPerUnit" class="form-label">Unit Weight (kg)</label>
+                                                <input type="number" step="0.0001" min="0" class="form-control" id="weightPerUnit" name="weightPerUnit" placeholder="Enter weight per unit" value="${param.weightPerUnit != null ? param.weightPerUnit : (weightPerUnit != null ? weightPerUnit : (m != null && m.weightPerUnit != null ? m.weightPerUnit : ''))}">
                                             </div>
                                         </div>
 
@@ -231,29 +245,48 @@
                           <script>
              
                           // Preview ảnh khi chọn file hoặc nhập URL
-             document.getElementById('imageFile').addEventListener('change', function(event) {
+             const imageFileInput = document.getElementById('imageFile');
+             if (imageFileInput) {
+                 imageFileInput.addEventListener('change', function(event) {
                  const file = event.target.files[0];
                  if (file) {
-                     document.getElementById('materialsUrl').value = '';
+                     const materialsUrlInput = document.getElementById('materialsUrl');
+                     if (materialsUrlInput) {
+                         materialsUrlInput.value = '';
+                     }
                      const reader = new FileReader();
                      reader.onload = function(e) {
-                         document.getElementById('previewImg').src = e.target.result;
+                         const previewImg = document.getElementById('previewImg');
+                         if (previewImg) {
+                             previewImg.src = e.target.result;
+                         }
                      }
                      reader.readAsDataURL(file);
                      const uploadTab = document.getElementById('upload-tab');
-                     bootstrap.Tab.getOrCreateInstance(uploadTab).show();
+                     if (uploadTab && typeof bootstrap !== 'undefined') {
+                         bootstrap.Tab.getOrCreateInstance(uploadTab).show();
+                     }
                  }
              });
+             }
 
-                           document.getElementById('materialsUrl').addEventListener('input', function(event) {
+             const materialsUrlInput = document.getElementById('materialsUrl');
+             if (materialsUrlInput) {
+                 materialsUrlInput.addEventListener('input', function(event) {
                   const url = event.target.value.trim();
                   if (url) {
-                      document.getElementById('imageFile').value = '';
-                      document.getElementById('previewImg').src = url;
+                      const imageFileInput = document.getElementById('imageFile');
+                      if (imageFileInput) {
+                          imageFileInput.value = '';
+                      }
+                      const previewImg = document.getElementById('previewImg');
+                      if (previewImg) {
+                          previewImg.src = url;
+                      }
                   } else {
                       // Nếu URL trống, hiển thị lại ảnh gốc
                       const materialImageUrl = '${m != null ? m.materialsUrl : ""}';
-                      let originalImage = 'images/material/default.jpg';
+                      let originalImage = '${pageContext.request.contextPath}/images/material/default.jpg';
                       
                                              if (materialImageUrl && materialImageUrl.trim() !== '') {
                            // Nếu URL đã có prefix hoặc là URL http thì dùng nguyên, không thì thêm prefix
@@ -264,26 +297,38 @@
                            }
                        }
                       
-                      document.getElementById('previewImg').src = originalImage;
-                  }
-              });
+                     const previewImg = document.getElementById('previewImg');
+                     if (previewImg) {
+                         previewImg.src = originalImage;
+                     }
+                 }
+             });
+             }
 
             // Truyền categories và units sang JS
             var categories = [
+                <c:if test="${categories != null}">
                 <c:forEach var="cat" items="${categories}" varStatus="loop">
                     {id: ${cat.category_id}, name: "${cat.category_name}"}<c:if test="${!loop.last}">,</c:if>
                 </c:forEach>
+                </c:if>
             ];
             var units = [
+                <c:if test="${units != null}">
                 <c:forEach var="u" items="${units}" varStatus="loop">
                     {id: ${u.id}, name: "${u.unitName}"}<c:if test="${!loop.last}">,</c:if>
                 </c:forEach>
+                </c:if>
             ];
 
             // Autocomplete cho category
             const categoryInput = document.getElementById('categoryInput');
             const categorySuggestions = document.getElementById('categorySuggestions');
             const categoryHiddenId = document.getElementById('categoryId');
+            
+            if (!categoryInput || !categorySuggestions || !categoryHiddenId) {
+                console.error('Category input elements not found');
+            } else {
             let lastCategoryValue = categoryInput.value;
             
             categoryInput.addEventListener('input', function() {
@@ -323,16 +368,22 @@
                 categorySuggestions.style.display = 'block';
             });
             document.addEventListener('click', function(e) {
-                if (!categoryInput.contains(e.target) && !categorySuggestions.contains(e.target)) {
+                if (categoryInput && categorySuggestions && 
+                    !categoryInput.contains(e.target) && !categorySuggestions.contains(e.target)) {
                     categorySuggestions.innerHTML = '';
                     categorySuggestions.style.display = 'none';
                 }
             });
+            }
 
             // Autocomplete cho unit
             const unitInput = document.getElementById('unitInput');
             const unitSuggestions = document.getElementById('unitSuggestions');
             const unitHiddenId = document.getElementById('unitId');
+            
+            if (!unitInput || !unitSuggestions || !unitHiddenId) {
+                console.error('Unit input elements not found');
+            } else {
             let lastUnitValue = unitInput.value;
             
             unitInput.addEventListener('input', function() {
@@ -372,11 +423,13 @@
                 unitSuggestions.style.display = 'block';
             });
             document.addEventListener('click', function(e) {
-                if (!unitInput.contains(e.target) && !unitSuggestions.contains(e.target)) {
+                if (unitInput && unitSuggestions && 
+                    !unitInput.contains(e.target) && !unitSuggestions.contains(e.target)) {
                     unitSuggestions.innerHTML = '';
                     unitSuggestions.style.display = 'none';
                 }
             });
+            }
         </script>
     </body>
 </html>

@@ -8,7 +8,9 @@ import entity.Role;
 import entity.Permission;
 import entity.Module;
 import entity.User;
+import utils.PermissionHelper;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,8 +34,15 @@ public class RolePermissionServlet extends HttpServlet {
             throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
         User currentUser = (User) request.getSession().getAttribute("user");
-        if (currentUser == null || currentUser.getRoleId() != 1) {
+        if (currentUser == null) {
             response.sendRedirect("Login.jsp");
+            return;
+        }
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        // Chỉ check permission nếu không phải admin
+        if (currentUser.getRoleId() != 1 && !utils.PermissionHelper.hasPermission(currentUser, "Xem danh sách phân quyền")) {
+            request.setAttribute("error", "You do not have permission to view permission list.");
+            request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }
 
@@ -43,11 +52,16 @@ public class RolePermissionServlet extends HttpServlet {
             if (searchKeyword == null) searchKeyword = "";
             if (selectedModule == null) selectedModule = "";
 
-            List<Role> roles = roleDAO.getAllRoles();
+            List<Role> roles = roleDAO.getAllRolesIncludingAdmin();
+            System.out.println("✅ Loaded " + roles.size() + " roles");
+            
             List<Permission> permissions = searchKeyword.isEmpty() ? 
                 permissionDAO.getAllPermissions() : 
                 permissionDAO.searchPermissions(searchKeyword);
+            System.out.println("✅ Loaded " + permissions.size() + " permissions");
+            
             List<Module> modules = moduleDAO.getAllModules();
+            System.out.println("✅ Loaded " + modules.size() + " modules");
 
             // Ánh xạ quyền theo module
             Map<Integer, List<Permission>> permissionsByModule = permissions.stream()
@@ -61,9 +75,21 @@ public class RolePermissionServlet extends HttpServlet {
                 .filter(m -> permissionsByModule.containsKey(m.getModuleId()))
                 .collect(Collectors.toList());
 
-            // Ánh xạ quyền đã gán cho từng vai trò
-            Map<Integer, Map<Integer, Boolean>> rolePermissionMap = new HashMap<>();
+            // Lọc roles: chỉ hiển thị roles có is_system = 0 (không phải system roles)
+            // Admin (role_id = 1) KHÔNG hiển thị vì đã có full quyền
+            List<Role> displayRoles = new ArrayList<>();
             for (Role role : roles) {
+                // Chỉ hiển thị các role có is_system = 0 (không phải Admin và không phải system roles)
+                if (role.getRoleId() != 1 && !role.isIsSystem()) {
+                    displayRoles.add(role);
+                }
+            }
+            System.out.println("✅ Filtered roles: " + displayRoles.size() + " roles (excluding Admin and system roles)");
+
+            // Ánh xạ quyền đã gán cho từng vai trò (chỉ cho các role được hiển thị)
+            Map<Integer, Map<Integer, Boolean>> rolePermissionMap = new HashMap<>();
+            for (Role role : displayRoles) {
+                // Load permissions từ database cho từng role
                 List<Permission> assignedPermissions = permissionDAO.getPermissionsByRole(role.getRoleId());
                 Map<Integer, Boolean> permMap = new HashMap<>();
                 for (Permission perm : permissions) {
@@ -72,13 +98,16 @@ public class RolePermissionServlet extends HttpServlet {
                 }
                 rolePermissionMap.put(role.getRoleId(), permMap);
             }
-
-            request.setAttribute("roles", roles);
+            System.out.println("✅ Built rolePermissionMap for " + rolePermissionMap.size() + " roles");
+            
+            request.setAttribute("roles", displayRoles);
             request.setAttribute("modules", modules);
             request.setAttribute("permissionsByModule", permissionsByModule);
             request.setAttribute("rolePermissionMap", rolePermissionMap);
             request.setAttribute("searchKeyword", searchKeyword);
             request.setAttribute("selectedModule", selectedModule);
+            
+            System.out.println("✅ Forwarding to RolePermission.jsp with " + displayRoles.size() + " roles, " + modules.size() + " modules, " + permissionsByModule.size() + " permission groups");
 
             request.getRequestDispatcher("RolePermission.jsp").forward(request, response);
         } catch (Exception e) {
@@ -94,7 +123,7 @@ public class RolePermissionServlet extends HttpServlet {
             throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
         User currentUser = (User) request.getSession().getAttribute("user");
-        if (currentUser == null || currentUser.getRoleId() != 1) {
+        if (currentUser == null || !utils.PermissionHelper.hasPermission(currentUser, "Cập nhật phân quyền")) {
             response.sendRedirect("Login.jsp");
             return;
         }
@@ -114,7 +143,7 @@ public class RolePermissionServlet extends HttpServlet {
                 return;
             }
 
-            List<Role> roles = roleDAO.getAllRoles();
+            List<Role> roles = roleDAO.getAllRolesIncludingAdmin();
             List<Permission> permissions = permissionDAO.getAllPermissions();
 
             for (Role role : roles) {

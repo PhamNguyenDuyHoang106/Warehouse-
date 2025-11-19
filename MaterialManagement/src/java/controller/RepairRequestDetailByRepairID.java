@@ -53,8 +53,9 @@ public class RepairRequestDetailByRepairID extends HttpServlet {
             int end = Math.min(start + PAGE_SIZE, totalRecords);
             List<RepairRequestDetail> details = allDetails.subList(start, end);
 
-            String supplierName = (allDetails != null && !allDetails.isEmpty() && allDetails.get(0).getSupplierName() != null) 
-                ? allDetails.get(0).getSupplierName() : "N/A";
+            // Schema v12: Supplier info no longer in Repair_Request_Details
+            // Get from RepairRequest if available, otherwise N/A
+            String supplierName = "N/A"; // Default for v12 compatibility
 
             // Get RepairRequest information
             RepairRequestDAO repairRequestDAO = new RepairRequestDAO();

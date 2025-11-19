@@ -132,7 +132,7 @@
                                                 <input type="file" class="form-control" id="imageFile" name="imageFile" accept="image/*">
                                             </div>
                                             <div class="tab-pane fade" id="url-content" role="tabpanel">
-                                                <input type="url" class="form-control" id="materialsUrl" name="materialsUrl" placeholder="Enter image URL" value="${param.materialsUrl != null ? param.materialsUrl : (materialsUrl != null ? materialsUrl : (m != null ? m.materialsUrl : ''))}">
+                                                <input type="url" class="form-control" id="materialsUrl" name="materialsUrl" placeholder="Enter image URL" value="${param.materialsUrl != null ? param.materialsUrl : (materialsUrl != null ? materialsUrl : (m != null ? m.rawUrl : ''))}">
                                             </div>
                                         </div>
                                     </div>
@@ -143,9 +143,9 @@
                                             <label for="materialStatus" class="form-label required-field">Material Status</label>
                                             <select class="form-select" id="materialStatus" name="materialStatus" required>
                                                 <option value="">Select Status</option>
-                                                <option value="new" ${param.materialStatus == 'new' ? 'selected' : (materialStatus != null && materialStatus == 'new' ? 'selected' : (m != null && m.materialStatus == 'new' ? 'selected' : ''))}>New</option>
-                                                <option value="used" ${param.materialStatus == 'used' ? 'selected' : (materialStatus != null && materialStatus == 'used' ? 'selected' : (m != null && m.materialStatus == 'used' ? 'selected' : ''))}>Used</option>
-                                                <option value="damaged" ${param.materialStatus == 'damaged' ? 'selected' : (materialStatus != null && materialStatus == 'damaged' ? 'selected' : (m != null && m.materialStatus == 'damaged' ? 'selected' : ''))}>Damaged</option>
+                                                <option value="active" ${param.materialStatus == 'active' ? 'selected' : (materialStatus != null && materialStatus == 'active' ? 'selected' : (m != null && m.materialStatus == 'active' ? 'selected' : ''))}>Active</option>
+                                                <option value="inactive" ${param.materialStatus == 'inactive' ? 'selected' : (materialStatus != null && materialStatus == 'inactive' ? 'selected' : (m != null && m.materialStatus == 'inactive' ? 'selected' : ''))}>Inactive</option>
+                                                <option value="discontinued" ${param.materialStatus == 'discontinued' ? 'selected' : (materialStatus != null && materialStatus == 'discontinued' ? 'selected' : (m != null && m.materialStatus == 'discontinued' ? 'selected' : ''))}>Discontinued</option>
                                             </select>
                                         </div>
                                         <div class="col-md-6">

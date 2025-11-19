@@ -3,6 +3,7 @@ package controller;
 import dal.MaterialDAO;
 import dal.RolePermissionDAO;
 import entity.User;
+import utils.PermissionHelper;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -31,9 +32,9 @@ public class DeleteMaterialServlet extends HttpServlet {
         }
 
         User user = (User) session.getAttribute("user");
-        int roleId = user.getRoleId();
-        if (roleId != 1 && !rolePermissionDAO.hasPermission(roleId, "DELETE_MATERIAL")) {
-            request.setAttribute("error", "You don't have permission to delete materials.");
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(user, "Xóa NVL")) {
+            request.setAttribute("error", "Bạn không có quyền xóa nguyên vật liệu.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }

@@ -5,21 +5,30 @@ import java.sql.Timestamp;
 
 public class PurchaseOrderDetail {
 
+    private static final String DEFAULT_MEDIA_URL = "images/material/default-material.png";
+
     private int poDetailId;
     private int poId;
+    private int materialId;
     private String materialName;
-    private int categoryId;
-    private String categoryName;
-    private BigDecimal quantity;
-    private BigDecimal unitPrice;
-    private Integer supplierId;
-    private String supplierName;
+    private String materialCode;
+    private String materialImageUrl;
+    private Integer unitId;
+    private String unitName;
+    private BigDecimal quantityOrdered = BigDecimal.ZERO;
+    private BigDecimal unitPrice = BigDecimal.ZERO;
+    private BigDecimal taxRate = BigDecimal.ZERO;
+    private BigDecimal discountRate = BigDecimal.ZERO;
+    private BigDecimal lineTotal = BigDecimal.ZERO;
+    private BigDecimal receivedQuantity = BigDecimal.ZERO;
     private String note;
     private Timestamp createdAt;
-    private Timestamp updatedAt;
-    private int materialId;
-    private String materialImageUrl;
-    private String unitName;
+
+    // Legacy fields for compatibility (no longer persisted)
+    private Integer categoryId;
+    private String categoryName;
+    private Integer supplierId;
+    private String supplierName;
 
     public PurchaseOrderDetail() {
     }
@@ -40,6 +49,14 @@ public class PurchaseOrderDetail {
         this.poId = poId;
     }
 
+    public int getMaterialId() {
+        return materialId;
+    }
+
+    public void setMaterialId(int materialId) {
+        this.materialId = materialId;
+    }
+
     public String getMaterialName() {
         return materialName;
     }
@@ -48,28 +65,36 @@ public class PurchaseOrderDetail {
         this.materialName = materialName;
     }
 
-    public int getCategoryId() {
-        return categoryId;
+    public String getMaterialCode() {
+        return materialCode;
     }
 
-    public void setCategoryId(int categoryId) {
-        this.categoryId = categoryId;
+    public void setMaterialCode(String materialCode) {
+        this.materialCode = materialCode;
     }
 
-    public String getCategoryName() {
-        return categoryName;
+    public Integer getUnitId() {
+        return unitId;
     }
 
-    public void setCategoryName(String categoryName) {
-        this.categoryName = categoryName;
+    public void setUnitId(Integer unitId) {
+        this.unitId = unitId;
     }
 
-    public BigDecimal getQuantity() {
-        return quantity;
+    public String getUnitName() {
+        return unitName;
     }
 
-    public void setQuantity(BigDecimal quantity) {
-        this.quantity = quantity;
+    public void setUnitName(String unitName) {
+        this.unitName = unitName;
+    }
+
+    public BigDecimal getQuantityOrdered() {
+        return quantityOrdered;
+    }
+
+    public void setQuantityOrdered(BigDecimal quantityOrdered) {
+        this.quantityOrdered = quantityOrdered != null ? quantityOrdered : BigDecimal.ZERO;
     }
 
     public BigDecimal getUnitPrice() {
@@ -77,23 +102,39 @@ public class PurchaseOrderDetail {
     }
 
     public void setUnitPrice(BigDecimal unitPrice) {
-        this.unitPrice = unitPrice;
+        this.unitPrice = unitPrice != null ? unitPrice : BigDecimal.ZERO;
     }
 
-    public Integer getSupplierId() {
-        return supplierId;
+    public BigDecimal getTaxRate() {
+        return taxRate;
     }
 
-    public void setSupplierId(Integer supplierId) {
-        this.supplierId = supplierId;
+    public void setTaxRate(BigDecimal taxRate) {
+        this.taxRate = taxRate != null ? taxRate : BigDecimal.ZERO;
     }
 
-    public String getSupplierName() {
-        return supplierName;
+    public BigDecimal getDiscountRate() {
+        return discountRate;
     }
 
-    public void setSupplierName(String supplierName) {
-        this.supplierName = supplierName;
+    public void setDiscountRate(BigDecimal discountRate) {
+        this.discountRate = discountRate != null ? discountRate : BigDecimal.ZERO;
+    }
+
+    public BigDecimal getLineTotal() {
+        return lineTotal;
+    }
+
+    public void setLineTotal(BigDecimal lineTotal) {
+        this.lineTotal = lineTotal != null ? lineTotal : BigDecimal.ZERO;
+    }
+
+    public BigDecimal getReceivedQuantity() {
+        return receivedQuantity;
+    }
+
+    public void setReceivedQuantity(BigDecimal receivedQuantity) {
+        this.receivedQuantity = receivedQuantity != null ? receivedQuantity : BigDecimal.ZERO;
     }
 
     public String getNote() {
@@ -112,42 +153,80 @@ public class PurchaseOrderDetail {
         this.createdAt = createdAt;
     }
 
-    public Timestamp getUpdatedAt() {
-        return updatedAt;
+    public String getMaterialImageUrl() {
+        return resolveMediaUrl(materialImageUrl);
     }
 
-    public void setUpdatedAt(Timestamp updatedAt) {
-        this.updatedAt = updatedAt;
+    public void setMaterialImageUrl(String materialImageUrl) {
+        this.materialImageUrl = materialImageUrl != null ? materialImageUrl.trim() : null;
+    }
+
+    public String getRawMaterialImageUrl() {
+        return materialImageUrl;
+    }
+
+    public Integer getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(Integer categoryId) {
+        this.categoryId = categoryId;
+    }
+
+    public String getCategoryName() {
+        return categoryName;
+    }
+
+    public void setCategoryName(String categoryName) {
+        this.categoryName = categoryName;
+    }
+
+    public Integer getSupplierId() {
+        return supplierId;
+    }
+
+    public void setSupplierId(Integer supplierId) {
+        this.supplierId = supplierId;
+    }
+
+    public String getSupplierName() {
+        return supplierName;
+    }
+
+    public void setSupplierName(String supplierName) {
+        this.supplierName = supplierName;
+    }
+
+    // Compatibility helpers --------------------------------------------------
+    public BigDecimal getQuantity() {
+        return quantityOrdered;
+    }
+
+    public void setQuantity(BigDecimal quantity) {
+        setQuantityOrdered(quantity);
     }
 
     public BigDecimal getTotalPrice() {
-        if (unitPrice != null && quantity != null && quantity.compareTo(BigDecimal.ZERO) > 0) {
-            return unitPrice.multiply(quantity);
+        if (unitPrice != null && quantityOrdered != null) {
+            return unitPrice.multiply(quantityOrdered);
         }
         return BigDecimal.ZERO;
     }
 
-    public int getMaterialId() {
-        return materialId;
-    }
-
-    public void setMaterialId(int materialId) {
-        this.materialId = materialId;
-    }
-
-    public String getMaterialImageUrl() {
-        return materialImageUrl;
-    }
-
-    public void setMaterialImageUrl(String materialImageUrl) {
-        this.materialImageUrl = materialImageUrl;
-    }
-
-    public String getUnitName() {
-        return unitName;
-    }
-
-    public void setUnitName(String unitName) {
-        this.unitName = unitName;
+    private String resolveMediaUrl(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return DEFAULT_MEDIA_URL;
+        }
+        String trimmed = value.trim();
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("images/")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("material/")) {
+            return "images/" + trimmed;
+        }
+        return "images/material/" + trimmed;
     }
 }

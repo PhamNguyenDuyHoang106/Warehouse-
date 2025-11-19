@@ -58,10 +58,10 @@
                                         String error = (String) request.getAttribute("error");
                                     %>
                                     <% if (message != null) { %>
-                                    <div class="alert alert-success">${fn:escapeXml(message)}</div>
+                                    <div class="alert alert-success"><c:out value="${message}" escapeXml="false"/></div>
                                     <% } %>
                                     <% if (error != null) { %>
-                                    <div class="alert alert-danger">${fn:escapeXml(error)}</div>
+                                    <div class="alert alert-danger"><c:out value="${error}" escapeXml="false"/></div>
                                     <% } %>
                                     <c:if test="${empty c}">
                                         <div class="alert alert-danger">Category not found.</div>
@@ -74,7 +74,6 @@
                                     <c:if test="${not empty c}">
                                         <form action="${pageContext.request.contextPath}/Category?service=updateCategory" method="post" id="updateCategoryForm">
                                             <input type="hidden" name="categoryID" value="${c.category_id}">
-                                            <input type="hidden" name="disable" value="${c.disable}">
 
                                             <div class="row">
                                                 <div class="col-md-6">
@@ -91,8 +90,7 @@
                                                         <label for="categoryName" class="form-label text-muted">Category Name</label>
                                                         <input type="text" id="categoryName" name="categoryName" 
                                                                class="form-control" 
-                                                               value="${fn:escapeXml(c.category_name)}" readonly style="background-color: #f8f9fa;">
-                                                        <small class="text-muted">Category name cannot be changed</small>
+                                                               value="${fn:escapeXml(c.category_name)}" required>
                                                     </div>
                                                 </div>
                                             </div>
@@ -106,16 +104,6 @@
                                                         </select>
                                                     </div>
                                                 </div>
-                                                <div class="col-md-6">
-                                                    <div class="mb-3">
-                                                        <label for="priority" class="form-label text-muted">Priority</label>
-                                                        <select id="priority" name="priority" class="form-select" required>
-                                                            <option value="high" ${c.priority == 'high' ? 'selected' : ''}>High</option>
-                                                            <option value="medium" ${c.priority == 'medium' ? 'selected' : ''}>Medium</option>
-                                                            <option value="low" ${c.priority == 'low' ? 'selected' : ''}>Low</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
                                             </div>
                                             <div class="row">
                                                                  <div class="col-md-6">
@@ -123,25 +111,13 @@
                                                         <label for="parentID" class="form-label text-muted">Parent Category</label>
                                                         <select id="parentID" name="parentID" class="form-select">
                                                                     <option value="">None</option>
-                            <%
-                                CategoryDAO dao = new CategoryDAO();
-                                List<Category> categories = dao.getAllCategories();
-                                Category currentCategory = (Category) request.getAttribute("c");
-                                if (categories != null) {
-                                    for (Category category : categories) {
-                                        if (category.getCategory_id() != currentCategory.getCategory_id()) {
-                                            String selected = (currentCategory.getParent_id() != null && 
-                                                              category.getCategory_id() == currentCategory.getParent_id()) ? "selected" : "";
-                            %>
-                            <option value="<%= category.getCategory_id() %>" <%= selected %>>
-                            <%= category.getCategory_id() %> - <%= category.getCategory_name() %>
-                        </option>
-                            <%      }
-                                    }
-                                } else {
-                                    System.out.println("UpdateCategory.jsp - Failed to retrieve categories for parentID dropdown.");
-                                }
-                            %>
+                            <c:forEach var="category" items="${categories}">
+                                <c:if test="${category.category_id != c.category_id}">
+                                    <option value="${category.category_id}" ${c.parent_id != null && category.category_id == c.parent_id ? 'selected' : ''}>
+                                        ${category.category_id} - ${category.category_name}
+                                    </option>
+                                </c:if>
+                            </c:forEach>
                         </select>
                     </div>
                 </div>
@@ -151,7 +127,7 @@
                     <div class="mb-3">
                         <label for="description" class="form-label text-muted">Description</label>
                         <textarea id="description" name="description" class="form-control" 
-                                  placeholder="Enter Description" rows="4" required>${fn:escapeXml(c.description)}</textarea>
+                                  placeholder="Enter Description" rows="4">${fn:escapeXml(c.description)}</textarea>
                     </div>
                 </div>
                                         </div>

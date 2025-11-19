@@ -4,6 +4,7 @@ import dal.DepartmentDAO;
 import dal.RolePermissionDAO;
 import entity.Department;
 import entity.User;
+import utils.PermissionHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -30,9 +31,9 @@ public class DepartmentServlet extends HttpServlet {
             return;
         }
 
-        int roleId = user.getRoleId();
-        if (roleId != 1 && !rolePermissionDAO.hasPermission(roleId, "VIEW_LIST_DEPARTMENT")) {
-            request.setAttribute("error", "You do not have permission to view the department list.");
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(user, "DS phòng ban")) {
+            request.setAttribute("error", "Bạn không có quyền xem danh sách phòng ban.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }
@@ -58,6 +59,13 @@ public class DepartmentServlet extends HttpServlet {
             pageSize = 10;
         }
         int offset = (page - 1) * pageSize;
+
+        // Check for view action
+        String action = request.getParameter("action");
+        if ("view".equals(action)) {
+            viewDepartment(request, response, user);
+            return;
+        }
 
         // Filter and sort parameters
         String searchKeyword = request.getParameter("search");
@@ -96,6 +104,31 @@ public class DepartmentServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         doGet(request, response); 
+    }
+
+    private void viewDepartment(HttpServletRequest request, HttpServletResponse response, User user)
+            throws ServletException, IOException {
+        String idStr = request.getParameter("id");
+        if (idStr != null && !idStr.isEmpty()) {
+            try {
+                int id = Integer.parseInt(idStr);
+                Department department = departmentDAO.getDepartmentById(id);
+                if (department != null) {
+                    request.setAttribute("department", department);
+                    request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+                    request.getRequestDispatcher("/DepartmentDetail.jsp").forward(request, response);
+                } else {
+                    request.setAttribute("error", "Department not found with ID: " + id);
+                    request.getRequestDispatcher("/error.jsp").forward(request, response);
+                }
+            } catch (NumberFormatException e) {
+                request.setAttribute("error", "Invalid department ID.");
+                request.getRequestDispatcher("/error.jsp").forward(request, response);
+            }
+        } else {
+            request.setAttribute("error", "Department ID is required.");
+            request.getRequestDispatcher("/error.jsp").forward(request, response);
+        }
     }
 
     @Override

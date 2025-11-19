@@ -59,6 +59,34 @@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
       .pagination .page-item.disabled .page-link {
         color: #6c757d;
       }
+      .badge-base-yes {
+        background-color: #28a745 !important;
+        color: #fff !important;
+        font-weight: bold;
+        padding: 6px 12px;
+        font-size: 0.9rem;
+      }
+      .badge-base-no {
+        background-color: #6c757d !important;
+        color: #fff !important;
+        font-weight: bold;
+        padding: 6px 12px;
+        font-size: 0.9rem;
+      }
+      .badge-status-active {
+        background-color: #28a745 !important;
+        color: #fff !important;
+        font-weight: bold;
+        padding: 6px 12px;
+        font-size: 0.9rem;
+      }
+      .badge-status-inactive {
+        background-color: #dc3545 !important;
+        color: #fff !important;
+        font-weight: bold;
+        padding: 6px 12px;
+        font-size: 0.9rem;
+      }
     </style>
   </head>
   <body>
@@ -73,9 +101,9 @@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
         <div class="col-md-9 col-lg-10 content px-md-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="dashboard-title mb-0">Unit List</h2>
-            <!-- Chỉ hiển thị nút Add New Unit nếu user có quyền CREATE_UNIT hoặc là admin -->
+            <!-- Only show Add New Unit button if user has permission to create unit or is admin -->
             <c:if
-              test="${sessionScope.user.roleId == 1 or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'CREATE_UNIT')}"
+              test="${sessionScope.user.roleId == 1 or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Tạo đơn vị')}"
             >
               <a
                 href="AddUnit"
@@ -162,15 +190,12 @@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
               <thead class="table-light">
                 <tr>
                   <th>ID</th>
+                  <th>Unit Code</th>
                   <th>Unit Name</th>
                   <th>Symbol</th>
-                  <th>Description</th>
-                  <!-- Chỉ hiển thị cột Actions nếu user có quyền UPDATE_UNIT hoặc DELETE_UNIT hoặc là admin -->
-                  <c:if
-                    test="${sessionScope.user.roleId == 1 or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_UNIT') or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_UNIT')}"
-                  >
-                    <th>Actions</th>
-                  </c:if>
+                  <th>Is Base</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -179,16 +204,29 @@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
                     <c:forEach var="unit" items="${units}">
                       <tr>
                         <td>${unit.id}</td>
+                        <td>${unit.unitCode != null ? unit.unitCode : ''}</td>
                         <td>${unit.unitName}</td>
-                        <td>${unit.symbol}</td>
-                        <td>${unit.description}</td>
+                        <td>${unit.symbol != null ? unit.symbol : ''}</td>
+                        <td>
+                          <span class="badge ${unit.base ? 'badge-base-yes' : 'badge-base-no'}">
+                            ${unit.base ? 'Yes' : 'No'}
+                          </span>
+                        </td>
+                        <td>
+                          <span class="badge ${unit.status == 'active' ? 'badge-status-active' : 'badge-status-inactive'}">
+                            ${unit.status == 'active' ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
 
-                        <c:if
-                          test="${sessionScope.user.roleId == 1 or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_UNIT') or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_UNIT')}"
-                        >
-                          <td style="display: flex; justify-content: center">
+                        <td style="display: flex; justify-content: center">
+                            <a
+                              href="UnitList?action=view&id=${unit.id}"
+                              class="btn btn-action btn-info btn-sm me-1"
+                              title="View Details"
+                              ><i class="fas fa-eye"></i
+                            ></a>
                             <c:if
-                              test="${sessionScope.user.roleId == 1 or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_UNIT')}"
+                              test="${sessionScope.user.roleId == 1 or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Sửa đơn vị')}"
                             >
                               <a
                                 href="EditUnit?id=${unit.id}"
@@ -199,7 +237,7 @@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
                             </c:if>
 
                             <c:if
-                              test="${sessionScope.user.roleId == 1 or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_UNIT')}"
+                              test="${sessionScope.user.roleId == 1 or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xóa đơn vị')}"
                             >
                               <form
                                 action="DeleteUnit"
@@ -221,20 +259,14 @@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
                               </form>
                             </c:if>
                           </td>
-                        </c:if>
                       </tr>
                     </c:forEach>
                   </c:when>
                   <c:otherwise>
                     <tr>
-                      <td colspan="4" class="text-center text-muted">
+                      <td colspan="7" class="text-center text-muted">
                         No units found.
                       </td>
-                      <c:if
-                        test="${sessionScope.user.roleId == 1 or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_UNIT') or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_UNIT')}"
-                      >
-                        <td></td>
-                      </c:if>
                     </tr>
                   </c:otherwise>
                 </c:choose>

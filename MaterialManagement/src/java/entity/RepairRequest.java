@@ -5,7 +5,6 @@
 package entity;
 
 import java.sql.Timestamp;
-import java.sql.Date;
 import java.util.List;
 
 /**
@@ -14,22 +13,32 @@ import java.util.List;
  */
 public class RepairRequest {
 
-    private int repairRequestId;
-    private String requestCode;
-    private int userId;
+    private int repairRequestId; // Maps to rr_id in v12
+    private String requestCode; // Maps to rr_code in v12
+    private int userId; // Maps to request_by in v12
     private Timestamp requestDate;
     private String repairPersonPhoneNumber;
     private String repairPersonEmail;
     private String repairLocation;
     private String status;
-    private String reason;
+    private String reason; // Maps to issue_description in v12
+
+    // Schema v12: Direct material/batch/rack references
+    private Integer materialId;
+    private Integer batchId;
+    private Integer rackId;
+
+    // Priority and department (v12 additions)
+    private String priority;
+    private Integer departmentId;
+
     private Integer approvedBy; // Nullable theo FOREIGN KEY
     private String approvalReason;
     private Timestamp approvedAt;
     private String rejectionReason;
     private Timestamp createdAt;
     private Timestamp updatedAt;
-    private boolean disable;
+    private Timestamp deletedAt;
     private List<RepairRequestDetail> details; // Added field
 
     private String fullName;
@@ -42,7 +51,7 @@ public class RepairRequest {
     public RepairRequest(int repairRequestId, String requestCode, int userId, Timestamp requestDate,
             String status, String reason, Integer approvedBy, String approvalReason,
             Timestamp approvedAt, String rejectionReason, Timestamp createdAt,
-            Timestamp updatedAt, boolean disable, List<RepairRequestDetail> details) {
+            Timestamp updatedAt, Timestamp deletedAt, List<RepairRequestDetail> details) {
         this.repairRequestId = repairRequestId;
         this.requestCode = requestCode;
         this.userId = userId;
@@ -55,7 +64,7 @@ public class RepairRequest {
         this.rejectionReason = rejectionReason;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
-        this.disable = disable;
+        this.deletedAt = deletedAt;
         this.details = details;
     }
 
@@ -187,12 +196,21 @@ public class RepairRequest {
         this.updatedAt = updatedAt;
     }
 
+    public Timestamp getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Timestamp deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+    
+    // Compatibility method
     public boolean isDisable() {
-        return disable;
+        return deletedAt != null;
     }
 
     public void setDisable(boolean disable) {
-        this.disable = disable;
+        this.deletedAt = disable ? new Timestamp(System.currentTimeMillis()) : null;
     }
 
     // Getter and setter for details
@@ -222,8 +240,54 @@ public class RepairRequest {
                 + ", rejectionReason='" + rejectionReason + '\''
                 + ", createdAt=" + createdAt
                 + ", updatedAt=" + updatedAt
-                + ", disable=" + disable
+                + ", deletedAt=" + deletedAt
                 + ", details=" + details
+                + ", materialId=" + materialId
+                + ", batchId=" + batchId
+                + ", rackId=" + rackId
+                + ", priority='" + priority + '\''
+                + ", departmentId=" + departmentId
                 + '}';
+    }
+
+    // Schema v12: New getters and setters
+    public Integer getMaterialId() {
+        return materialId;
+    }
+
+    public void setMaterialId(Integer materialId) {
+        this.materialId = materialId;
+    }
+
+    public Integer getBatchId() {
+        return batchId;
+    }
+
+    public void setBatchId(Integer batchId) {
+        this.batchId = batchId;
+    }
+
+    public Integer getRackId() {
+        return rackId;
+    }
+
+    public void setRackId(Integer rackId) {
+        this.rackId = rackId;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
+    public Integer getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(Integer departmentId) {
+        this.departmentId = departmentId;
     }
 }

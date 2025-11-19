@@ -62,7 +62,7 @@
                                     </c:if>
 
                                     <c:choose>
-                                        <c:when test="${sessionScope.user.roleId == 1 or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'CREATE_DEPARTMENT')}">
+                                        <c:when test="${sessionScope.user.roleId == 1 or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Tạo phòng ban')}">
                                             <form action="${pageContext.request.contextPath}/adddepartment" method="post" id="departmentForm">
                                                 <div class="row">
                                                     <div class="col-md-6 mb-3">

@@ -3,6 +3,7 @@ package controller;
 import dal.RepairRequestDAO;
 import dal.RolePermissionDAO;
 import entity.User;
+import utils.PermissionHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -32,9 +33,10 @@ public class RejectRepairRequestServlet extends HttpServlet {
             return;
         }
 
-        int roleId = user.getRoleId();
-        if (roleId != 1 && roleId != 2 && !rolePermissionDAO.hasPermission(roleId, "REJECT_REPAIR_REQUEST")) {
-            request.setAttribute("error", "You do not have permission to reject repair requests.");
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        // Reject repair request không có permission riêng trong DB, dùng chung với approve
+        if (!PermissionHelper.hasPermission(user, "Duyệt yêu cầu sửa")) {
+            request.setAttribute("error", "Bạn không có quyền từ chối yêu cầu sửa.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }

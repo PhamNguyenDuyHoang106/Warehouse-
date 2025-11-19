@@ -92,7 +92,7 @@
                     <h2 class="text-primary fw-bold display-6 border-bottom pb-2" style="color: #DEAD6F;">
                         <i class="bi bi-list-ul"></i> Category List
                     </h2>
-                    <c:if test="${sessionScope.user != null && rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'CREATE_CATEGORY')}">
+                    <c:if test="${sessionScope.user != null && rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Tạo danh mục')}">
                         <a href="${pageContext.request.contextPath}/Category?service=addCategory" class="btn btn-primary" style="width: 250px; height: 65px; background-color: #DEAD6F; color: white;">
                             <i class="fas fa-plus me-1"></i> Create Category
                         </a>
@@ -108,12 +108,6 @@
                                    value="${name != null ? name : ''}" 
                                    style="width: 200px; height: 50px; border: 2px solid gray"/>
                             
-                            <select name="priority" class="form-select" style="width: 150px; height: 50px; border: 2px solid gray">
-                                <option value="">All Priorities</option>
-                                <option value="high" ${priority == 'high' ? 'selected' : ''}>High</option>
-                                <option value="medium" ${priority == 'medium' ? 'selected' : ''}>Medium</option>
-                                <option value="low" ${priority == 'low' ? 'selected' : ''}>Low</option>
-                            </select>
                             <select name="status" class="form-select" style="width: 150px; height: 50px; border: 2px solid gray">
                                 <option value="">All Status</option>
                                 <option value="active" ${status == 'active' ? 'selected' : ''}>Active</option>
@@ -131,12 +125,12 @@
                             <button type="submit" class="btn btn-primary d-flex align-items-center justify-content-center" style="width: 150px !important; height: 50px; background-color: #DEAD6F; color: white;">
                                 <i class="fas fa-search me-2"></i> Search
                             </button>
-                                <a href="Category?action=listCategory" class="btn btn-secondary d-flex align-items-center justify-content-center" style="width: 150px; height: 50px">Clear</a>
+                                <a href="${pageContext.request.contextPath}/Category?service=listCategory" class="btn btn-secondary d-flex align-items-center justify-content-center" style="width: 150px; height: 50px">Clear</a>
                         </form>
                     </div>
                 </div>
                 <c:if test="${not empty error}">
-                    <div class="alert alert-danger">${error}</div>
+                    <div class="alert alert-danger"><c:out value="${error}" escapeXml="false"/></div>
                 </c:if>
 
                 <div class="table-responsive">
@@ -149,10 +143,8 @@
                                 <th scope="col" style="width: 300px">Created Date</th>
                                 <th scope="col" style="width: 150px">Status</th>
                                 <th scope="col" style="width: 500px">Description</th>
-                                <th scope="col" style="width: 150px">Priority</th>
-                                <c:if test="${sessionScope.user != null && (rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_CATEGORY') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_CATEGORY'))}">
-                                    <th scope="col" style="width: 150px">Actions</th>
-                                </c:if>
+                                <th scope="col" style="width: 200px">Parent</th>
+                                <th scope="col" style="width: 150px">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -166,29 +158,38 @@
                                             <td><fmt:formatDate value="${cat.created_at}" pattern="yyyy-MM-dd HH:mm:ss"/></td>
                                             <td>${cat.status}</td>
                                             <td>${cat.description}</td>
-                                            <td>${cat.priority}</td>
-                                            <c:if test="${sessionScope.user != null && (rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_CATEGORY') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_CATEGORY'))}">
-                                                <td class="d-flex justify-content-center">
-                                                    <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_CATEGORY')}">
-                                                        <a href="${pageContext.request.contextPath}/Category?service=updateCategory&category_id=${cat.category_id}" 
-                                                           class="btn btn-warning btn-sm btn-action">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                    </c:if>
-                                                    <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_CATEGORY')}">
-                                                        <a href="${pageContext.request.contextPath}/Category?service=deleteCategory&category_id=${cat.category_id}" 
-                                                           class="btn btn-danger btn-sm btn-action" 
-                                                           onclick="return confirm('Are you sure you want to delete this category?');">
-                                                            <i class="fas fa-trash"></i>
-                                                        </a>
-                                                    </c:if>
-                                                </td>
-                                            </c:if>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${cat.parent_id != null}">
+                                                    <c:out value="${categoryDAO.getParentCategoryName(cat.parent_id)}"/>
+                                                </c:when>
+                                                <c:otherwise>None</c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                            <td class="d-flex justify-content-center">
+                                                <a href="${pageContext.request.contextPath}/Category?service=viewCategory&category_id=${cat.category_id}" 
+                                                   class="btn btn-info btn-sm btn-action" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <c:if test="${sessionScope.user != null && (sessionScope.user.roleId == 1 || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Sửa danh mục'))}">
+                                                    <a href="${pageContext.request.contextPath}/Category?service=updateCategory&category_id=${cat.category_id}" 
+                                                       class="btn btn-warning btn-sm btn-action" title="Edit">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                </c:if>
+                                                <c:if test="${sessionScope.user != null && (sessionScope.user.roleId == 1 || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xóa danh mục'))}">
+                                                    <a href="${pageContext.request.contextPath}/Category?service=deleteCategory&category_id=${cat.category_id}" 
+                                                       class="btn btn-danger btn-sm btn-action" 
+                                                       onclick="return confirm('Are you sure you want to delete this category?');" title="Delete">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                </c:if>
+                                            </td>
                                         </tr>
                                     </c:forEach>
                                 </c:when>
                                 <c:otherwise>
-                                    <tr><td colspan="${sessionScope.user != null && (rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_CATEGORY') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_CATEGORY')) ? 9 : 8}" class="text-center text-muted">No categories found.</td></tr>
+                                    <tr><td colspan="8" class="text-center text-muted">No categories found.</td></tr>
                                 </c:otherwise>
                             </c:choose>
                         </tbody>
@@ -198,15 +199,15 @@
                 <nav class="mt-3">
                     <ul class="pagination justify-content-center">
                         <li class="page-item ${currentPage == 1 ? 'disabled' : ''}">
-                            <a class="page-link" href="${pageContext.request.contextPath}/Category?service=listCategory&page=${currentPage - 1}&code=${code}&priority=${priority}&status=${status}&sortBy=${sortBy}">Previous</a>
+                            <a class="page-link" href="${pageContext.request.contextPath}/Category?service=listCategory&page=${currentPage - 1}&name=${name}&status=${status}&sortBy=${sortBy}">Previous</a>
                         </li>
                         <c:forEach begin="1" end="${totalPages}" var="i">
                             <li class="page-item ${currentPage == i ? 'active' : ''}">
-                                <a class="page-link" href="${pageContext.request.contextPath}/Category?service=listCategory&page=${i}&code=${code}&priority=${priority}&status=${status}&sortBy=${sortBy}">${i}</a>
+                                <a class="page-link" href="${pageContext.request.contextPath}/Category?service=listCategory&page=${i}&name=${name}&status=${status}&sortBy=${sortBy}">${i}</a>
                             </li>
                         </c:forEach>
                         <li class="page-item ${currentPage == totalPages ? 'disabled' : ''}">
-                            <a class="page-link" href="${pageContext.request.contextPath}/Category?service=listCategory&page=${currentPage + 1}&code=${code}&priority=${priority}&status=${status}&sortBy=${sortBy}">Next</a>
+                            <a class="page-link" href="${pageContext.request.contextPath}/Category?service=listCategory&page=${currentPage + 1}&name=${name}&status=${status}&sortBy=${sortBy}">Next</a>
                         </li>
                     </ul>
                 </nav>

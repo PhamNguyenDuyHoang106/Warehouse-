@@ -33,8 +33,11 @@ public class LoginServlet extends HttpServlet {
             User user = userDAO.login(username, password); 
 
         if (user != null) {
-            if (user.getStatus() != null && user.getStatus().toString().equalsIgnoreCase("inactive")) {
-                request.setAttribute("error", "Your account has been disabled!");
+            if (user.getStatus() != null && user.getStatus() == User.Status.inactive) {
+                request.setAttribute("error", "Tài khoản của bạn đang ở trạng thái inactive. Vui lòng liên hệ quản trị viên.");
+                request.getRequestDispatcher("Login.jsp").forward(request, response);
+            } else if (user.getStatus() != null && user.getStatus() == User.Status.locked) {
+                request.setAttribute("error", "Tài khoản đã bị khóa do nhập sai mật khẩu quá nhiều lần. Vui lòng liên hệ quản trị viên để mở khóa.");
                 request.getRequestDispatcher("Login.jsp").forward(request, response);
             } else {
                 // Clear old session and create new one

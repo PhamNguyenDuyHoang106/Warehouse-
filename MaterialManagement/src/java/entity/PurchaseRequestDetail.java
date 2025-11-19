@@ -13,26 +13,31 @@ import java.math.BigDecimal;
 
 public class PurchaseRequestDetail {
 
-    private int purchaseRequestDetailId;
+    private int id;
     private int purchaseRequestId;
-    private BigDecimal quantity;
-    private String notes;
-    private Timestamp createdAt;
-    private Timestamp updatedAt;
     private int materialId;
+    private Integer unitId;
+    private BigDecimal quantity;
+    private BigDecimal unitPriceEstimate;
+    private BigDecimal totalEstimate;
+    private String note;
+    private Timestamp createdAt;
     private String materialName;
     private String materialCode;
     private String unitName;
 
     public PurchaseRequestDetail() {
+        this.quantity = BigDecimal.ZERO;
+        this.unitPriceEstimate = BigDecimal.ZERO;
+        this.totalEstimate = BigDecimal.ZERO;
     }
 
-    public int getPurchaseRequestDetailId() {
-        return purchaseRequestDetailId;
+    public int getId() {
+        return id;
     }
 
-    public void setPurchaseRequestDetailId(int purchaseRequestDetailId) {
-        this.purchaseRequestDetailId = purchaseRequestDetailId;
+    public void setId(int id) {
+        this.id = id;
     }
 
     public int getPurchaseRequestId() {
@@ -43,20 +48,54 @@ public class PurchaseRequestDetail {
         this.purchaseRequestId = purchaseRequestId;
     }
 
+    public int getMaterialId() {
+        return materialId;
+    }
+
+    public void setMaterialId(int materialId) {
+        this.materialId = materialId;
+    }
+
+    public Integer getUnitId() {
+        return unitId;
+    }
+
+    public void setUnitId(Integer unitId) {
+        this.unitId = unitId;
+    }
+
     public BigDecimal getQuantity() {
         return quantity;
     }
 
     public void setQuantity(BigDecimal quantity) {
         this.quantity = quantity;
+        recalcTotalEstimate();
     }
 
-    public String getNotes() {
-        return notes;
+    public BigDecimal getUnitPriceEstimate() {
+        return unitPriceEstimate;
     }
 
-    public void setNotes(String notes) {
-        this.notes = notes;
+    public void setUnitPriceEstimate(BigDecimal unitPriceEstimate) {
+        this.unitPriceEstimate = unitPriceEstimate;
+        recalcTotalEstimate();
+    }
+
+    public BigDecimal getTotalEstimate() {
+        return totalEstimate;
+    }
+
+    public void setTotalEstimate(BigDecimal totalEstimate) {
+        this.totalEstimate = totalEstimate;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 
     public Timestamp getCreatedAt() {
@@ -65,22 +104,6 @@ public class PurchaseRequestDetail {
 
     public void setCreatedAt(Timestamp createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public Timestamp getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Timestamp updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public int getMaterialId() {
-        return materialId;
-    }
-
-    public void setMaterialId(int materialId) {
-        this.materialId = materialId;
     }
 
     public String getMaterialName() {
@@ -105,5 +128,45 @@ public class PurchaseRequestDetail {
 
     public void setUnitName(String unitName) {
         this.unitName = unitName;
+    }
+
+    private void recalcTotalEstimate() {
+        if (quantity != null && unitPriceEstimate != null) {
+            this.totalEstimate = unitPriceEstimate.multiply(quantity);
+        }
+    }
+
+    // Compatibility helpers -------------------------------------------------
+    public int getPurchaseRequestDetailId() {
+        return id;
+    }
+
+    public void setPurchaseRequestDetailId(int purchaseRequestDetailId) {
+        this.id = purchaseRequestDetailId;
+    }
+
+    public BigDecimal getUnit_price_est() {
+        return unitPriceEstimate;
+    }
+
+    public void setUnit_price_est(BigDecimal value) {
+        this.unitPriceEstimate = value;
+        recalcTotalEstimate();
+    }
+
+    public BigDecimal getTotal_est() {
+        return totalEstimate;
+    }
+
+    public void setTotal_est(BigDecimal value) {
+        this.totalEstimate = value;
+    }
+
+    public String getNotes() {
+        return note;
+    }
+
+    public void setNotes(String notes) {
+        this.note = notes;
     }
 }

@@ -136,14 +136,6 @@
                                         <% } %>
                                     </div>
                                     <div class="mb-3">
-                                        <label for="address" class="form-label text-muted">Address</label>
-                                        <input type="text" class="form-control <%= errors != null && errors.containsKey("address") ? "is-invalid" : "" %>" id="address" name="address"
-                                               value="<%= user.getAddress() != null ? user.getAddress() : "" %>">
-                                        <% if (errors != null && errors.containsKey("address")) { %>
-                                        <div class="invalid-feedback"><%= errors.get("address") %></div>
-                                        <% } %>
-                                    </div>
-                                    <div class="mb-3">
                                         <label for="dateOfBirth" class="form-label text-muted">Date of Birth</label>
                                         <input type="date" class="form-control <%= errors != null && errors.containsKey("dateOfBirth") ? "is-invalid" : "" %>" id="dateOfBirth" name="dateOfBirth"
                                                value="<%= user.getDateOfBirth() != null ? user.getDateOfBirth() : "" %>">
@@ -222,9 +214,9 @@
                 if (!fullName) {
                     this.classList.add('is-invalid');
                     feedback.textContent = 'Full name is required.';
-                } else if (fullName.length > 25) {
+                } else if (fullName.length > 100) {
                     this.classList.add('is-invalid');
-                    feedback.textContent = 'Full name must not exceed 25 characters.';
+                    feedback.textContent = 'Full name must not exceed 100 characters.';
                 } else if (fullName.match(/\d/)) {
                     this.classList.add('is-invalid');
                     feedback.textContent = 'Full name must not contain numbers.';
@@ -255,29 +247,17 @@
 
             document.getElementById('phoneNumber').addEventListener('input', function () {
                 const phone = this.value;
-                const phoneRegex = /^\+?[0-9]{1,15}$/;
+                const phoneRegex = /^\+?[0-9]{1,20}$/;
                 const feedback = this.nextElementSibling;
                 if (!phone) {
                     this.classList.add('is-invalid');
                     feedback.textContent = 'Phone number is required.';
                 } else if (!phoneRegex.test(phone)) {
                     this.classList.add('is-invalid');
-                    feedback.textContent = 'Phone number must be 1-15 digits, optionally starting with "+".';
-                } else if (phone.length > 15) {
+                    feedback.textContent = 'Phone number must be 1-20 digits, optionally starting with "+".';
+                } else if (phone.length > 20) {
                     this.classList.add('is-invalid');
-                    feedback.textContent = 'Phone number must not exceed 15 characters.';
-                } else {
-                    this.classList.remove('is-invalid');
-                    feedback.textContent = '';
-                }
-            });
-
-            document.getElementById('address').addEventListener('input', function () {
-                const address = this.value;
-                const feedback = this.nextElementSibling;
-                if (address && address.length > 25) {
-                    this.classList.add('is-invalid');
-                    feedback.textContent = 'Address must not exceed 25 characters.';
+                    feedback.textContent = 'Phone number must not exceed 20 characters.';
                 } else {
                     this.classList.remove('is-invalid');
                     feedback.textContent = '';
@@ -321,20 +301,19 @@
                 const email = document.getElementById('email').value;
                 const phone = document.getElementById('phoneNumber').value;
                 const emailRegex = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$/;
-                const phoneRegex = /^\+?[0-9]{1,15}$/;
+                const phoneRegex = /^\+?[0-9]{1,20}$/;
                 const fullNameFeedback = document.getElementById('fullName').nextElementSibling;
                 const emailFeedback = document.getElementById('email').nextElementSibling;
                 const phoneFeedback = document.getElementById('phoneNumber').nextElementSibling;
-                const addressFeedback = document.getElementById('address').nextElementSibling;
 
                 if (!fullName) {
                     valid = false;
                     document.getElementById('fullName').classList.add('is-invalid');
                     fullNameFeedback.textContent = 'Full name is required.';
-                } else if (fullName.length > 25) {
+                } else if (fullName.length > 100) {
                     valid = false;
                     document.getElementById('fullName').classList.add('is-invalid');
-                    fullNameFeedback.textContent = 'Full name must not exceed 25 characters.';
+                    fullNameFeedback.textContent = 'Full name must not exceed 100 characters.';
                 } else if (fullName.match(/\d/)) {
                     valid = false;
                     document.getElementById('fullName').classList.add('is-invalid');
@@ -362,14 +341,7 @@
                 } else if (!phoneRegex.test(phone)) {
                     valid = false;
                     document.getElementById('phoneNumber').classList.add('is-invalid');
-                    phoneFeedback.textContent = 'Phone number must be 1-15 digits.';
-                }
-
-                const address = document.getElementById('address').value;
-                if (address && address.length > 25) {
-                    valid = false;
-                    document.getElementById('address').classList.add('is-invalid');
-                    addressFeedback.textContent = 'Address must not exceed 25 characters.';
+                    phoneFeedback.textContent = 'Phone number must be 1-20 digits.';
                 }
 
                 if (!valid) {

@@ -5,6 +5,7 @@ import dal.PurchaseRequestDetailDAO;
 import dal.RolePermissionDAO;
 import dal.UserDAO;
 import dal.MaterialDAO;
+import utils.PermissionHelper;
 import entity.PurchaseRequest;
 import entity.PurchaseRequestDetail;
 import entity.User;
@@ -43,7 +44,7 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
         RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
         MaterialDAO materialDAO = new MaterialDAO();
 
-        boolean hasPermission = rolePermissionDAO.hasPermission(currentUser.getRoleId(), "VIEW_PURCHASE_REQUEST_LIST");
+        boolean hasPermission = PermissionHelper.hasPermission(currentUser, "DS yêu cầu mua");
         if (!hasPermission) {
             request.setAttribute("error", "You do not have permission to view purchase request details.");
             request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
@@ -55,7 +56,7 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
             
             PurchaseRequest purchaseRequest = purchaseRequestDAO.getPurchaseRequestById(purchaseRequestId);
             
-            if (purchaseRequest == null) {
+            if (purchaseRequest == null || purchaseRequest.isDeleted()) {
                 LOGGER.log(Level.WARNING, "Purchase request not found for ID: " + purchaseRequestId);
                 request.setAttribute("error", "Purchase request not found.");
                 request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
@@ -105,7 +106,7 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
             // Lấy thông tin hình ảnh của materials
             Map<Integer, String> materialImages = materialDAO.getMaterialImages(materialIds);
 
-            User requester = userDAO.getUserById(purchaseRequest.getUserId());
+            User requester = userDAO.getUserById(purchaseRequest.getRequestBy());
             String requesterName = requester != null ? requester.getFullName() : "Không xác định";
 
             request.setAttribute("purchaseRequestDetailList", purchaseRequestDetailList);
@@ -113,7 +114,8 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
             request.setAttribute("requesterName", requesterName);
             request.setAttribute("requester", requester);
             request.setAttribute("rolePermissionDAO", rolePermissionDAO);
-            request.setAttribute("hasHandleRequestPermission", rolePermissionDAO.hasPermission(currentUser.getRoleId(), "HANDLE_REQUEST"));
+            // Admin có toàn quyền - PermissionHelper đã xử lý
+            request.setAttribute("hasHandleRequestPermission", PermissionHelper.hasPermission(currentUser, "Duyệt PR"));
             request.setAttribute("materialImages", materialImages); // Truyền thông tin hình ảnh vào JSP
 
             request.getRequestDispatcher("PurchaseRequestDetail.jsp").forward(request, response);
@@ -140,7 +142,8 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
         PurchaseRequestDAO purchaseRequestDAO = new PurchaseRequestDAO();
         RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
 
-        boolean hasPermission = rolePermissionDAO.hasPermission(currentUser.getRoleId(), "HANDLE_REQUEST");
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        boolean hasPermission = PermissionHelper.hasPermission(currentUser, "Duyệt PR");
         if (!hasPermission) {
             request.setAttribute("error", "You do not have permission to approve or reject purchase requests.");
             request.getRequestDispatcher("PurchaseRequestDetail.jsp").forward(request, response);
@@ -150,37 +153,36 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
         try {
             String modalStatus = request.getParameter("modalStatus");
             int purchaseRequestId = Integer.parseInt(request.getParameter("id"));
-            String reason = request.getParameter("reason");
+            String decisionNote = request.getParameter("reason");
             
             boolean success = false;
-            if ("approved".equals(modalStatus)) {
-                success = purchaseRequestDAO.updatePurchaseRequestStatus(purchaseRequestId, "approved", currentUser.getUserId(), reason);
-            } else if ("rejected".equals(modalStatus)) {
-                success = purchaseRequestDAO.updatePurchaseRequestStatus(purchaseRequestId, "rejected", currentUser.getUserId(), reason);
+            if ("approved".equalsIgnoreCase(modalStatus)) {
+                success = purchaseRequestDAO.updatePurchaseRequestStatus(purchaseRequestId, "approved", currentUser.getUserId(), decisionNote);
+            } else if ("rejected".equalsIgnoreCase(modalStatus)) {
+                success = purchaseRequestDAO.updatePurchaseRequestStatus(purchaseRequestId, "rejected", currentUser.getUserId(), decisionNote);
             } else {
-                request.setAttribute("error", "Invalid status.");
-                request.getRequestDispatcher("PurchaseRequestDetail.jsp").forward(request, response);
+                response.sendRedirect(request.getContextPath() + "/ListPurchaseRequests?error=Invalid status.");
                 return;
             }
             
             if (success) {
                 LOGGER.log(Level.INFO, "Purchase request ID " + purchaseRequestId + " successfully " + modalStatus);
-                request.setAttribute("success", "The request has been " + ("approved".equals(modalStatus) ? "approved" : "rejected") + " successfully!");
-                doGet(request, response);
+                response.sendRedirect(request.getContextPath() + "/ListPurchaseRequests?success=The request has been " + ("approved".equals(modalStatus) ? "approved" : "rejected") + " successfully!");
+                return;
             } else {
                 LOGGER.log(Level.WARNING, "Failed to " + modalStatus + " purchase request ID " + purchaseRequestId + ".");
-                request.setAttribute("error", "Could not " + ("approved".equals(modalStatus) ? "approve" : "reject") + " the request. Please try again.");
-                doGet(request, response);
+                response.sendRedirect(request.getContextPath() + "/ListPurchaseRequests?error=Could not " + ("approved".equals(modalStatus) ? "approve" : "reject") + " the request. Please try again.");
+                return;
             }
             
         } catch (NumberFormatException e) {
             LOGGER.log(Level.WARNING, "Invalid purchase request ID or status format in doPost.", e);
-            request.setAttribute("error", "Invalid input for purchase request. Please try again.");
-            doGet(request, response);
+            response.sendRedirect(request.getContextPath() + "/ListPurchaseRequests?error=Invalid input for purchase request. Please try again.");
+            return;
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "Error in doPost for PurchaseRequestDetailServlet for ID: " + request.getParameter("id"), ex);
-            request.setAttribute("error", "An error occurred while processing the request: " + ex.getMessage());
-            doGet(request, response);
+            response.sendRedirect(request.getContextPath() + "/ListPurchaseRequests?error=An error occurred while processing the request. Please try again later.");
+            return;
         }
     }
 

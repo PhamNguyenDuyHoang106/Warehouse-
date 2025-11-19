@@ -259,7 +259,7 @@
                   </div>
                 </c:if>
 
-                <!-- Damaged Materials Alert (Admin/Director/Warehouse Staff) -->
+                <!-- Inactive Materials Alert (Admin/Director/Warehouse Staff) -->
                 <c:if test="${sessionScope.user.roleId == 1 || sessionScope.user.roleId == 2 || sessionScope.user.roleId == 3}">
                   <c:if test="${damagedMaterialsCount > 0}">
                     <div class="col-md-6 mb-3">
@@ -267,9 +267,9 @@
                         <div class="d-flex align-items-center">
                           <i class="fas fa-exclamation-triangle fa-2x me-3" style="color: #856404"></i>
                           <div>
-                            <h5 class="alert-heading mb-1">Damaged Materials</h5>
-                            <p class="mb-2">${damagedMaterialsCount} materials are damaged</p>
-                            <a href="StaticInventory?status=damaged" class="btn btn-warning btn-sm">
+                            <h5 class="alert-heading mb-1">Inactive Materials</h5>
+                            <p class="mb-2">${damagedMaterialsCount} materials are inactive</p>
+                            <a href="StaticInventory?status=inactive" class="btn btn-warning btn-sm">
                               <i class="fas fa-eye me-1"></i>View Details
                             </a>
                           </div>

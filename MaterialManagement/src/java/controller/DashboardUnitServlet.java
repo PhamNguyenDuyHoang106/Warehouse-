@@ -2,6 +2,7 @@ package controller;
 
 import dal.UnitDAO;
 import entity.Unit;
+import entity.User;
 import java.io.IOException;
 import java.util.List;
 import jakarta.servlet.ServletException;
@@ -9,13 +10,38 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import dal.RolePermissionDAO;
+import utils.PermissionHelper;
 
 @WebServlet(name = "DashboardUnitServlet", urlPatterns = {"/UnitList"})
 public class DashboardUnitServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+
+        // Check user authentication
+        HttpSession session = request.getSession();
+        User user = (User) session.getAttribute("user");
+        if (user == null) {
+            response.sendRedirect(request.getContextPath() + "/Login.jsp");
+            return;
+        }
+
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        boolean hasPermission = PermissionHelper.hasPermission(user, "DS đơn vị");
+        if (!hasPermission) {
+            request.setAttribute("error", "You do not have permission to view unit list.");
+            request.getRequestDispatcher("error.jsp").forward(request, response);
+            return;
+        }
+
+        String action = request.getParameter("action");
+        if ("view".equals(action)) {
+            viewUnit(request, response, user);
+            return;
+        }
+
         UnitDAO unitDAO = new UnitDAO();
         String keyword = request.getParameter("keyword");
         String pageParam = request.getParameter("page");
@@ -41,6 +67,33 @@ public class DashboardUnitServlet extends HttpServlet {
         request.setAttribute("totalPages", totalPages);
         request.setAttribute("keyword", keyword);
         request.getRequestDispatcher("DashboardUnit.jsp").forward(request, response);
+    }
+
+    private void viewUnit(HttpServletRequest request, HttpServletResponse response, User user)
+            throws ServletException, IOException {
+        String idStr = request.getParameter("id");
+        if (idStr != null && !idStr.isEmpty()) {
+            try {
+                int id = Integer.parseInt(idStr);
+                UnitDAO unitDAO = new UnitDAO();
+                Unit unit = unitDAO.getUnitById(id);
+                if (unit != null) {
+                    RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
+                    request.setAttribute("unit", unit);
+                    request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+                    request.getRequestDispatcher("/UnitDetail.jsp").forward(request, response);
+                } else {
+                    request.setAttribute("error", "Unit not found with ID: " + id);
+                    request.getRequestDispatcher("/error.jsp").forward(request, response);
+                }
+            } catch (NumberFormatException e) {
+                request.setAttribute("error", "Invalid unit ID.");
+                request.getRequestDispatcher("/error.jsp").forward(request, response);
+            }
+        } else {
+            request.setAttribute("error", "Unit ID is required.");
+            request.getRequestDispatcher("/error.jsp").forward(request, response);
+        }
     }
 
     @Override

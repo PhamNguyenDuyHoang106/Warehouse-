@@ -105,7 +105,7 @@
 </head>
 <body>
     <c:set var="roleId" value="${sessionScope.user.roleId}" />
-    <c:set var="hasCreatePurchaseRequestPermission" value="${rolePermissionDAO.hasPermission(roleId, 'CREATE_PURCHASE_REQUEST')}" scope="request" />
+    <c:set var="hasCreatePurchaseRequestPermission" value="${rolePermissionDAO.hasPermission(roleId, 'Tạo PR')}" scope="request" />
 
     <c:choose>
         <c:when test="${empty sessionScope.user}">
@@ -158,17 +158,27 @@
                                                 </c:if>
                                                 <form action="CreatePurchaseRequest" method="post">
                                                     <div class="row g-3">
-                                                        <div class="col-md-6">
+                                                        <div class="col-md-4">
                                                             <label class="form-label text-muted">Request Code</label>
                                                             <input type="text" class="form-control" name="requestCode" value="${requestCode}" readonly>
                                                         </div>
-                                                        <div class="col-md-6">
+                                                        <div class="col-md-4">
                                                             <label class="form-label text-muted">Request Date</label>
-                                                            <input type="text" class="form-control" name="requestDate" value="${requestDate}" readonly>
+                                                            <input type="date" class="form-control" name="requestDate" value="${requestDate}" readonly>
                                                         </div>
-                                                        <div class="col-md-6">
+                                                        <div class="col-md-4">
+                                                            <label class="form-label text-muted">Expected Date</label>
+                                                            <input type="date" class="form-control" name="expectedDate" value="${expectedDate}" />
+                                                            <c:if test="${not empty errors.expectedDate}">
+                                                                <div class="text-danger small mt-1">${errors.expectedDate}</div>
+                                                            </c:if>
+                                                        </div>
+                                                        <div class="col-12">
                                                             <label class="form-label text-muted">Purchase Reason</label>
                                                             <textarea class="form-control" name="reason" rows="3" placeholder="Please describe the reason for purchase request...">${submittedReason}</textarea>
+                                                            <c:if test="${not empty errors.reason}">
+                                                                <div class="text-danger small mt-1">${errors.reason}</div>
+                                                            </c:if>
                                                         </div>
                                                     </div>
                                                     <h3 class="fw-normal mt-5 mb-3">Materials</h3>
@@ -194,7 +204,8 @@
                                                                 <input type="text" class="form-control" name="note">
                                                             </div>
                                                             <div class="col-md-2">
-                                                                <img class="material-image" src="<c:out value='${materials[0].materialsUrl}'/>" alt="Material Image">
+                                                                <c:set var="firstMaterialUrl" value="${empty materials ? null : materials[0].materialsUrl}" />
+                                                                <img class="material-image" src="${empty firstMaterialUrl ? pageContext.request.contextPath.concat('/images/material/default.jpg') : firstMaterialUrl}" alt="Material Image">
                                                             </div>
                                                             <div class="col-md-1 d-flex align-items-center">
                                                                 <button type="button" class="btn btn-outline-danger remove-material">Remove</button>
@@ -225,6 +236,17 @@
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const contextPath = '${pageContext.request.contextPath}';
+        function resolveMediaUrl(url) {
+            if (!url || url === 'null') {
+                return `${contextPath}/images/material/default.jpg`;
+            }
+            if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')) {
+                return url;
+            }
+            return `${contextPath}/${url}`;
+        }
+
         var materialsData = [
         <c:forEach var="material" items="${materials}" varStatus="status">
             {
@@ -262,14 +284,7 @@ $(nameInput).autocomplete({
     select: function(event, ui) {
         idInput.value = ui.item.id;
         nameInput.value = ui.item.name;
-        let imgUrl = ui.item.imageUrl && ui.item.imageUrl !== 'null' ? ui.item.imageUrl : '';
-        if (imgUrl.startsWith('http') || imgUrl.startsWith('/') || imgUrl.startsWith('images/material/')) {
-            img.src = imgUrl;
-        } else if (imgUrl) {
-            img.src = 'images/material/' + imgUrl;
-        } else {
-            img.src = 'images/material/default.jpg';
-        }
+        img.src = resolveMediaUrl(ui.item.imageUrl);
         return false;
     },
     focus: function(event, ui) {
@@ -279,10 +294,7 @@ $(nameInput).autocomplete({
     minLength: 0 // Cho phép hiển thị danh sách khi click (chưa gõ gì)
 }).autocomplete("instance")._renderItem = function(ul, item) {
     // Custom render với ảnh thumbnail
-    let imgUrl = item.imageUrl && item.imageUrl !== 'null' ? item.imageUrl : '';
-    if (!imgUrl.startsWith('http') && !imgUrl.startsWith('/') && !imgUrl.startsWith('images/material/')) {
-        imgUrl = imgUrl ? 'images/material/' + imgUrl : 'images/material/default.jpg';
-    }
+    let imgUrl = resolveMediaUrl(item.imageUrl);
     
     return $("<li>")
         .append(
@@ -333,6 +345,7 @@ $(nameInput).on('focus click', function () {
                 for (let i = 0; i < submittedMaterialNames.length; i++) {
                     if (i === 0) {
                         // Create first row manually
+                        const defaultImage = resolveMediaUrl(null);
                         const firstRowTemplate = `
                             <div class="row material-row align-items-center gy-2">
                                 <div class="col-md-3">
@@ -349,7 +362,7 @@ $(nameInput).on('focus click', function () {
                                     <input type="text" class="form-control" name="note">
                                 </div>
                                 <div class="col-md-2">
-                                    <img class="material-image" src="images/material/default.jpg" alt="Material Image">
+                                    <img class="material-image" src="${defaultImage}" alt="Material Image">
                                 </div>
                                 <div class="col-md-1 d-flex align-items-center">
                                     <button type="button" class="btn btn-outline-danger remove-material">Remove</button>
@@ -397,7 +410,7 @@ $(nameInput).on('focus click', function () {
             newRow.querySelector('.material-id-input').value = '';
             newRow.querySelector('input[name="quantity[]"]').value = '';
             newRow.querySelector('input[name="note"]').value = '';
-            newRow.querySelector('.material-image').src = 'images/material/default.jpg';
+    newRow.querySelector('.material-image').src = resolveMediaUrl(null);
             materialList.appendChild(newRow);
             updateMaterialRowAutocomplete(newRow);
         });

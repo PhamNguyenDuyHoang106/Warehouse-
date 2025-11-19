@@ -31,13 +31,4 @@ public class EmailUtils {
         Transport.send(message);
     }
 
-    public static void sendAdminNotificationForResetRequest(String userEmail) throws MessagingException {
-        dal.UserDAO userDAO = new dal.UserDAO();
-        String adminEmail = userDAO.getAdminEmail();
-        if (adminEmail == null) return; 
-        String subject = "New Password Reset Request";
-        String content = "A new password reset request has been submitted for the account: <b>" + userEmail + "</b>.<br>"
-                + "Please review and process this request in the admin dashboard.";
-        sendEmail(adminEmail, subject, content);
-    }
 }

@@ -4,11 +4,32 @@ import entity.Category;
 import entity.DBContext;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
-import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class CategoryDAO extends DBContext {
+
+    private static final Logger LOGGER = Logger.getLogger(CategoryDAO.class.getName());
+
+    private static final String BASE_SELECT =
+        "SELECT " +
+            "category_id, " +
+            "category_code, " +
+            "category_name, " +
+            "parent_id, " +
+            "level_depth, " +
+            "description, " +
+            "status, " +
+            "created_at, " +
+            "updated_at, " +
+            "deleted_at " +
+        "FROM Categories";
+
     private String lastError;
 
     public CategoryDAO() {
@@ -20,53 +41,67 @@ public class CategoryDAO extends DBContext {
         return lastError;
     }
 
-    public List<Category> getAllCategories() {
-        List<Category> list = new ArrayList<>();
-        String sql = "SELECT * FROM Categories WHERE disable = 0";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Category c = new Category(
-                    rs.getInt("category_id"),
-                    rs.getString("category_name"),
-                    rs.getObject("parent_id") != null ? rs.getInt("parent_id") : null,
-                    rs.getTimestamp("created_at"),
-                    rs.getInt("disable"),
-                    rs.getString("status"),
-                    rs.getString("description"),
-                    rs.getString("priority"),
-                    rs.getString("code")
-                );
-                list.add(c);
-            }
-        } catch (Exception e) {
-            lastError = "Error in getAllCategories: " + e.getMessage();
-            e.printStackTrace();
+    private Category mapCategory(ResultSet rs) throws SQLException {
+        Category category = new Category();
+        category.setCategoryId(rs.getInt("category_id"));
+        category.setCategoryCode(rs.getString("category_code"));
+        category.setCategoryName(rs.getString("category_name"));
+        category.setParentId((Integer) rs.getObject("parent_id"));
+        category.setLevelDepth((Integer) rs.getObject("level_depth"));
+        // path_ltree column may not exist in database, handle gracefully
+        try {
+            category.setPathLtree(rs.getString("path_ltree"));
+        } catch (SQLException e) {
+            category.setPathLtree(null);
         }
-        return list;
+        category.setDescription(rs.getString("description"));
+        category.setStatus(rs.getString("status"));
+        // created_at, updated_at, deleted_at may not exist in all database versions
+        try {
+            category.setCreatedAt(rs.getTimestamp("created_at"));
+        } catch (SQLException e) {
+            category.setCreatedAt(null);
+        }
+        try {
+            category.setUpdatedAt(rs.getTimestamp("updated_at"));
+        } catch (SQLException e) {
+            category.setUpdatedAt(null);
+        }
+        try {
+            category.setDeletedAt(rs.getTimestamp("deleted_at"));
+        } catch (SQLException e) {
+            category.setDeletedAt(null);
+        }
+        return category;
+    }
+
+    public List<Category> getAllCategories() {
+        List<Category> categories = new ArrayList<>();
+        String sql = BASE_SELECT + " WHERE deleted_at IS NULL ORDER BY category_name ASC";
+        try (PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                categories.add(mapCategory(rs));
+            }
+        } catch (SQLException ex) {
+            lastError = "Error in getAllCategories: " + ex.getMessage();
+            LOGGER.log(Level.SEVERE, lastError, ex);
+        }
+        return categories;
     }
 
     public Category getCategoryById(int categoryId) {
-        String sql = "SELECT * FROM Categories WHERE category_id = ? AND disable = 0";
+        String sql = BASE_SELECT + " WHERE category_id = ? AND deleted_at IS NULL";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, categoryId);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                Category category = new Category();
-                category.setCategory_id(rs.getInt("category_id"));
-                category.setCategory_name(rs.getString("category_name"));
-                category.setParent_id(rs.getObject("parent_id") != null ? rs.getInt("parent_id") : null);
-                category.setCreated_at(rs.getTimestamp("created_at"));
-                category.setDisable(rs.getInt("disable"));
-                category.setStatus(rs.getString("status"));
-                category.setDescription(rs.getString("description"));
-                category.setPriority(rs.getString("priority"));
-                category.setCode(rs.getString("code"));
-                return category;
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return mapCategory(rs);
+                }
             }
-        } catch (Exception e) {
-            lastError = "Error getCategoryById: " + e.getMessage();
-            e.printStackTrace();
+        } catch (SQLException ex) {
+            lastError = "Error getCategoryById: " + ex.getMessage();
+            LOGGER.log(Level.SEVERE, lastError, ex);
         }
         return null;
     }
@@ -76,177 +111,223 @@ public class CategoryDAO extends DBContext {
             lastError = "Database connection is null";
             return false;
         }
-        String sql = "INSERT INTO Categories (category_name, parent_id, created_at, disable, status, description, priority, code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setString(1, category.getCategory_name());
-            ps.setObject(2, category.getParent_id());
-            ps.setTimestamp(3, category.getCreated_at());
-            ps.setInt(4, category.getDisable());
-            ps.setString(5, category.getStatus());
-            ps.setString(6, category.getDescription() != null ? category.getDescription() : "");
-            ps.setString(7, category.getPriority());
-            ps.setString(8, category.getCode());
-            int rowsAffected = ps.executeUpdate();
-            if (rowsAffected > 0) {
-                return true;
-            } else {
-                lastError = "No rows were added. Check input data.";
-                return false;
+
+        String categoryCode = resolveCategoryCode(category);
+        int levelDepth = 1;
+        String path = categoryCode;
+
+        if (category.getParentId() != null) {
+            Category parent = getCategoryById(category.getParentId());
+            if (parent != null) {
+                levelDepth = parent.getLevelDepth() != null ? parent.getLevelDepth() + 1 : 2;
+                path = parent.getPathLtree() != null
+                        ? parent.getPathLtree() + "." + categoryCode
+                        : parent.getCategoryCode() + "." + categoryCode;
             }
-        } catch (Exception e) {
-            lastError = "Error adding category: " + e.getMessage();
-            e.printStackTrace();
+        }
+
+        String sql = 
+            "INSERT INTO Categories (" +
+                "category_code, " +
+                "category_name, " +
+                "parent_id, " +
+                "level_depth, " +
+                "description, " +
+                "status " +
+            ") VALUES (?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, categoryCode);
+            ps.setString(2, category.getCategoryName());
+            if (category.getParentId() != null) {
+                ps.setInt(3, category.getParentId());
+            } else {
+                ps.setNull(3, Types.INTEGER);
+            }
+            ps.setInt(4, levelDepth);
+            ps.setString(5, category.getDescription());
+            ps.setString(6, category.getStatus() != null ? category.getStatus() : "active");
+            return ps.executeUpdate() > 0;
+        } catch (SQLException ex) {
+            lastError = "Error adding category: " + ex.getMessage();
+            LOGGER.log(Level.SEVERE, lastError, ex);
             return false;
         }
     }
 
     public boolean updateCategory(Category category) {
-        String sql = "UPDATE Categories SET category_name = ?, parent_id = ?, created_at = ?, disable = ?, status = ?, description = ?, priority = ?, code = ? WHERE category_id = ?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setString(1, category.getCategory_name());
-            ps.setObject(2, category.getParent_id());
-            ps.setTimestamp(3, category.getCreated_at());
-            ps.setInt(4, category.getDisable());
-            ps.setString(5, category.getStatus());
-            ps.setString(6, category.getDescription() != null ? category.getDescription() : "");
-            ps.setString(7, category.getPriority());
-            ps.setString(8, category.getCode());
-            ps.setInt(9, category.getCategory_id());
-            int rows = ps.executeUpdate();
-            if (rows > 0) {
-                return true;
-            } else {
-                lastError = "No category found to update: ID = " + category.getCategory_id();
-                return false;
+        String categoryCode = resolveCategoryCode(category);
+        int levelDepth = 1;
+        String path = categoryCode;
+
+        if (category.getParentId() != null) {
+            Category parent = getCategoryById(category.getParentId());
+            if (parent != null) {
+                levelDepth = parent.getLevelDepth() != null ? parent.getLevelDepth() + 1 : 2;
+                path = parent.getPathLtree() != null
+                        ? parent.getPathLtree() + "." + categoryCode
+                        : parent.getCategoryCode() + "." + categoryCode;
             }
-        } catch (Exception e) {
-            lastError = "Error in updateCategory: " + e.getMessage();
-            e.printStackTrace();
+        }
+
+        String sql = 
+            "UPDATE Categories " +
+               "SET category_code = ?, " +
+                   "category_name = ?, " +
+                   "parent_id = ?, " +
+                   "level_depth = ?, " +
+                   "description = ?, " +
+                   "status = ? " +
+             "WHERE category_id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, categoryCode);
+            ps.setString(2, category.getCategoryName());
+            if (category.getParentId() != null) {
+                ps.setInt(3, category.getParentId());
+            } else {
+                ps.setNull(3, Types.INTEGER);
+            }
+            ps.setInt(4, levelDepth);
+            ps.setString(5, category.getDescription());
+            ps.setString(6, category.getStatus() != null ? category.getStatus() : "active");
+            ps.setInt(7, category.getCategoryId());
+            return ps.executeUpdate() > 0;
+        } catch (SQLException ex) {
+            lastError = "Error in updateCategory: " + ex.getMessage();
+            LOGGER.log(Level.SEVERE, lastError, ex);
             return false;
         }
     }
 
     public boolean deleteCategory(int categoryId) {
-        String sql = "UPDATE Categories SET disable = 1 WHERE category_id = ?";
+        String sql = "UPDATE Categories SET deleted_at = CURRENT_TIMESTAMP WHERE category_id = ? AND deleted_at IS NULL";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, categoryId);
-            int rowsAffected = ps.executeUpdate();
-            if (rowsAffected > 0) {
-                return true;
-            } else {
-                lastError = "No category found to soft-delete: ID = " + categoryId;
-                return false;
-            }
-        } catch (Exception e) {
-            lastError = "Error deleteCategory: " + e.getMessage();
-            e.printStackTrace();
+            return ps.executeUpdate() > 0;
+        } catch (SQLException ex) {
+            lastError = "Error deleteCategory: " + ex.getMessage();
+            LOGGER.log(Level.SEVERE, lastError, ex);
             return false;
         }
     }
 
-    public List<Category> searchCategories(String name, String priority, String status, String sortBy, String sortOrder) {
+    public List<Category> searchCategories(String name, String status, String sortBy, String sortOrder) {
         List<Category> list = new ArrayList<>();
-        StringBuilder sql = new StringBuilder("SELECT * FROM Categories WHERE disable = 0");
+        StringBuilder sql = new StringBuilder(BASE_SELECT);
+        sql.append(" WHERE deleted_at IS NULL");
         List<Object> params = new ArrayList<>();
         if (name != null && !name.trim().isEmpty()) {
             sql.append(" AND category_name LIKE ?");
             params.add("%" + name.trim() + "%");
-        }
-        if (priority != null && !priority.trim().isEmpty()) {
-            sql.append(" AND priority = ?");
-            params.add(priority.trim());
         }
         if (status != null && !status.trim().isEmpty()) {
             sql.append(" AND status = ?");
             params.add(status.trim());
         }
         if (sortBy != null && !sortBy.isEmpty()) {
-            String col = "category_name";
-            switch (sortBy) {
-                case "name": col = "category_name"; break;
-                case "status": col = "status"; break;
-                case "code": col = "code"; break;
-                case "priority": col = "priority"; break;
+            String column;
+            if ("status".equalsIgnoreCase(sortBy)) {
+                column = "status";
+            } else if ("code".equalsIgnoreCase(sortBy)) {
+                column = "category_code";
+            } else if ("level".equalsIgnoreCase(sortBy)) {
+                column = "level_depth";
+            } else {
+                column = "category_name";
             }
             String order = (sortOrder != null && sortOrder.equalsIgnoreCase("desc")) ? "DESC" : "ASC";
-            sql.append(" ORDER BY ").append(col).append(" ").append(order);
+            sql.append(" ORDER BY ").append(column).append(" ").append(order);
+        } else {
+            sql.append(" ORDER BY category_name ASC");
         }
+
         try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) {
                 ps.setObject(i + 1, params.get(i));
             }
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Category category = new Category();
-                category.setCategory_id(rs.getInt("category_id"));
-                category.setCategory_name(rs.getString("category_name"));
-                category.setParent_id(rs.getObject("parent_id") != null ? rs.getInt("parent_id") : null);
-                category.setCreated_at(rs.getTimestamp("created_at"));
-                category.setDisable(rs.getInt("disable"));
-                category.setStatus(rs.getString("status"));
-                category.setDescription(rs.getString("description"));
-                category.setPriority(rs.getString("priority"));
-                category.setCode(rs.getString("code"));
-                list.add(category);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapCategory(rs));
+                }
             }
-        } catch (Exception e) {
-            lastError = "Error searchCategories: " + e.getMessage();
-            e.printStackTrace();
+        } catch (SQLException ex) {
+            lastError = "Error searchCategories: " + ex.getMessage();
+            LOGGER.log(Level.SEVERE, lastError, ex);
         }
         return list;
     }
 
     public int getMaxCategoryNumber() {
-        int max = 0;
-        String sql = "SELECT COALESCE(MAX(CAST(SUBSTRING(code, 4) AS SIGNED)), 0) AS max_num FROM categories WHERE code LIKE 'CAT%'";
-        try (PreparedStatement ps = connection.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
+        String sql = "SELECT COALESCE(MAX(CAST(SUBSTRING(category_code, 4) AS SIGNED)), 0) AS max_num FROM Categories WHERE category_code LIKE 'CAT%'";
+        try (PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
-                int num = rs.getInt("max_num");
-                if (!rs.wasNull() && num >= 0) {
-                    max = num;
-                }
+                return rs.getInt("max_num");
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        } catch (SQLException ex) {
+            LOGGER.log(Level.SEVERE, "Error getMaxCategoryNumber", ex);
         }
-        return max;
+        return 0;
     }
 
     public String getParentCategoryName(Integer parentId) {
         if (parentId == null) {
             return "None";
         }
-        String sql = "SELECT category_name FROM Categories WHERE category_id = ? AND disable = 0";
+        String sql = "SELECT category_name FROM Categories WHERE category_id = ? AND deleted_at IS NULL";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, parentId);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return rs.getString("category_name");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("category_name");
+                }
             }
-        } catch (Exception e) {
-            lastError = "Error getParentCategoryName: " + e.getMessage();
-            e.printStackTrace();
+        } catch (SQLException ex) {
+            lastError = "Error getParentCategoryName: " + ex.getMessage();
+            LOGGER.log(Level.SEVERE, lastError, ex);
         }
         return "Unknown";
     }
 
     public boolean isCategoryNameExists(String categoryName, Integer excludeCategoryId) {
-        String sql = "SELECT COUNT(*) FROM Categories WHERE LOWER(category_name) = LOWER(?) AND disable = 0";
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM Categories WHERE LOWER(category_name) = LOWER(?) AND deleted_at IS NULL");
         if (excludeCategoryId != null) {
-            sql += " AND category_id != ?";
+            sql.append(" AND category_id != ?");
         }
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
             ps.setString(1, categoryName.trim());
             if (excludeCategoryId != null) {
                 ps.setInt(2, excludeCategoryId);
             }
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return rs.getInt(1) > 0;
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
             }
-        } catch (Exception e) {
-            lastError = "Error isCategoryNameExists: " + e.getMessage();
-            e.printStackTrace();
+        } catch (SQLException ex) {
+            lastError = "Error isCategoryNameExists: " + ex.getMessage();
+            LOGGER.log(Level.SEVERE, lastError, ex);
+        }
+        return false;
+    }
+
+    public boolean isCategoryCodeExists(String categoryCode, Integer excludeCategoryId) {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM Categories WHERE LOWER(category_code) = LOWER(?) AND deleted_at IS NULL");
+        if (excludeCategoryId != null) {
+            sql.append(" AND category_id != ?");
+        }
+        try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+            ps.setString(1, categoryCode.trim());
+            if (excludeCategoryId != null) {
+                ps.setInt(2, excludeCategoryId);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException ex) {
+            lastError = "Error isCategoryCodeExists: " + ex.getMessage();
+            LOGGER.log(Level.SEVERE, lastError, ex);
         }
         return false;
     }
@@ -259,15 +340,36 @@ public class CategoryDAO extends DBContext {
     }
 
     private void buildTree(List<Category> tree, List<Category> all, Integer parentId, int level, int maxLevel, int maxChildren) {
-        if (level > maxLevel) return;
+        if (level > maxLevel) {
+            return;
+        }
         int count = 0;
-        for (Category c : all) {
-            if ((parentId == null && c.getParent_id() == null) || (parentId != null && parentId.equals(c.getParent_id()))) {
-                tree.add(c);
+        for (Category category : all) {
+            if ((parentId == null && category.getParentId() == null)
+                    || (parentId != null && parentId.equals(category.getParentId()))) {
+                tree.add(category);
                 count++;
-                if (count >= maxChildren) break;
-                buildTree(tree, all, c.getCategory_id(), level + 1, maxLevel, maxChildren);
+                if (count >= maxChildren) {
+                    break;
+                }
+                buildTree(tree, all, category.getCategoryId(), level + 1, maxLevel, maxChildren);
             }
         }
+    }
+
+    private String resolveCategoryCode(Category category) {
+        if (category.getCategoryCode() != null && !category.getCategoryCode().trim().isEmpty()) {
+            return category.getCategoryCode().trim().toUpperCase();
+        }
+        String name = category.getCategoryName() != null ? category.getCategoryName().trim() : "CAT";
+        String base = name.replaceAll("[^A-Za-z0-9]", "").toUpperCase();
+        if (base.isEmpty()) {
+            base = "CAT";
+        }
+        if (base.length() > 8) {
+            base = base.substring(0, 8);
+        }
+        int next = getMaxCategoryNumber() + 1;
+        return String.format("%s%03d", base, next);
     }
 }

@@ -30,16 +30,17 @@ public class InventoryDAO extends DBContext {
             return inventoryList;
         }
         
-        String sql = "SELECT i.*, m.material_name, m.material_code, c.category_name, u.unit_name, m.materials_url, " +
+        String sql = "SELECT i.*, m.material_name, m.material_code, m.url, c.category_name, du.unit_name AS default_unit_name, " +
                      "wr.rack_name, wr.rack_code, " +
                      "w.warehouse_name " +
                      "FROM Inventory i " +
                      "JOIN Materials m ON i.material_id = m.material_id " +
                      "LEFT JOIN Categories c ON m.category_id = c.category_id " +
-                     "LEFT JOIN Units u ON m.unit_id = u.unit_id " +
+                     "LEFT JOIN Units du ON m.default_unit_id = du.unit_id " +
                      "LEFT JOIN Warehouse_Racks wr ON i.rack_id = wr.rack_id " +
-                     "LEFT JOIN Warehouses w ON (wr.warehouse_id = w.warehouse_id OR i.warehouse_id = w.warehouse_id) " +
-                     "WHERE i.material_id = ? AND m.disable = 0 " +
+                     "LEFT JOIN Warehouse_Zones wz ON wr.zone_id = wz.zone_id " +
+                     "LEFT JOIN Warehouses w ON (wz.warehouse_id = w.warehouse_id OR i.warehouse_id = w.warehouse_id) " +
+                     "WHERE i.material_id = ? AND m.deleted_at IS NULL " +
                      "ORDER BY w.warehouse_name, wr.rack_code";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -64,29 +65,11 @@ public class InventoryDAO extends DBContext {
             return inventoryList;
         }
         
-        // V9.1: Query from Material_Rack_Location (N-N relationship) first, fallback to Inventory
-        // Material_Rack_Location is the primary source for rack-material relationships
+        // Query only from Inventory table (Material_Rack_Location table doesn't exist in current schema)
         String sql = "SELECT " +
-                     "COALESCE(mrl.quantity, i.stock, 0) AS stock, " +
-                     "mrl.material_id, mrl.rack_id, mrl.warehouse_id, " +
-                     "m.material_name, m.material_code, c.category_name, u.unit_name, m.materials_url, " +
-                     "wr.rack_name, wr.rack_code, " +
-                     "w.warehouse_name, " +
-                     "mrl.last_updated, i.last_updated AS inventory_last_updated, " +
-                     "i.updated_by, i.inventory_id " +
-                     "FROM Material_Rack_Location mrl " +
-                     "JOIN Materials m ON mrl.material_id = m.material_id " +
-                     "LEFT JOIN Categories c ON m.category_id = c.category_id " +
-                     "LEFT JOIN Units u ON m.unit_id = u.unit_id " +
-                     "LEFT JOIN Warehouse_Racks wr ON mrl.rack_id = wr.rack_id " +
-                     "LEFT JOIN Warehouses w ON (wr.warehouse_id = w.warehouse_id OR mrl.warehouse_id = w.warehouse_id) " +
-                     "LEFT JOIN Inventory i ON mrl.material_id = i.material_id AND mrl.rack_id = i.rack_id " +
-                     "WHERE mrl.rack_id = ? AND m.disable = 0 AND mrl.quantity > 0 " +
-                     "UNION " +
-                     "SELECT " +
                      "i.stock, " +
                      "i.material_id, i.rack_id, i.warehouse_id, " +
-                     "m.material_name, m.material_code, c.category_name, u.unit_name, m.materials_url, " +
+                     "m.material_name, m.material_code, m.url, c.category_name, du.unit_name AS default_unit_name, " +
                      "wr.rack_name, wr.rack_code, " +
                      "w.warehouse_name, " +
                      "i.last_updated, i.last_updated AS inventory_last_updated, " +
@@ -94,19 +77,15 @@ public class InventoryDAO extends DBContext {
                      "FROM Inventory i " +
                      "JOIN Materials m ON i.material_id = m.material_id " +
                      "LEFT JOIN Categories c ON m.category_id = c.category_id " +
-                     "LEFT JOIN Units u ON m.unit_id = u.unit_id " +
+                     "LEFT JOIN Units du ON m.default_unit_id = du.unit_id " +
                      "LEFT JOIN Warehouse_Racks wr ON i.rack_id = wr.rack_id " +
-                     "LEFT JOIN Warehouses w ON (wr.warehouse_id = w.warehouse_id OR i.warehouse_id = w.warehouse_id) " +
-                     "WHERE i.rack_id = ? AND m.disable = 0 AND i.stock > 0 " +
-                     "AND NOT EXISTS ( " +
-                     "SELECT 1 FROM Material_Rack_Location mrl2 " +
-                     "WHERE mrl2.material_id = i.material_id AND mrl2.rack_id = i.rack_id " +
-                     ") " +
+                     "LEFT JOIN Warehouse_Zones wz ON wr.zone_id = wz.zone_id " +
+                     "LEFT JOIN Warehouses w ON (wz.warehouse_id = w.warehouse_id OR i.warehouse_id = w.warehouse_id) " +
+                     "WHERE i.rack_id = ? AND m.deleted_at IS NULL AND i.stock > 0 " +
                      "ORDER BY material_name";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, rackId);
-            ps.setInt(2, rackId);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 Inventory inventory = mapResultSetToInventoryFromRack(rs);
@@ -114,7 +93,7 @@ public class InventoryDAO extends DBContext {
             }
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error getting inventory by rack ID: " + rackId, e);
-            // Fallback to old query if new query fails
+            // Fallback to legacy query if new query fails
             return getInventoryByRackIdLegacy(rackId);
         }
         return inventoryList;
@@ -128,16 +107,17 @@ public class InventoryDAO extends DBContext {
             return inventoryList;
         }
         
-        String sql = "SELECT i.*, m.material_name, m.material_code, c.category_name, u.unit_name, m.materials_url, " +
+        String sql = "SELECT i.*, m.material_name, m.material_code, m.url, c.category_name, du.unit_name AS default_unit_name, " +
                      "wr.rack_name, wr.rack_code, " +
                      "w.warehouse_name " +
                      "FROM Inventory i " +
                      "JOIN Materials m ON i.material_id = m.material_id " +
                      "LEFT JOIN Categories c ON m.category_id = c.category_id " +
-                     "LEFT JOIN Units u ON m.unit_id = u.unit_id " +
+                     "LEFT JOIN Units du ON m.default_unit_id = du.unit_id " +
                      "LEFT JOIN Warehouse_Racks wr ON i.rack_id = wr.rack_id " +
-                     "LEFT JOIN Warehouses w ON (wr.warehouse_id = w.warehouse_id OR i.warehouse_id = w.warehouse_id) " +
-                     "WHERE i.rack_id = ? AND m.disable = 0 " +
+                     "LEFT JOIN Warehouse_Zones wz ON wr.zone_id = wz.zone_id " +
+                     "LEFT JOIN Warehouses w ON (wz.warehouse_id = w.warehouse_id OR i.warehouse_id = w.warehouse_id) " +
+                     "WHERE i.rack_id = ? AND m.deleted_at IS NULL " +
                      "ORDER BY m.material_name";
 
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -198,8 +178,8 @@ public class InventoryDAO extends DBContext {
         inventory.setMaterialName(rs.getString("material_name"));
         inventory.setMaterialCode(rs.getString("material_code"));
         inventory.setCategoryName(rs.getString("category_name"));
-        inventory.setUnitName(rs.getString("unit_name"));
-        inventory.setMaterialsUrl(rs.getString("materials_url"));
+        inventory.setUnitName(rs.getString("default_unit_name"));
+        inventory.setMaterialsUrl(rs.getString("url"));
         inventory.setRackName(rs.getString("rack_name"));
         inventory.setRackCode(rs.getString("rack_code"));
         
@@ -215,17 +195,18 @@ public class InventoryDAO extends DBContext {
     }
 
     public Inventory getInventoryByMaterialAndRack(int materialId, Integer rackId) {
-        String sql = "SELECT i.*, m.material_name, m.material_code, c.category_name, u.unit_name, m.materials_url, " +
+        String sql = "SELECT i.*, m.material_name, m.material_code, m.url, c.category_name, du.unit_name AS default_unit_name, " +
                      "wr.rack_name, wr.rack_code, " +
                      "w.warehouse_name " +
                      "FROM Inventory i " +
                      "JOIN Materials m ON i.material_id = m.material_id " +
                      "LEFT JOIN Categories c ON m.category_id = c.category_id " +
-                     "LEFT JOIN Units u ON m.unit_id = u.unit_id " +
+                     "LEFT JOIN Units du ON m.default_unit_id = du.unit_id " +
                      "LEFT JOIN Warehouse_Racks wr ON i.rack_id = wr.rack_id " +
-                     "LEFT JOIN Warehouses w ON (wr.warehouse_id = w.warehouse_id OR i.warehouse_id = w.warehouse_id) " +
+                     "LEFT JOIN Warehouse_Zones wz ON wr.zone_id = wz.zone_id " +
+                     "LEFT JOIN Warehouses w ON (wz.warehouse_id = w.warehouse_id OR i.warehouse_id = w.warehouse_id) " +
                      "WHERE i.material_id = ? AND (i.rack_id = ? OR (i.rack_id IS NULL AND ? IS NULL)) " +
-                     "AND m.disable = 0";
+                     "AND m.deleted_at IS NULL";
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, materialId);
@@ -327,14 +308,14 @@ public class InventoryDAO extends DBContext {
 
     public List<Inventory> getAllInventory() {
         List<Inventory> inventoryList = new ArrayList<>();
-        String sql = "SELECT i.*, m.material_name, m.material_code, c.category_name, u.unit_name, m.materials_url, "
+        String sql = "SELECT i.*, m.material_name, m.material_code, m.url, c.category_name, du.unit_name AS default_unit_name, "
                 + "wr.rack_name, wr.rack_code "
                 + "FROM Inventory i "
                 + "JOIN Materials m ON i.material_id = m.material_id "
                 + "LEFT JOIN Categories c ON m.category_id = c.category_id "
-                + "LEFT JOIN Units u ON m.unit_id = u.unit_id "
+                + "LEFT JOIN Units du ON m.default_unit_id = du.unit_id "
                 + "LEFT JOIN Warehouse_Racks wr ON i.rack_id = wr.rack_id "
-                + "WHERE m.disable = 0 "
+                + "WHERE m.deleted_at IS NULL "
                 + "ORDER BY m.material_name";
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -356,7 +337,7 @@ public class InventoryDAO extends DBContext {
                     "COUNT(DISTINCT CASE WHEN i.stock = 0 OR i.stock IS NULL THEN m.material_id END) as out_of_stock_count " +
                     "FROM Materials m " +
                     "LEFT JOIN Inventory i ON m.material_id = i.material_id " +
-                    "WHERE m.disable = 0";
+                    "WHERE m.deleted_at IS NULL";
         
         try (PreparedStatement stmt = connection.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
@@ -374,12 +355,12 @@ public class InventoryDAO extends DBContext {
     public List<Inventory> getInventoryWithPagination(String searchTerm, String stockFilter, String sortStock, int page, int pageSize) {
         List<Inventory> inventoryList = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT m.material_id, m.material_name, m.material_code, m.materials_url, c.category_name, u.unit_name, IFNULL(i.stock, 0) AS stock, i.last_updated, i.updated_by, i.inventory_id ");
+        sql.append("SELECT m.material_id, m.material_name, m.material_code, m.url, c.category_name, du.unit_name AS default_unit_name, IFNULL(i.stock, 0) AS stock, i.last_updated, i.updated_by, i.inventory_id ");
         sql.append("FROM Materials m ");
         sql.append("LEFT JOIN Inventory i ON m.material_id = i.material_id ");
         sql.append("LEFT JOIN Categories c ON m.category_id = c.category_id ");
-        sql.append("LEFT JOIN Units u ON m.unit_id = u.unit_id ");
-        sql.append("WHERE m.disable = 0 ");
+        sql.append("LEFT JOIN Units du ON m.default_unit_id = du.unit_id ");
+        sql.append("WHERE m.deleted_at IS NULL ");
         if (searchTerm != null && !searchTerm.trim().isEmpty()) {
             sql.append("AND (LOWER(m.material_name) LIKE ? OR LOWER(m.material_code) LIKE ? OR LOWER(c.category_name) LIKE ?) ");
         }
@@ -436,9 +417,9 @@ public class InventoryDAO extends DBContext {
                     }
                     inventory.setMaterialName(rs.getString("material_name"));
                     inventory.setMaterialCode(rs.getString("material_code"));
-                    inventory.setMaterialsUrl(rs.getString("materials_url"));
+                    inventory.setMaterialsUrl(rs.getString("url"));
                     inventory.setCategoryName(rs.getString("category_name"));
-                    inventory.setUnitName(rs.getString("unit_name"));
+                    inventory.setUnitName(rs.getString("default_unit_name"));
                     inventoryList.add(inventory);
                 }
             }
@@ -454,7 +435,7 @@ public class InventoryDAO extends DBContext {
         sql.append("FROM Materials m ");
         sql.append("LEFT JOIN Inventory i ON m.material_id = i.material_id ");
         sql.append("LEFT JOIN Categories c ON m.category_id = c.category_id ");
-        sql.append("WHERE m.disable = 0 ");
+        sql.append("WHERE m.deleted_at IS NULL ");
         if (searchTerm != null && !searchTerm.trim().isEmpty()) {
             sql.append("AND (LOWER(m.material_name) LIKE ? OR LOWER(m.material_code) LIKE ? OR LOWER(c.category_name) LIKE ?) ");
         }
@@ -521,8 +502,12 @@ public class InventoryDAO extends DBContext {
         inventory.setMaterialName(rs.getString("material_name"));
         inventory.setMaterialCode(rs.getString("material_code"));
         inventory.setCategoryName(rs.getString("category_name"));
-        inventory.setUnitName(rs.getString("unit_name"));
-        inventory.setMaterialsUrl(rs.getString("materials_url"));
+        try {
+            inventory.setUnitName(rs.getString("default_unit_name"));
+        } catch (SQLException e) {
+            inventory.setUnitName(null);
+        }
+        inventory.setMaterialsUrl(rs.getString("url"));
         inventory.setRackName(rs.getString("rack_name"));
         inventory.setRackCode(rs.getString("rack_code"));
         

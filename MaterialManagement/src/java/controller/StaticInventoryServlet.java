@@ -7,6 +7,7 @@ import dal.ExportDAO;
 import dal.RolePermissionDAO;
 import entity.Inventory;
 import entity.User;
+import utils.PermissionHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -46,13 +47,14 @@ public class StaticInventoryServlet extends HttpServlet {
             return;
         }
 
-        if (!rolePermissionDAO.hasPermission(currentUser.getRoleId(), "VIEW_INVENTORY")) {
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(currentUser, "Báo cáo tồn kho")) {
             request.setAttribute("error", "Bạn không có quyền truy cập dữ liệu kho.");
             request.getRequestDispatcher("/StaticInventory.jsp").forward(request, response);
             return;
         }
 
-        boolean hasViewReportPermission = rolePermissionDAO.hasPermission(currentUser.getRoleId(), "VIEW_REPORT");
+        boolean hasViewReportPermission = PermissionHelper.hasPermission(currentUser, "Xuất báo cáo");
         request.setAttribute("hasViewReportPermission", hasViewReportPermission);
         request.setAttribute("rolePermissionDAO", rolePermissionDAO);
         request.setAttribute("roleId", currentUser.getRoleId());

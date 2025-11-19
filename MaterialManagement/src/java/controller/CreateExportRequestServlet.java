@@ -3,14 +3,15 @@ package controller;
 import dal.ExportRequestDAO;
 import dal.ExportRequestDetailDAO;
 import dal.MaterialDAO;
-import dal.RecipientDAO;
+import dal.CustomerDAO;
 import dal.WarehouseRackDAO;
 import dal.UserDAO;
 import dal.RolePermissionDAO;
+import utils.PermissionHelper;
 import entity.ExportRequest;
 import entity.ExportRequestDetail;
 import entity.Material;
-import entity.Recipient;
+import entity.Customer;
 import entity.WarehouseRack;
 import entity.User;
 import jakarta.servlet.ServletException;
@@ -36,7 +37,7 @@ public class CreateExportRequestServlet extends HttpServlet {
     private ExportRequestDAO exportRequestDAO;
     private ExportRequestDetailDAO exportRequestDetailDAO;
     private MaterialDAO materialDAO;
-    private RecipientDAO recipientDAO;
+    private CustomerDAO customerDAO;
     private WarehouseRackDAO rackDAO;
     private UserDAO userDAO;
     private RolePermissionDAO rolePermissionDAO;
@@ -46,7 +47,7 @@ public class CreateExportRequestServlet extends HttpServlet {
         exportRequestDAO = new ExportRequestDAO();
         exportRequestDetailDAO = new ExportRequestDetailDAO();
         materialDAO = new MaterialDAO();
-        recipientDAO = new RecipientDAO();
+        customerDAO = new CustomerDAO();
         rackDAO = new WarehouseRackDAO();
         userDAO = new UserDAO();
         rolePermissionDAO = new RolePermissionDAO();
@@ -61,7 +62,7 @@ public class CreateExportRequestServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/Login.jsp");
             return;
         }
-        boolean hasPermission = rolePermissionDAO.hasPermission(user.getRoleId(), "CREATE_EXPORT_REQUEST");
+        boolean hasPermission = PermissionHelper.hasPermission(user, "Tạo yêu cầu xuất");
         request.setAttribute("hasCreateExportRequestPermission", hasPermission);
         if (!hasPermission) {
             request.setAttribute("error", "You do not have permission to create export requests.");
@@ -73,15 +74,15 @@ public class CreateExportRequestServlet extends HttpServlet {
             request.setAttribute("requestCode", requestCode);
             List<Material> materials = materialDAO.searchMaterials(null, null, 1, 1000, "name_asc");
             request.setAttribute("materials", materials);
-            List<Recipient> recipients = recipientDAO.getAllRecipients();
-            request.setAttribute("recipients", recipients);
+            List<Customer> customers = customerDAO.getAllCustomers();
+            request.setAttribute("customers", customers);
             List<WarehouseRack> racks = rackDAO.getAvailableRacks();
             request.setAttribute("racks", racks);
             request.getRequestDispatcher("CreateExportRequest.jsp").forward(request, response);
         } catch (Exception e) {
             request.setAttribute("error", "Error loading data: " + e.getMessage());
             request.setAttribute("materials", new ArrayList<Material>());
-            request.setAttribute("recipients", new ArrayList<Recipient>());
+                request.setAttribute("customers", new ArrayList<Customer>());
             request.setAttribute("racks", new ArrayList<WarehouseRack>());
             request.getRequestDispatcher("CreateExportRequest.jsp").forward(request, response);
         }
@@ -96,7 +97,7 @@ public class CreateExportRequestServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/Login.jsp");
             return;
         }
-        boolean hasPermission = rolePermissionDAO.hasPermission(user.getRoleId(), "CREATE_EXPORT_REQUEST");
+        boolean hasPermission = PermissionHelper.hasPermission(user, "Tạo yêu cầu xuất");
         request.setAttribute("hasCreateExportRequestPermission", hasPermission);
         if (!hasPermission) {
             request.setAttribute("error", "You do not have permission to create export requests.");
@@ -107,21 +108,21 @@ public class CreateExportRequestServlet extends HttpServlet {
             String requestCode = request.getParameter("requestCode");
             String deliveryDateStr = request.getParameter("deliveryDate");
             String reason = request.getParameter("reason");
-            String recipientIdStr = request.getParameter("recipientId");
+            String customerIdStr = request.getParameter("customerId");
             
             // Validate form data using ExportRequestValidator
             Map<String, String> formErrors = ExportRequestValidator.validateExportRequestFormData(reason, deliveryDateStr);
             
-            // Validate recipientId
-            if (recipientIdStr == null || recipientIdStr.trim().isEmpty()) {
-                formErrors.put("recipientId", "Please select a recipient");
+            // Validate customerId
+            if (customerIdStr == null || customerIdStr.trim().isEmpty()) {
+                formErrors.put("customerId", "Please select a customer");
             }
             
             if (!formErrors.isEmpty()) {
                 // Set submitted data to repopulate form
                 request.setAttribute("submittedReason", reason);
                 request.setAttribute("submittedDeliveryDate", deliveryDateStr);
-                request.setAttribute("submittedRecipientId", recipientIdStr);
+                request.setAttribute("submittedCustomerId", customerIdStr);
                 request.setAttribute("errors", formErrors);
                 
                 // Reload form data
@@ -129,27 +130,43 @@ public class CreateExportRequestServlet extends HttpServlet {
                 request.setAttribute("requestCode", newRequestCode);
                 List<Material> materials = materialDAO.searchMaterials(null, null, 1, 1000, "name_asc");
                 request.setAttribute("materials", materials);
-                List<Recipient> recipients = recipientDAO.getAllRecipients();
-                request.setAttribute("recipients", recipients);
+                List<Customer> customers = customerDAO.getAllCustomers();
+                request.setAttribute("customers", customers);
                 
                 request.getRequestDispatcher("CreateExportRequest.jsp").forward(request, response);
                 return;
             }
             
             Date deliveryDate = Date.valueOf(deliveryDateStr);
-            int recipientId = Integer.parseInt(recipientIdStr);
+            int customerId = Integer.parseInt(customerIdStr);
             
             ExportRequest exportRequest = new ExportRequest();
             exportRequest.setRequestCode(requestCode);
             exportRequest.setDeliveryDate(deliveryDate);
             exportRequest.setReason(reason);
             exportRequest.setUserId(user.getUserId());
-            exportRequest.setRecipientId(recipientId); // Set recipient from form
+            exportRequest.setCustomerId(customerId); // Set customer from form
             exportRequest.setStatus("pending");
             String[] materialNames = request.getParameterValues("materialName[]");
             String[] materialIds = request.getParameterValues("materialId[]");
             String[] quantities = request.getParameterValues("quantity[]");
+            String[] unitPriceExports = request.getParameterValues("unitPriceExport[]"); // V8: Giá xuất
             String[] notes = request.getParameterValues("note[]");
+            
+            // V8: Validate unit_price_export (REQUIRED for profit calculation)
+            if (unitPriceExports == null || unitPriceExports.length != materialIds.length) {
+                request.setAttribute("error", "Unit price (export) is required for all materials");
+                doGet(request, response);
+                return;
+            }
+            
+            for (int i = 0; i < unitPriceExports.length; i++) {
+                if (unitPriceExports[i] == null || unitPriceExports[i].trim().isEmpty()) {
+                    request.setAttribute("error", "Unit price (export) is required for material at position " + (i + 1));
+                    doGet(request, response);
+                    return;
+                }
+            }
             
             // Validate material details
             Map<String, String> detailErrors = ExportRequestValidator.validateExportRequestDetails(materialNames, quantities);
@@ -158,7 +175,7 @@ public class CreateExportRequestServlet extends HttpServlet {
                 // Set submitted data to repopulate form
                 request.setAttribute("submittedReason", reason);
                 request.setAttribute("submittedDeliveryDate", deliveryDateStr);
-                request.setAttribute("submittedRecipientId", recipientIdStr);
+                request.setAttribute("submittedCustomerId", customerIdStr);
                 request.setAttribute("submittedMaterialNames", materialNames);
                 request.setAttribute("submittedQuantities", quantities);
                 request.setAttribute("submittedNotes", notes);
@@ -169,8 +186,8 @@ public class CreateExportRequestServlet extends HttpServlet {
                 request.setAttribute("requestCode", newRequestCode);
                 List<Material> materials = materialDAO.searchMaterials(null, null, 1, 1000, "name_asc");
                 request.setAttribute("materials", materials);
-                List<Recipient> recipients = recipientDAO.getAllRecipients();
-                request.setAttribute("recipients", recipients);
+                List<Customer> customers = customerDAO.getAllCustomers();
+                request.setAttribute("customers", customers);
                 
                 request.getRequestDispatcher("CreateExportRequest.jsp").forward(request, response);
                 return;
@@ -196,6 +213,7 @@ public class CreateExportRequestServlet extends HttpServlet {
                     throw new Exception("Invalid material selected at row " + (i + 1) + ". Please select from the dropdown list.");
                 }
                 BigDecimal quantity = new BigDecimal(quantities[i]);
+                BigDecimal unitPriceExport = new BigDecimal(unitPriceExports[i]); // V8: Giá xuất
                 Integer rackId = null; // No rack selection in simplified form
                 
                 materialQuantityMap.put(materialId, materialQuantityMap.getOrDefault(materialId, BigDecimal.ZERO).add(quantity));
@@ -203,6 +221,7 @@ public class CreateExportRequestServlet extends HttpServlet {
                 detail.setMaterialId(materialId);
                 detail.setRackId(rackId);
                 detail.setQuantity(quantity);
+                detail.setUnitPriceExport(unitPriceExport); // V8: Set giá xuất
                 details.add(detail);
             }
             for (Integer materialId : materialQuantityMap.keySet()) {
@@ -340,7 +359,7 @@ public class CreateExportRequestServlet extends HttpServlet {
 
     private String generateRequestCode() {
         String prefix = "ER";
-        String sql = "SELECT request_code FROM Export_Requests WHERE request_code LIKE ? ORDER BY request_code DESC LIMIT 1";
+        String sql = "SELECT er_code FROM Export_Requests WHERE er_code LIKE ? ORDER BY er_code DESC LIMIT 1";
         String likePattern = prefix + "%";
         try (java.sql.Connection conn = exportRequestDAO.getConnection();
              java.sql.PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -348,7 +367,7 @@ public class CreateExportRequestServlet extends HttpServlet {
             try (java.sql.ResultSet rs = ps.executeQuery()) {
                 int nextSeq = 1;
                 if (rs.next()) {
-                    String lastCode = rs.getString("request_code");
+                    String lastCode = rs.getString("er_code");
                     String numberPart = lastCode.replace(prefix, "");
                     try {
                         nextSeq = Integer.parseInt(numberPart) + 1;

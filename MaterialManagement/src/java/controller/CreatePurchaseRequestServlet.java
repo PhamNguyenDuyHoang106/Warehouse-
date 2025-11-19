@@ -5,6 +5,7 @@ import dal.PurchaseRequestDAO;
 import dal.UserDAO;
 import dal.RolePermissionDAO;
 import dal.MaterialDAO;
+import utils.PermissionHelper;
 import entity.Category;
 import entity.Material;
 import entity.PurchaseRequest;
@@ -17,7 +18,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
-import java.sql.Timestamp;
+import java.math.BigDecimal;
+import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -52,7 +54,7 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
         RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
         MaterialDAO materialDAO = new MaterialDAO();
 
-        boolean hasPermission = rolePermissionDAO.hasPermission(currentUser.getRoleId(), "CREATE_PURCHASE_REQUEST");
+        boolean hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PR");
         if (!hasPermission) {
             request.setAttribute("error", "You do not have permission to create purchase requests.");
             request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
@@ -63,17 +65,20 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
             PurchaseRequestDAO prd = new PurchaseRequestDAO();
             List<User> users = userDAO.getAllUsers();
             List<Category> categories = categoryDAO.getAllCategories();
-            List<entity.Material> materials = materialDAO.getAllProducts();
+            List<Material> materials = materialDAO.getAllProducts();
 
             String requestCode = prd.generateNextRequestCode();
-            String requestDate = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm").format(new java.util.Date());
+            Date today = new Date(System.currentTimeMillis());
+            Date defaultExpected = Date.valueOf(today.toLocalDate().plusDays(7));
 
             request.setAttribute("users", users);
             request.setAttribute("categories", categories);
             request.setAttribute("materials", materials);
             request.setAttribute("requestCode", requestCode);
-            request.setAttribute("requestDate", requestDate);
+            request.setAttribute("requestDate", today.toString());
+            request.setAttribute("expectedDate", defaultExpected.toString());
             request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+            request.setAttribute("submittedReason", "");
 
             request.getRequestDispatcher("PurchaseRequestForm.jsp").forward(request, response);
 
@@ -101,7 +106,7 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
         MaterialDAO materialDAO = new MaterialDAO();
         UserDAO userDAO = new UserDAO();
 
-        boolean hasPermission = rolePermissionDAO.hasPermission(currentUser.getRoleId(), "CREATE_PURCHASE_REQUEST");
+        boolean hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PR");
         if (!hasPermission) {
             request.setAttribute("error", "You do not have permission to create purchase requests.");
             request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
@@ -110,251 +115,196 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
 
         try {
             String reason = request.getParameter("reason");
-            String requestDate = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm").format(new java.util.Date());
+            String expectedDateStr = request.getParameter("expectedDate");
 
             String[] materialNames = request.getParameterValues("materialName[]");
             String[] materialIds = request.getParameterValues("materialId[]");
             String[] quantities = request.getParameterValues("quantity[]");
             String[] notes = request.getParameterValues("note");
-            
-            // Debug: Check if reason is being read correctly
-           
-            java.util.Enumeration<String> paramNames = request.getParameterNames();
-            while (paramNames.hasMoreElements()) {
-                String paramName = paramNames.nextElement();
-                String[] paramValues = request.getParameterValues(paramName);
-                LOGGER.log(Level.FINE, "Parameter: " + paramName + ", Value: " + String.join(", ", paramValues));
-            }
-            
-            
 
-            Map<String, String> formErrors = PurchaseRequestValidator.validatePurchaseRequestFormData(reason);
+            Map<String, String> formErrors = PurchaseRequestValidator.validatePurchaseRequestFormData(reason, expectedDateStr);
             Map<String, String> detailErrors = PurchaseRequestValidator.validatePurchaseRequestDetails(materialNames, quantities);
             formErrors.putAll(detailErrors);
 
+            Date expectedDate = null;
+            if (expectedDateStr != null && !expectedDateStr.trim().isEmpty()) {
+                try {
+                    expectedDate = Date.valueOf(expectedDateStr.trim());
+                } catch (IllegalArgumentException e) {
+                    formErrors.put("expectedDate", "Invalid expected date format.");
+                }
+            }
+
+            Date requestDate = new Date(System.currentTimeMillis());
+
             if (!formErrors.isEmpty()) {
                 List<Category> categories = categoryDAO.getAllCategories();
-                List<entity.Material> materials = materialDAO.getAllProducts();
-                // Always generate a new request code for retry
+                List<Material> materials = materialDAO.getAllProducts();
                 String requestCode = prd.generateNextRequestCode();
-                // requestDate already declared above
-                
-                // Preserve form data for retry
+
                 request.setAttribute("categories", categories);
                 request.setAttribute("materials", materials);
                 request.setAttribute("errors", formErrors);
                 request.setAttribute("rolePermissionDAO", rolePermissionDAO);
                 request.setAttribute("requestCode", requestCode);
-                request.setAttribute("requestDate", requestDate);
-                
-                // Preserve submitted form data
+                request.setAttribute("requestDate", requestDate.toString());
+                request.setAttribute("expectedDate", expectedDateStr);
+
                 request.setAttribute("submittedReason", reason);
                 request.setAttribute("submittedMaterialNames", materialNames);
                 request.setAttribute("submittedQuantities", quantities);
                 request.setAttribute("submittedNotes", notes);
-                
+
                 request.getRequestDispatcher("PurchaseRequestForm.jsp").forward(request, response);
                 return;
             }
 
             List<PurchaseRequestDetail> purchaseRequestDetails = new ArrayList<>();
+            BigDecimal totalAmount = BigDecimal.ZERO;
+
             for (int i = 0; i < materialNames.length; i++) {
                 String materialName = materialNames[i];
                 if (materialName == null || materialName.trim().isEmpty()) {
                     continue;
                 }
-                java.math.BigDecimal quantity = new java.math.BigDecimal(quantities[i]);
+
                 int materialId = 0;
                 if (materialIds != null && materialIds.length > i && materialIds[i] != null && !materialIds[i].isEmpty()) {
                     try {
                         materialId = Integer.parseInt(materialIds[i]);
                     } catch (NumberFormatException e) {
-                        // If parsing fails, materialId stays 0
+                        materialId = 0;
                     }
                 }
-                
-                // Validate materialId
+
                 if (materialId <= 0) {
-                    String errorMsg = "Invalid material selected at row " + (i + 1) + ". Please select a material from the dropdown list.";
-                    request.setAttribute("error", errorMsg);
-                    
-                    // Reload form data
-                    String newRequestCode = prd.generateNextRequestCode();
-                    request.setAttribute("requestCode", newRequestCode);
-                    request.setAttribute("requestDate", requestDate);
-                    List<Material> materials = materialDAO.searchMaterials(null, null, 1, 1000, "name_asc");
-                    request.setAttribute("materials", materials);
-                    request.setAttribute("categories", categoryDAO.getAllCategories());
-                    request.setAttribute("rolePermissionDAO", rolePermissionDAO);
-                    
-                    // Preserve submitted data
-                    request.setAttribute("submittedReason", reason);
-                    request.setAttribute("submittedMaterialNames", materialNames);
-                    request.setAttribute("submittedQuantities", quantities);
-                    request.setAttribute("submittedNotes", notes);
-                    
-                    request.getRequestDispatcher("PurchaseRequestForm.jsp").forward(request, response);
-                    return;
+                    formErrors.put("material_" + i, "Invalid material selected at row " + (i + 1));
+                    continue;
                 }
-                
+
+                BigDecimal quantity = BigDecimal.ZERO;
+                try {
+                    quantity = new BigDecimal(quantities[i]);
+                } catch (NumberFormatException e) {
+                    formErrors.put("quantity_" + i, "Invalid quantity at row " + (i + 1));
+                    continue;
+                }
+
                 PurchaseRequestDetail detail = new PurchaseRequestDetail();
-                detail.setMaterialName(materialName.trim());
                 detail.setMaterialId(materialId);
                 detail.setQuantity(quantity);
                 String note = (notes != null && notes.length > i) ? notes[i] : null;
-                detail.setNotes(note != null && !note.trim().isEmpty() ? note.trim() : null);
+                detail.setNote(note != null && !note.trim().isEmpty() ? note.trim() : null);
+
+                Material material = materialDAO.getInformation(materialId);
+                if (material != null) {
+                    detail.setMaterialName(material.getMaterialName());
+                    detail.setMaterialCode(material.getMaterialCode());
+                    if (material.getDefaultUnit() != null) {
+                        detail.setUnitId(material.getDefaultUnit().getId());
+                        detail.setUnitName(material.getDefaultUnit().getUnitName());
+                    }
+                }
+
+                // Unit price estimate currently not provided -> keep zero
+                detail.setUnitPriceEstimate(BigDecimal.ZERO);
+                detail.setTotalEstimate(BigDecimal.ZERO);
+
                 purchaseRequestDetails.add(detail);
             }
 
-            String requestCode = prd.generateNextRequestCode();
+            if (!formErrors.isEmpty()) {
+                List<Category> categories = categoryDAO.getAllCategories();
+                List<Material> materials = materialDAO.getAllProducts();
+                String requestCode = prd.generateNextRequestCode();
+
+                request.setAttribute("categories", categories);
+                request.setAttribute("materials", materials);
+                request.setAttribute("errors", formErrors);
+                request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+                request.setAttribute("requestCode", requestCode);
+                request.setAttribute("requestDate", requestDate.toString());
+                request.setAttribute("expectedDate", expectedDateStr);
+                request.setAttribute("submittedReason", reason);
+                request.setAttribute("submittedMaterialNames", materialNames);
+                request.setAttribute("submittedQuantities", quantities);
+                request.setAttribute("submittedNotes", notes);
+                request.getRequestDispatcher("PurchaseRequestForm.jsp").forward(request, response);
+                return;
+            }
+
+            User freshUser = userDAO.getUserById(currentUser.getUserId());
 
             PurchaseRequest purchaseRequest = new PurchaseRequest();
-            purchaseRequest.setRequestCode(requestCode);
-            purchaseRequest.setUserId(currentUser.getUserId());
-            purchaseRequest.setRequestDate(new Timestamp(System.currentTimeMillis()));
-            purchaseRequest.setStatus("PENDING");
-            
-            // Ensure reason is properly set
-            String finalReason = reason != null ? reason.trim() : "";
-            if (finalReason.isEmpty()) {
-                finalReason = "Test reason for debugging";
-            }
-            purchaseRequest.setReason(finalReason);
-            
-           
-            for (int i = 0; i < purchaseRequestDetails.size(); i++) {
-                PurchaseRequestDetail detail = purchaseRequestDetails.get(i);
-               
-            }
-
-            boolean success = prd.createPurchaseRequestWithDetails(purchaseRequest, purchaseRequestDetails);
-           
-
-            if (success) {
-                // Email notification (optional - may fail if email not configured)
-                try {
-                    List<User> allUsers = userDAO.getAllUsers();
-                    List<User> managers = new ArrayList<>();
-                    for (User u : allUsers) {
-                        if (rolePermissionDAO.hasPermission(u.getRoleId(), "HANDLE_REQUEST")) {
-                            managers.add(u);
-                        }
-                    }
-
-                    if (!managers.isEmpty()) {
-                    String subject = "[Notification] New Purchase Request Created";
-                    StringBuilder content = new StringBuilder();
-                    content.append("<html><body style='margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;'>");
-                    
-                    // Email container
-                    content.append("<div style='max-width: 600px; margin: 0 auto; background-color: #ffffff;'>");
-                    
-                    // Header with golden brown theme
-                    content.append("<div style='background: linear-gradient(135deg, #E9B775 0%, #D4A574 100%); padding: 30px; text-align: center;'>");
-                    content.append("<h1 style='color: #000000; margin: 0; font-size: 28px; font-weight: bold;'>New Purchase Request</h1>");
-                    content.append("<p style='color: #000000; margin: 10px 0 0 0; font-size: 16px;'>A new purchase request has been submitted and requires your approval</p>");
-                    content.append("</div>");
-                    
-                    // Main content
-                    content.append("<div style='padding: 40px 30px;'>");
-                    
-                    // Request information section
-                    content.append("<div style='background-color: #f8f9fa; border-radius: 8px; padding: 25px; margin-bottom: 30px;'>");
-                    content.append("<h2 style='color: #000000; margin: 0 0 20px 0; font-size: 20px; font-weight: bold;'>Request Information</h2>");
-                    
-                    content.append("<table style='width: 100%; border-collapse: collapse;'>");
-                    content.append("<tr><td style='padding: 8px 0; color: #000000; font-weight: bold; width: 40%;'>Request Code:</td><td style='padding: 8px 0; color: #333333;'>").append(requestCode).append("</td></tr>");
-                    content.append("<tr><td style='padding: 8px 0; color: #000000; font-weight: bold;'>Requested By:</td><td style='padding: 8px 0; color: #333333;'>").append(currentUser.getFullName()).append("</td></tr>");
-                    content.append("<tr><td style='padding: 8px 0; color: #000000; font-weight: bold;'>Submitted:</td><td style='padding: 8px 0; color: #333333;'>").append(new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date())).append("</td></tr>");
-                    content.append("<tr><td style='padding: 8px 0; color: #000000; font-weight: bold;'>Email:</td><td style='padding: 8px 0; color: #333333;'>").append(currentUser.getEmail() != null ? currentUser.getEmail() : "N/A").append("</td></tr>");
-                    content.append("<tr><td style='padding: 8px 0; color: #000000; font-weight: bold;'>Phone:</td><td style='padding: 8px 0; color: #333333;'>").append(currentUser.getPhoneNumber() != null ? currentUser.getPhoneNumber() : "N/A").append("</td></tr>");
-                    content.append("<tr><td style='padding: 8px 0; color: #000000; font-weight: bold;'>Reason:</td><td style='padding: 8px 0; color: #333333;'>").append(reason).append("</td></tr>");
-                    content.append("</table>");
-                    content.append("</div>");
-                    
-                    // Material details section
-                    content.append("<div style='background-color: #f8f9fa; border-radius: 8px; padding: 25px; margin-bottom: 30px;'>");
-                    content.append("<h2 style='color: #000000; margin: 0 0 20px 0; font-size: 20px; font-weight: bold;'>Requested Materials</h2>");
-                    
-                    content.append("<table style='width: 100%; border-collapse: collapse; border: 1px solid #dee2e6;'>");
-                    content.append("<thead><tr style='background-color: #E9B775;'>");
-                    content.append("<th style='padding: 12px; text-align: left; color: #000000; font-weight: bold; border: 1px solid #dee2e6;'>Material Name</th>");
-                    content.append("<th style='padding: 12px; text-align: center; color: #000000; font-weight: bold; border: 1px solid #dee2e6;'>Quantity</th>");
-                    content.append("<th style='padding: 12px; text-align: center; color: #000000; font-weight: bold; border: 1px solid #dee2e6;'>Category</th>");
-                    content.append("<th style='padding: 12px; text-align: center; color: #000000; font-weight: bold; border: 1px solid #dee2e6;'>Unit</th>");
-                    content.append("<th style='padding: 12px; text-align: center; color: #000000; font-weight: bold; border: 1px solid #dee2e6;'>Status</th>");
-                    content.append("<th style='padding: 12px; text-align: center; color: #000000; font-weight: bold; border: 1px solid #dee2e6;'>Notes</th>");
-                    content.append("</tr></thead>");
-                    content.append("<tbody>");
-                    
-                    for (PurchaseRequestDetail detail : purchaseRequestDetails) {
-                        Material material = null;
-                        if (detail.getMaterialId() > 0) {
-                            material = materialDAO.getProductById(detail.getMaterialId());
-                        }
-                        
-                        content.append("<tr style='background-color: #ffffff;'>");
-                        content.append("<td style='padding: 12px; border: 1px solid #dee2e6; color: #333333;'>").append(detail.getMaterialName()).append("</td>");
-                        content.append("<td style='padding: 12px; text-align: center; border: 1px solid #dee2e6; color: #333333;'>").append(detail.getQuantity()).append("</td>");
-                        content.append("<td style='padding: 12px; text-align: center; border: 1px solid #dee2e6; color: #333333;'>").append(material != null && material.getCategory() != null && material.getCategory().getCategory_name() != null ? material.getCategory().getCategory_name() : "N/A").append("</td>");
-                        content.append("<td style='padding: 12px; text-align: center; border: 1px solid #dee2e6; color: #333333;'>").append(material != null && material.getUnit() != null && material.getUnit().getUnitName() != null ? material.getUnit().getUnitName() : "N/A").append("</td>");
-                        content.append("<td style='padding: 12px; text-align: center; border: 1px solid #dee2e6; color: #333333;'>").append(material != null && material.getMaterialStatus() != null ? material.getMaterialStatus() : "N/A").append("</td>");
-                        content.append("<td style='padding: 12px; text-align: center; border: 1px solid #dee2e6; color: #333333;'>").append(detail.getNotes() != null && !detail.getNotes().trim().isEmpty() ? detail.getNotes() : "-").append("</td>");
-                        content.append("</tr>");
-                    }
-                    content.append("</tbody></table>");
-                    content.append("</div>");
-                    
-                    // Action button
-                    content.append("<div style='text-align: center; margin-top: 30px;'>");
-                    content.append("<a href='http://localhost:8080/MaterialManagement/PurchaseRequestList' style='display: inline-block; background-color: #E9B775; color: #FFFFFF !important; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;'>VIEW IN SYSTEM</a>");
-                    content.append("</div>");
-                    
-                    content.append("</div>");
-                    
-                    // Footer
-                    content.append("<div style='background-color: #E9B775; padding: 20px; text-align: center;'>");
-                    content.append("<p style='color: #000000; margin: 0; font-size: 14px;'>This is an automated notification from the Material Management System</p>");
-                    content.append("</div>");
-                    
-                    content.append("</div></body></html>");
-
-                    for (User manager : managers) {
-                        if (manager.getEmail() != null && !manager.getEmail().trim().isEmpty()) {
-                            try {
-                                utils.EmailUtils.sendEmail(manager.getEmail(), subject, content.toString());
-                            } catch (Exception e) {
-                                // Log individual email failures but continue
-                                LOGGER.log(Level.WARNING, "Failed to send email to manager: " + manager.getEmail() + " - " + e.getMessage());
-                            }
-                        }
-                    }
-                    } // end if (!managers.isEmpty())
-                } catch (Exception emailEx) {
-                    // Email notification failed - log but don't stop the process
-                    LOGGER.log(Level.WARNING, "Email notification failed but purchase request was created successfully: " + emailEx.getMessage());
-                }
-                
-                response.sendRedirect("ListPurchaseRequests?success=created");
-            } else {
-                LOGGER.log(Level.WARNING, "Could not create purchase request. Database operation failed or returned false.");
-                request.setAttribute("error", "Could not create purchase request. Please try again.");
+            purchaseRequest.setCode(prd.generateNextRequestCode());
+            purchaseRequest.setRequestBy(currentUser.getUserId());
+            Integer departmentId = freshUser != null ? freshUser.getDepartmentId() : currentUser.getDepartmentId();
+            // department_id is NOT NULL in schema V12 - ensure it's not null
+            if (departmentId == null) {
+                LOGGER.log(Level.SEVERE, "User {0} does not have a department assigned. Cannot create Purchase Request.", currentUser.getUsername());
+                request.setAttribute("error", "Bạn chưa được gán vào phòng ban. Vui lòng liên hệ quản trị viên.");
                 List<Category> categories = categoryDAO.getAllCategories();
-                List<entity.Material> materials = materialDAO.getAllProducts();
+                List<Material> materials = materialDAO.getAllProducts();
+                String requestCode = prd.generateNextRequestCode();
                 request.setAttribute("categories", categories);
                 request.setAttribute("materials", materials);
                 request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+                request.setAttribute("requestCode", requestCode);
+                request.setAttribute("requestDate", requestDate.toString());
+                request.getRequestDispatcher("PurchaseRequestForm.jsp").forward(request, response);
+                return;
+            }
+            purchaseRequest.setDepartmentId(departmentId);
+            purchaseRequest.setRequestDate(requestDate);
+            purchaseRequest.setExpectedDate(expectedDate);
+            purchaseRequest.setStatus("submitted");
+            purchaseRequest.setReason(reason != null ? reason.trim() : null);
+            purchaseRequest.setDetails(purchaseRequestDetails);
+            purchaseRequest.setTotalAmount(totalAmount);
+
+            Map<String, String> validationErrors = PurchaseRequestValidator.validatePurchaseRequest(purchaseRequest);
+            if (!validationErrors.isEmpty()) {
+                validationErrors.putAll(formErrors);
+                List<Category> categories = categoryDAO.getAllCategories();
+                List<Material> materials = materialDAO.getAllProducts();
+                request.setAttribute("categories", categories);
+                request.setAttribute("materials", materials);
+                request.setAttribute("errors", validationErrors);
+                request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+                request.setAttribute("requestCode", purchaseRequest.getCode());
+                request.setAttribute("requestDate", requestDate.toString());
+                request.setAttribute("expectedDate", expectedDateStr);
+                request.setAttribute("submittedReason", reason);
+                request.setAttribute("submittedMaterialNames", materialNames);
+                request.setAttribute("submittedQuantities", quantities);
+                request.setAttribute("submittedNotes", notes);
+                request.getRequestDispatcher("PurchaseRequestForm.jsp").forward(request, response);
+                return;
+            }
+
+            boolean created = prd.createPurchaseRequestWithDetails(purchaseRequest, purchaseRequestDetails);
+            if (created) {
+                response.sendRedirect("ListPurchaseRequests?success=created");
+            } else {
+                request.setAttribute("error", "Failed to create purchase request. Please try again.");
+                List<Category> categories = categoryDAO.getAllCategories();
+                List<Material> materials = materialDAO.getAllProducts();
+                request.setAttribute("categories", categories);
+                request.setAttribute("materials", materials);
+                request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+                request.setAttribute("requestCode", purchaseRequest.getCode());
+                request.setAttribute("requestDate", requestDate.toString());
+                request.setAttribute("expectedDate", expectedDateStr);
+                request.setAttribute("submittedReason", reason);
+                request.setAttribute("submittedMaterialNames", materialNames);
+                request.setAttribute("submittedQuantities", quantities);
+                request.setAttribute("submittedNotes", notes);
                 request.getRequestDispatcher("PurchaseRequestForm.jsp").forward(request, response);
             }
 
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "An error occurred while processing the request to create purchase request.", e);
-            request.setAttribute("error", "An error occurred while processing the request: " + e.getMessage());
-            List<Category> categories = categoryDAO.getAllCategories();
-            List<entity.Material> materials = materialDAO.getAllProducts();
-            request.setAttribute("categories", categories);
-            request.setAttribute("materials", materials);
-            request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+            LOGGER.log(Level.SEVERE, "Error creating purchase request", e);
+            request.setAttribute("error", "System error: " + e.getMessage());
             request.getRequestDispatcher("PurchaseRequestForm.jsp").forward(request, response);
         }
     }

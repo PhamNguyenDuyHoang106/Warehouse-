@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
 <%@ page import="entity.User" %>
 <%
     User user = (User) session.getAttribute("user");
@@ -80,7 +81,7 @@
 
             <div class="col-md-9 col-lg-10 content px-md-4">
                 <c:set var="roleId" value="${sessionScope.user.roleId}" />
-                <c:set var="hasViewListPermission" value="${rolePermissionDAO.hasPermission(roleId, 'VIEW_LIST_SUPPLIER')}" scope="request" />
+                <c:set var="hasViewListPermission" value="${rolePermissionDAO.hasPermission(roleId, 'DS NCC')}" scope="request" />
 
                 <c:if test="${!hasViewListPermission}">
                     <div class="alert alert-danger">You do not have permission to view the supplier list.</div>
@@ -88,7 +89,7 @@
                 <c:if test="${hasViewListPermission}">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h2 class="text-primary fw-bold display-6 border-bottom pb-2"><i class="bi bi-person-fill-up"></i> Supplier List</h2>
-                        <c:if test="${rolePermissionDAO.hasPermission(roleId, 'CREATE_SUPPLIER')}">
+                        <c:if test="${rolePermissionDAO.hasPermission(roleId, 'Tạo NCC')}">
                             <a href="Supplier?action=edit" class="btn btn-primary">
                                 <i class="fas fa-plus me-1"></i> Add New Supplier
                             </a>
@@ -127,14 +128,14 @@
                                     <th scope="col" style="width: 90px;">Code</th>
                                     <th scope="col" style="width: 150px;">Name</th>
                                     <th scope="col" style="width: 150px;">Contact</th>
-                                    <th scope="col" style="width: 150px;">Address</th>
+                                    <th scope="col" style="width: 200px;">Address</th>
                                     <th scope="col" style="width: 150px;">Phone</th>
                                     <th scope="col" style="width: 200px;">Email</th>
-                                    <th scope="col" style="width: 150px;">Description</th>
-                                    <th scope="col">Tax ID</th>
-                                    <c:if test="${rolePermissionDAO.hasPermission(roleId, 'UPDATE_SUPPLIER') || rolePermissionDAO.hasPermission(roleId, 'DELETE_SUPPLIER')}">
-                                        <th scope="col">Actions</th>
-                                    </c:if>
+                                    <th scope="col">Tax Code</th>
+                                    <th scope="col">Payment Term</th>
+                                    <th scope="col">Credit Limit</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -143,41 +144,38 @@
                                         <td>${s.supplierId}</td>
                                         <td>${s.supplierCode}</td>
                                         <td>${s.supplierName}</td>
-                                        <td>${s.contactInfo}</td>
+                                        <td>${s.contactPerson}</td>
                                         <td>${s.address}</td>
                                         <td>
-                                            <a href="tel:${s.phoneNumber}" class="text-decoration-none">
-                                                ${s.phoneNumber}
-                                            </a>
+                                            <a href="tel:${s.phone}" class="text-decoration-none">${s.phone}</a>
                                         </td>
+                                        <td><a href="mailto:${s.email}" class="text-decoration-none">${s.email}</a></td>
+                                        <td>${s.taxCode}</td>
+                                        <td>${s.paymentTermName != null ? s.paymentTermName : '-'}</td>
+                                        <td>$<fmt:formatNumber value="${s.creditLimit}" type="number" minFractionDigits="2"/></td>
+                                        <td>${s.status}</td>
                                         <td>
-                                            <a href="mailto:${s.email}" class="text-decoration-none">
-                                                ${s.email}
-                                            </a>
+                                            <div class="d-flex justify-content-center">
+                                                <a href="Supplier?action=view&id=${s.supplierId}" class="btn btn-info btn-action" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <c:if test="${rolePermissionDAO.hasPermission(roleId, 'Sửa NCC')}">
+                                                    <a href="Supplier?action=edit&id=${s.supplierId}" class="btn btn-warning btn-action" title="Edit">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                </c:if>
+                                                <c:if test="${rolePermissionDAO.hasPermission(roleId, 'Xóa NCC')}">
+                                                    <a href="Supplier?action=delete&id=${s.supplierId}" class="btn btn-danger btn-action" onclick="return confirm('Are you sure you want to delete this supplier?');" title="Delete">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                </c:if>
+                                            </div>
                                         </td>
-                                        <td>${s.description}</td>
-                                        <td>${s.taxId}</td>
-                                        <c:if test="${rolePermissionDAO.hasPermission(roleId, 'UPDATE_SUPPLIER') || rolePermissionDAO.hasPermission(roleId, 'DELETE_SUPPLIER')}">
-                                            <td>
-                                                <div class="d-flex justify-content-center">
-                                                    <c:if test="${rolePermissionDAO.hasPermission(roleId, 'UPDATE_SUPPLIER')}">
-                                                        <a href="Supplier?action=edit&id=${s.supplierId}" class="btn btn-warning btn-action" title="Edit">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                    </c:if>
-                                                    <c:if test="${rolePermissionDAO.hasPermission(roleId, 'DELETE_SUPPLIER')}">
-                                                        <a href="Supplier?action=delete&id=${s.supplierId}" class="btn btn-danger btn-action" onclick="return confirm('Are you sure you want to delete this supplier?');" title="Delete">
-                                                            <i class="fas fa-trash"></i>
-                                                        </a>
-                                                    </c:if>
-                                                </div>
-                                            </td>
-                                        </c:if>
                                     </tr>
                                 </c:forEach>
                                 <c:if test="${empty supplierList}">
                                     <tr>
-                                        <td colspan="${rolePermissionDAO.hasPermission(roleId, 'UPDATE_SUPPLIER') || rolePermissionDAO.hasPermission(roleId, 'DELETE_SUPPLIER') ? 10 : 9}" class="text-center text-muted">No suppliers found.</td>
+                                        <td colspan="12" class="text-center text-muted">No suppliers found.</td>
                                     </tr>
                                 </c:if>
                             </tbody>

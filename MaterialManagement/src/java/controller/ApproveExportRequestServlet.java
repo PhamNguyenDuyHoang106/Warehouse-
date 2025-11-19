@@ -3,6 +3,7 @@ package controller;
 import dal.ExportRequestDAO;
 import dal.RolePermissionDAO;
 import entity.ExportRequest;
+import utils.PermissionHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -38,9 +39,9 @@ public class ApproveExportRequestServlet extends HttpServlet {
             return;
         }
         
-        int roleId = user.getRoleId();
-        if (roleId != 1 && roleId != 2 && !rolePermissionDAO.hasPermission(roleId, "HANDLE_REQUEST")) {
-            request.setAttribute("error", "You do not have permission to approve export requests.");
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(user, "Duyệt yêu cầu xuất")) {
+            request.setAttribute("error", "Bạn không có quyền duyệt yêu cầu xuất.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }
@@ -54,12 +55,11 @@ public class ApproveExportRequestServlet extends HttpServlet {
                 return;
             }
             if (!"pending".equals(req.getStatus())) {
-                response.sendRedirect(request.getContextPath() + "/ViewExportRequest?id=" + requestId);
+                response.sendRedirect(request.getContextPath() + "/ExportRequestList?error=Request is not in pending status");
                 return;
             }
             if (approvalReason == null || approvalReason.trim().isEmpty()) {
-                request.setAttribute("error", "Approval reason is required.");
-                request.getRequestDispatcher("/ViewExportRequest.jsp").forward(request, response);
+                response.sendRedirect(request.getContextPath() + "/ExportRequestList?error=Approval reason is required");
                 return;
             }
             req.setStatus("approved");
@@ -67,10 +67,9 @@ public class ApproveExportRequestServlet extends HttpServlet {
             req.setApprovalReason(approvalReason);
             boolean success = exportRequestDAO.update(req);
             if (success) {
-                response.sendRedirect(request.getContextPath() + "/ViewExportRequest?id=" + requestId);
+                response.sendRedirect(request.getContextPath() + "/ExportRequestList?success=Request approved successfully");
             } else {
-                request.setAttribute("error", "Failed to approve request.");
-                request.getRequestDispatcher("/ViewExportRequest.jsp").forward(request, response);
+                response.sendRedirect(request.getContextPath() + "/ExportRequestList?error=Failed to approve request.");
             }
         } catch (NumberFormatException e) {
             response.sendRedirect(request.getContextPath() + "/ExportRequestList");

@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class Inventory {
+
+    private static final String DEFAULT_MEDIA_URL = "images/material/default-material.png";
     private int inventoryId;
     private int materialId;
     private Integer rackId; // Vị trí kệ trong kho (V8)
@@ -132,10 +134,15 @@ public class Inventory {
     }
 
     public String getMaterialsUrl() {
+        return resolveMediaUrl(materialsUrl);
+    }
+
+    public String getRawMaterialsUrl() {
         return materialsUrl;
     }
+
     public void setMaterialsUrl(String materialsUrl) {
-        this.materialsUrl = materialsUrl;
+        this.materialsUrl = materialsUrl != null ? materialsUrl.trim() : null;
     }
 
     public String getRackName() {
@@ -160,5 +167,22 @@ public class Inventory {
 
     public void setWarehouseName(String warehouseName) {
         this.warehouseName = warehouseName;
+    }
+
+    private String resolveMediaUrl(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return DEFAULT_MEDIA_URL;
+        }
+        String trimmed = value.trim();
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("images/")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("material/")) {
+            return "images/" + trimmed;
+        }
+        return "images/material/" + trimmed;
     }
 } 

@@ -217,9 +217,13 @@
                                         <td>
                                             <c:forEach var="material" items="${materials}">
                                                 <c:if test="${material.materialId == detail.materialId}">
+                                                    <c:set var="mediaUrl" value="${material.materialsUrl}" />
                                                     <c:choose>
-                                                        <c:when test="${not empty material.materialsUrl}">
-                                                            <img src="${pageContext.request.contextPath}/images/material/${material.materialsUrl}" alt="${detail.materialName}" />
+                                                        <c:when test="${mediaUrl != null && mediaUrl != '' && (fn:startsWith(mediaUrl, 'http://') || fn:startsWith(mediaUrl, 'https://') || fn:startsWith(mediaUrl, '/'))}">
+                                                            <img src="${mediaUrl}" alt="${detail.materialName}" />
+                                                        </c:when>
+                                                        <c:when test="${mediaUrl != null && mediaUrl != ''}">
+                                                            <img src="${pageContext.request.contextPath}/${mediaUrl}" alt="${detail.materialName}" />
                                                         </c:when>
                                                         <c:otherwise>
                                                             <span>No image available</span>
@@ -258,9 +262,13 @@
                                         <td>
                                             <c:forEach var="material" items="${materials}">
                                                 <c:if test="${material.materialId == detail.materialId}">
+                                                    <c:set var="mediaUrl" value="${material.materialsUrl}" />
                                                     <c:choose>
-                                                        <c:when test="${not empty material.materialsUrl}">
-                                                            <img src="${pageContext.request.contextPath}/images/material/${material.materialsUrl}" alt="${detail.materialName}" />
+                                                        <c:when test="${mediaUrl != null && mediaUrl != '' && (fn:startsWith(mediaUrl, 'http://') || fn:startsWith(mediaUrl, 'https://') || fn:startsWith(mediaUrl, '/'))}">
+                                                            <img src="${mediaUrl}" alt="${detail.materialName}" />
+                                                        </c:when>
+                                                        <c:when test="${mediaUrl != null && mediaUrl != ''}">
+                                                            <img src="${pageContext.request.contextPath}/${mediaUrl}" alt="${detail.materialName}" />
                                                         </c:when>
                                                         <c:otherwise>
                                                             <span>No image available</span>
@@ -302,12 +310,18 @@
                                             <c:forEach var="material" items="${materials}">
                                                 <c:if test="${material.materialId == detail.materialId}">
                                                     <c:choose>
-                                                        <c:when test="${not empty material.materialsUrl}">
-                                                            <img src="${pageContext.request.contextPath}/images/material/${material.materialsUrl}" alt="${detail.materialName}" />
-                                                        </c:when>
-                                                        <c:otherwise>
-                                                            <span>No image available</span>
-                                                        </c:otherwise>
+                                                        <c:set var="mediaUrl" value="${material.materialsUrl}" />
+                                                        <c:choose>
+                                                            <c:when test="${mediaUrl != null && mediaUrl != '' && (fn:startsWith(mediaUrl, 'http://') || fn:startsWith(mediaUrl, 'https://') || fn:startsWith(mediaUrl, '/'))}">
+                                                                <img src="${mediaUrl}" alt="${detail.materialName}" />
+                                                            </c:when>
+                                                            <c:when test="${mediaUrl != null && mediaUrl != ''}">
+                                                                <img src="${pageContext.request.contextPath}/${mediaUrl}" alt="${detail.materialName}" />
+                                                            </c:when>
+                                                            <c:otherwise>
+                                                                <span>No image available</span>
+                                                            </c:otherwise>
+                                                        </c:choose>
                                                     </c:choose>
                                                 </c:if>
                                             </c:forEach>

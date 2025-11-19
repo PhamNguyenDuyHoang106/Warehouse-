@@ -1,6 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -186,7 +187,15 @@
                             <tr>
                                 <td><strong>${detail.materialName}</strong></td>
                                 <td>
-                                    <img src="images/material/${materialImages[detail.materialId]}" alt="${detail.materialName}" style="width: 100px; height: auto; object-fit: cover;">
+                                    <c:set var="mediaUrl" value="${materialImages[detail.materialId]}" />
+                                    <c:choose>
+                                        <c:when test="${mediaUrl != null && mediaUrl != '' && (fn:startsWith(mediaUrl, 'http://') || fn:startsWith(mediaUrl, 'https://') || fn:startsWith(mediaUrl, '/'))}">
+                                            <img src="${mediaUrl}" alt="${detail.materialName}" style="width: 100px; height: auto; object-fit: cover;">
+                                        </c:when>
+                                        <c:otherwise>
+                                            <img src="${pageContext.request.contextPath}/${mediaUrl}" alt="${detail.materialName}" style="width: 100px; height: auto; object-fit: cover;">
+                                        </c:otherwise>
+                                    </c:choose>
                                 </td>
                                 <td>${detail.quantity}</td>
                                 <td>$<fmt:formatNumber value="${detail.unitPrice}" type="number" minFractionDigits="2"/></td>
@@ -243,14 +252,19 @@
     </div>
 
     <!-- Action Buttons -->
-    <c:if test="${hasHandleRequestPermission && purchaseOrder.status == 'pending'}">
+    <!-- Hiển thị nút duyệt khi có permission và status là 'draft' (chưa được duyệt) -->
+    <!-- Admin luôn có quyền duyệt -->
+    <c:set var="canApprove" value="${hasHandleRequestPermission || sessionScope.user.roleId == 1}" />
+    <c:set var="statusLower" value="${fn:toLowerCase(purchaseOrder.status)}" />
+    <c:set var="isDraft" value="${statusLower == 'draft'}" />
+    <c:if test="${canApprove && isDraft}">
         <div class="d-flex gap-2 mb-2">
-            <button type="button" class="btn" style="background-color: #198754; color: #fff; border: none;" onclick="updateStatus('${purchaseOrder.poId}', 'approved')">Approve</button>
-            <button type="button" class="btn" style="background-color: #dc3545; color: #fff; border: none;" onclick="updateStatus('${purchaseOrder.poId}', 'rejected')">Reject</button>
+            <button type="button" class="btn" style="background-color: #198754; color: #fff; border: none;" onclick="updateStatus('${purchaseOrder.poId}', 'confirmed')">Approve</button>
+            <button type="button" class="btn" style="background-color: #dc3545; color: #fff; border: none;" onclick="updateStatus('${purchaseOrder.poId}', 'cancelled')">Reject</button>
             <a href="PurchaseOrderList" class="btn btn-warning">Cancel</a>
         </div>
     </c:if>
-    <c:if test="${!(hasHandleRequestPermission && purchaseOrder.status == 'pending')}">
+    <c:if test="${!(canApprove && isDraft)}">
         <div class="mb-2">
             <a href="PurchaseOrderList" class="btn btn-warning">Cancel</a>
         </div>

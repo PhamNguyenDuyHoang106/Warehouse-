@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import dal.RolePermissionDAO;
 import entity.User;
+import utils.PermissionHelper;
 
 @WebServlet(name = "DeleteUnitServlet", urlPatterns = {"/DeleteUnit"})
 public class DeleteUnitServlet extends HttpServlet {
@@ -18,8 +19,13 @@ public class DeleteUnitServlet extends HttpServlet {
         jakarta.servlet.http.HttpSession session = request.getSession(false);
         dal.RolePermissionDAO rolePermissionDAO = new dal.RolePermissionDAO();
         entity.User user = (session != null) ? (entity.User) session.getAttribute("user") : null;
-        if (user == null || !rolePermissionDAO.hasPermission(user.getRoleId(), "DELETE_UNIT")) {
-            request.setAttribute("error", "You don't have permission to delete units.");
+        if (user == null) {
+            response.sendRedirect("Login.jsp");
+            return;
+        }
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(user, "Xóa đơn vị")) {
+            request.setAttribute("error", "Bạn không có quyền xóa đơn vị.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }

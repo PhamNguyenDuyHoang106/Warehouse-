@@ -19,35 +19,32 @@ public class ExportDAO extends DBContext {
     private static final Logger LOGGER = Logger.getLogger(ExportDAO.class.getName());
 
     /**
-     * Create a new export record and return the generated export_id
+     * Create a new export record and return the generated export_id (Schema v11)
      */
     public int createExport(Export export) {
-        String sql = "INSERT INTO Exports (export_code, export_date, exported_by, recipient_id, vehicle_id, export_request_id, note) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        
+        String sql = "INSERT INTO Exports (export_code, so_id, er_id, warehouse_id, export_date, exported_by, status, note, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
         try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, export.getExportCode());
-            ps.setTimestamp(2, export.getExportDate() != null ? Timestamp.valueOf(export.getExportDate()) : Timestamp.valueOf(LocalDateTime.now()));
-            ps.setInt(3, export.getExportedBy());
-            
-            if (export.getRecipientId() != null) {
-                ps.setInt(4, export.getRecipientId());
+
+            if (export.getSoId() != null) {
+                ps.setInt(2, export.getSoId());
             } else {
-                ps.setNull(4, java.sql.Types.INTEGER);
+                ps.setNull(2, java.sql.Types.INTEGER);
             }
-            
-            if (export.getVehicleId() != null) {
-                ps.setInt(5, export.getVehicleId());
+
+            if (export.getErId() != null) {
+                ps.setInt(3, export.getErId());
             } else {
-                ps.setNull(5, java.sql.Types.INTEGER);
+                ps.setNull(3, java.sql.Types.INTEGER);
             }
-            
-            if (export.getExportRequestId() != null) {
-                ps.setInt(6, export.getExportRequestId());
-            } else {
-                ps.setNull(6, java.sql.Types.INTEGER);
-            }
-            
-            ps.setString(7, export.getNote());
+
+            ps.setInt(4, export.getWarehouseId());
+            ps.setTimestamp(5, export.getExportDate() != null ? Timestamp.valueOf(export.getExportDate()) : Timestamp.valueOf(LocalDateTime.now()));
+            ps.setInt(6, export.getExportedBy());
+            ps.setString(7, export.getStatus() != null ? export.getStatus() : "draft");
+            ps.setString(8, export.getNote());
+            ps.setInt(9, export.getCreatedBy() != null ? export.getCreatedBy() : export.getExportedBy());
             
             int result = ps.executeUpdate();
             
@@ -68,16 +65,18 @@ public class ExportDAO extends DBContext {
      */
     public Export getExportById(int exportId) {
         String sql = "SELECT e.*, " +
-                    "r.recipient_name, r.location as recipient_location, " +
-                    "v.license_plate, " +
-                    "er.request_code, " +
-                    "u.full_name as exported_by_name " +
+                    "u.full_name as exported_by_name, " +
+                    "w.warehouse_name, " +
+                    "so.so_code as sales_order_code, " +
+                    "er.er_code as export_request_code, " +
+                    "c.customer_name " +
                     "FROM Exports e " +
-                    "LEFT JOIN Recipients r ON e.recipient_id = r.recipient_id " +
-                    "LEFT JOIN Vehicles v ON e.vehicle_id = v.vehicle_id " +
-                    "LEFT JOIN Export_Requests er ON e.export_request_id = er.export_request_id " +
                     "LEFT JOIN Users u ON e.exported_by = u.user_id " +
-                    "WHERE e.export_id = ?";
+                    "LEFT JOIN Warehouses w ON e.warehouse_id = w.warehouse_id " +
+                    "LEFT JOIN Sales_Orders so ON e.so_id = so.so_id " +
+                    "LEFT JOIN Export_Requests er ON e.er_id = er.er_id " +
+                    "LEFT JOIN Customers c ON so.customer_id = c.customer_id " +
+                    "WHERE e.export_id = ? AND e.deleted_at IS NULL";
         
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, exportId);
@@ -99,15 +98,18 @@ public class ExportDAO extends DBContext {
         int offset = (page - 1) * pageSize;
         
         String sql = "SELECT e.*, " +
-                    "r.recipient_name, r.location as recipient_location, " +
-                    "v.license_plate, " +
-                    "er.request_code, " +
-                    "u.full_name as exported_by_name " +
+                    "u.full_name as exported_by_name, " +
+                    "w.warehouse_name, " +
+                    "so.so_code as sales_order_code, " +
+                    "er.er_code as export_request_code, " +
+                    "c.customer_name " +
                     "FROM Exports e " +
-                    "LEFT JOIN Recipients r ON e.recipient_id = r.recipient_id " +
-                    "LEFT JOIN Vehicles v ON e.vehicle_id = v.vehicle_id " +
-                    "LEFT JOIN Export_Requests er ON e.export_request_id = er.export_request_id " +
                     "LEFT JOIN Users u ON e.exported_by = u.user_id " +
+                    "LEFT JOIN Warehouses w ON e.warehouse_id = w.warehouse_id " +
+                    "LEFT JOIN Sales_Orders so ON e.so_id = so.so_id " +
+                    "LEFT JOIN Export_Requests er ON e.er_id = er.er_id " +
+                    "LEFT JOIN Customers c ON so.customer_id = c.customer_id " +
+                    "WHERE e.deleted_at IS NULL " +
                     "ORDER BY e.export_date DESC " +
                     "LIMIT ? OFFSET ?";
         
@@ -126,24 +128,26 @@ public class ExportDAO extends DBContext {
     }
 
     /**
-     * Get exports by date range
+     * Get exports by date range (Schema v11)
      */
     public List<Export> getExportsByDateRange(LocalDate startDate, LocalDate endDate) {
         List<Export> exports = new ArrayList<>();
-        
+
         String sql = "SELECT e.*, " +
-                    "r.recipient_name, r.location as recipient_location, " +
-                    "v.license_plate, " +
-                    "er.request_code, " +
-                    "u.full_name as exported_by_name " +
+                    "u.full_name as exported_by_name, " +
+                    "w.warehouse_name, " +
+                    "so.so_code as sales_order_code, " +
+                    "er.er_code as export_request_code, " +
+                    "c.customer_name " +
                     "FROM Exports e " +
-                    "LEFT JOIN Recipients r ON e.recipient_id = r.recipient_id " +
-                    "LEFT JOIN Vehicles v ON e.vehicle_id = v.vehicle_id " +
-                    "LEFT JOIN Export_Requests er ON e.export_request_id = er.export_request_id " +
                     "LEFT JOIN Users u ON e.exported_by = u.user_id " +
-                    "WHERE DATE(e.export_date) BETWEEN ? AND ? " +
+                    "LEFT JOIN Warehouses w ON e.warehouse_id = w.warehouse_id " +
+                    "LEFT JOIN Sales_Orders so ON e.so_id = so.so_id " +
+                    "LEFT JOIN Export_Requests er ON e.er_id = er.er_id " +
+                    "LEFT JOIN Customers c ON so.customer_id = c.customer_id " +
+                    "WHERE e.deleted_at IS NULL AND DATE(e.export_date) BETWEEN ? AND ? " +
                     "ORDER BY e.export_date DESC";
-        
+
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setDate(1, java.sql.Date.valueOf(startDate));
             ps.setDate(2, java.sql.Date.valueOf(endDate));
@@ -159,93 +163,108 @@ public class ExportDAO extends DBContext {
     }
 
     /**
-     * Get exports by recipient
+     * Get exports by customer (Schema v11 - replaces recipient)
      */
-    public List<Export> getExportsByRecipient(int recipientId) {
+    public List<Export> getExportsByCustomer(int customerId) {
         List<Export> exports = new ArrayList<>();
-        
+
         String sql = "SELECT e.*, " +
-                    "r.recipient_name, r.location as recipient_location, " +
-                    "v.license_plate, " +
-                    "er.request_code, " +
-                    "u.full_name as exported_by_name " +
+                    "u.full_name as exported_by_name, " +
+                    "w.warehouse_name, " +
+                    "so.so_code as sales_order_code, " +
+                    "er.er_code as export_request_code, " +
+                    "c.customer_name " +
                     "FROM Exports e " +
-                    "LEFT JOIN Recipients r ON e.recipient_id = r.recipient_id " +
-                    "LEFT JOIN Vehicles v ON e.vehicle_id = v.vehicle_id " +
-                    "LEFT JOIN Export_Requests er ON e.export_request_id = er.export_request_id " +
                     "LEFT JOIN Users u ON e.exported_by = u.user_id " +
-                    "WHERE e.recipient_id = ? " +
+                    "LEFT JOIN Warehouses w ON e.warehouse_id = w.warehouse_id " +
+                    "LEFT JOIN Sales_Orders so ON e.so_id = so.so_id " +
+                    "LEFT JOIN Export_Requests er ON e.er_id = er.er_id " +
+                    "LEFT JOIN Customers c ON so.customer_id = c.customer_id " +
+                    "WHERE e.deleted_at IS NULL AND so.customer_id = ? " +
                     "ORDER BY e.export_date DESC";
-        
+
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, recipientId);
+            ps.setInt(1, customerId);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 Export export = mapResultSetToExport(rs);
                 exports.add(export);
             }
         } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error getting exports by recipient", e);
+            LOGGER.log(Level.SEVERE, "Error getting exports by customer", e);
         }
         return exports;
     }
 
     /**
-     * Get exports by vehicle
+     * Get exports by warehouse (Schema v11 - replaces vehicle)
+     * Since vehicles are no longer directly linked to exports in v11,
+     * this method now finds exports by warehouse
      */
-    public List<Export> getExportsByVehicle(int vehicleId) {
+    public List<Export> getExportsByWarehouse(int warehouseId) {
         List<Export> exports = new ArrayList<>();
-        
+
         String sql = "SELECT e.*, " +
-                    "r.recipient_name, r.location as recipient_location, " +
-                    "v.license_plate, " +
-                    "er.request_code, " +
-                    "u.full_name as exported_by_name " +
+                    "u.full_name as exported_by_name, " +
+                    "w.warehouse_name, " +
+                    "so.so_code as sales_order_code, " +
+                    "er.er_code as export_request_code, " +
+                    "c.customer_name " +
                     "FROM Exports e " +
-                    "LEFT JOIN Recipients r ON e.recipient_id = r.recipient_id " +
-                    "LEFT JOIN Vehicles v ON e.vehicle_id = v.vehicle_id " +
-                    "LEFT JOIN Export_Requests er ON e.export_request_id = er.export_request_id " +
                     "LEFT JOIN Users u ON e.exported_by = u.user_id " +
-                    "WHERE e.vehicle_id = ? " +
+                    "LEFT JOIN Warehouses w ON e.warehouse_id = w.warehouse_id " +
+                    "LEFT JOIN Sales_Orders so ON e.so_id = so.so_id " +
+                    "LEFT JOIN Export_Requests er ON e.er_id = er.er_id " +
+                    "LEFT JOIN Customers c ON so.customer_id = c.customer_id " +
+                    "WHERE e.deleted_at IS NULL AND e.warehouse_id = ? " +
                     "ORDER BY e.export_date DESC";
-        
+
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            ps.setInt(1, vehicleId);
+            ps.setInt(1, warehouseId);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 Export export = mapResultSetToExport(rs);
                 exports.add(export);
             }
         } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error getting exports by vehicle", e);
+            LOGGER.log(Level.SEVERE, "Error getting exports by warehouse", e);
         }
         return exports;
     }
 
     /**
-     * Search exports by code or recipient name
+     * Search exports by code, customer name, sales order code, or export request code (Schema v11)
      */
     public List<Export> searchExports(String searchQuery) {
         List<Export> exports = new ArrayList<>();
-        
+
         String sql = "SELECT e.*, " +
-                    "r.recipient_name, r.location as recipient_location, " +
-                    "v.license_plate, " +
-                    "er.request_code, " +
-                    "u.full_name as exported_by_name " +
+                    "u.full_name as exported_by_name, " +
+                    "w.warehouse_name, " +
+                    "so.so_code as sales_order_code, " +
+                    "er.er_code as export_request_code, " +
+                    "c.customer_name " +
                     "FROM Exports e " +
-                    "LEFT JOIN Recipients r ON e.recipient_id = r.recipient_id " +
-                    "LEFT JOIN Vehicles v ON e.vehicle_id = v.vehicle_id " +
-                    "LEFT JOIN Export_Requests er ON e.export_request_id = er.export_request_id " +
                     "LEFT JOIN Users u ON e.exported_by = u.user_id " +
-                    "WHERE e.export_code LIKE ? OR r.recipient_name LIKE ? OR v.license_plate LIKE ? " +
+                    "LEFT JOIN Warehouses w ON e.warehouse_id = w.warehouse_id " +
+                    "LEFT JOIN Sales_Orders so ON e.so_id = so.so_id " +
+                    "LEFT JOIN Export_Requests er ON e.er_id = er.er_id " +
+                    "LEFT JOIN Customers c ON so.customer_id = c.customer_id " +
+                    "WHERE e.deleted_at IS NULL AND (" +
+                    "e.export_code LIKE ? OR " +
+                    "c.customer_name LIKE ? OR " +
+                    "so.so_code LIKE ? OR " +
+                    "er.er_code LIKE ? OR " +
+                    "w.warehouse_name LIKE ?)" +
                     "ORDER BY e.export_date DESC";
-        
+
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             String searchPattern = "%" + searchQuery + "%";
             ps.setString(1, searchPattern);
             ps.setString(2, searchPattern);
             ps.setString(3, searchPattern);
+            ps.setString(4, searchPattern);
+            ps.setString(5, searchPattern);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 Export export = mapResultSetToExport(rs);
@@ -258,10 +277,10 @@ public class ExportDAO extends DBContext {
     }
 
     /**
-     * Get total count of exports
+     * Get total count of exports (Schema v11)
      */
     public int getTotalExportsCount() {
-        String sql = "SELECT COUNT(*) FROM Exports";
+        String sql = "SELECT COUNT(*) FROM Exports WHERE deleted_at IS NULL";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
@@ -293,23 +312,25 @@ public class ExportDAO extends DBContext {
      * Update export information
      */
     public boolean updateExport(Export export) {
-        String sql = "UPDATE Exports SET recipient_id = ?, vehicle_id = ?, note = ?, updated_at = NOW() WHERE export_id = ?";
-        
+        String sql = "UPDATE Exports SET so_id = ?, er_id = ?, warehouse_id = ?, status = ?, note = ?, updated_at = CURRENT_TIMESTAMP WHERE export_id = ?";
+
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
-            if (export.getRecipientId() != null) {
-                ps.setInt(1, export.getRecipientId());
+            if (export.getSoId() != null) {
+                ps.setInt(1, export.getSoId());
             } else {
                 ps.setNull(1, java.sql.Types.INTEGER);
             }
-            
-            if (export.getVehicleId() != null) {
-                ps.setInt(2, export.getVehicleId());
+
+            if (export.getErId() != null) {
+                ps.setInt(2, export.getErId());
             } else {
                 ps.setNull(2, java.sql.Types.INTEGER);
             }
-            
-            ps.setString(3, export.getNote());
-            ps.setInt(4, export.getExportId());
+
+            ps.setInt(3, export.getWarehouseId());
+            ps.setString(4, export.getStatus());
+            ps.setString(5, export.getNote());
+            ps.setInt(6, export.getExportId());
             
             int result = ps.executeUpdate();
             return result > 0;
@@ -323,21 +344,23 @@ public class ExportDAO extends DBContext {
      * Get export history with advanced filters (for ExportHistoryServlet)
      */
     public List<Export> getExportHistoryAdvanced(String fromDate, String toDate, String materialName, 
-                                                  String sortByRecipient, String sortByExportedBy, int page, int pageSize) {
+                                                  String sortByCustomer, String sortByExportedBy, int page, int pageSize) {
         List<Export> exports = new ArrayList<>();
         int offset = (page - 1) * pageSize;
         
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT DISTINCT e.*, ");
-        sql.append("r.recipient_name, r.location as recipient_location, ");
-        sql.append("v.license_plate, ");
-        sql.append("er.request_code, ");
-        sql.append("u.full_name as exported_by_name ");
+        sql.append("u.full_name as exported_by_name, ");
+        sql.append("w.warehouse_name, ");
+        sql.append("so.so_code as sales_order_code, ");
+        sql.append("er.er_code as export_request_code, ");
+        sql.append("c.customer_name ");
         sql.append("FROM Exports e ");
-        sql.append("LEFT JOIN Recipients r ON e.recipient_id = r.recipient_id ");
-        sql.append("LEFT JOIN Vehicles v ON e.vehicle_id = v.vehicle_id ");
-        sql.append("LEFT JOIN Export_Requests er ON e.export_request_id = er.export_request_id ");
         sql.append("LEFT JOIN Users u ON e.exported_by = u.user_id ");
+        sql.append("LEFT JOIN Warehouses w ON e.warehouse_id = w.warehouse_id ");
+        sql.append("LEFT JOIN Sales_Orders so ON e.so_id = so.so_id ");
+        sql.append("LEFT JOIN Export_Requests er ON e.er_id = er.er_id ");
+        sql.append("LEFT JOIN Customers c ON so.customer_id = c.customer_id ");
         
         // Join Export_Details and Materials if filtering by material name
         if (materialName != null && !materialName.trim().isEmpty()) {
@@ -345,8 +368,8 @@ public class ExportDAO extends DBContext {
             sql.append("JOIN Materials m ON ed.material_id = m.material_id ");
         }
         
-        sql.append("WHERE 1=1 ");
-        
+        sql.append("WHERE e.deleted_at IS NULL ");
+
         // Date filters
         if (fromDate != null && !fromDate.trim().isEmpty()) {
             sql.append("AND DATE(e.export_date) >= ? ");
@@ -360,9 +383,9 @@ public class ExportDAO extends DBContext {
             sql.append("AND m.material_name LIKE ? ");
         }
         
-        // Sorting
-        if (sortByRecipient != null && !sortByRecipient.trim().isEmpty()) {
-            sql.append("ORDER BY r.recipient_name ").append(sortByRecipient.equalsIgnoreCase("desc") ? "DESC" : "ASC").append(", e.export_date DESC ");
+        // Sorting (Schema v11)
+        if (sortByCustomer != null && !sortByCustomer.trim().isEmpty()) {
+            sql.append("ORDER BY c.customer_name ").append(sortByCustomer.equalsIgnoreCase("desc") ? "DESC" : "ASC").append(", e.export_date DESC ");
         } else if (sortByExportedBy != null && !sortByExportedBy.trim().isEmpty()) {
             sql.append("ORDER BY u.full_name ").append(sortByExportedBy.equalsIgnoreCase("desc") ? "DESC" : "ASC").append(", e.export_date DESC ");
         } else {
@@ -405,13 +428,13 @@ public class ExportDAO extends DBContext {
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT COUNT(DISTINCT e.export_id) as total ");
         sql.append("FROM Exports e ");
-        
+
         if (materialName != null && !materialName.trim().isEmpty()) {
             sql.append("JOIN Export_Details ed ON e.export_id = ed.export_id ");
             sql.append("JOIN Materials m ON ed.material_id = m.material_id ");
         }
-        
-        sql.append("WHERE 1=1 ");
+
+        sql.append("WHERE e.deleted_at IS NULL ");
         
         if (fromDate != null && !fromDate.trim().isEmpty()) {
             sql.append("AND DATE(e.export_date) >= ? ");
@@ -451,11 +474,11 @@ public class ExportDAO extends DBContext {
      */
     public List<entity.ExportDetail> getExportDetailsByExportId(int exportId) throws java.sql.SQLException {
         List<entity.ExportDetail> details = new ArrayList<>();
-        String sql = "SELECT ed.*, m.material_name, m.material_code, m.materials_url, " +
-                    "u.unit_name, wr.rack_name, wr.rack_code " +
+        String sql = "SELECT ed.*, m.material_name, m.material_code, m.url, " +
+                    "du.unit_name AS default_unit_name, wr.rack_name, wr.rack_code " +
                     "FROM Export_Details ed " +
                     "JOIN Materials m ON ed.material_id = m.material_id " +
-                    "LEFT JOIN Units u ON m.unit_id = u.unit_id " +
+                    "LEFT JOIN Units du ON m.default_unit_id = du.unit_id " +
                     "LEFT JOIN Warehouse_Racks wr ON ed.rack_id = wr.rack_id " +
                     "WHERE ed.export_id = ? " +
                     "ORDER BY ed.export_detail_id";
@@ -524,8 +547,8 @@ public class ExportDAO extends DBContext {
                 // Joined fields
                 detail.setMaterialName(rs.getString("material_name"));
                 detail.setMaterialCode(rs.getString("material_code"));
-                detail.setMaterialsUrl(rs.getString("materials_url"));
-                detail.setUnitName(rs.getString("unit_name"));
+                detail.setMaterialsUrl(rs.getString("url"));
+                detail.setUnitName(rs.getString("default_unit_name"));
                 detail.setRackName(rs.getString("rack_name"));
                 detail.setRackCode(rs.getString("rack_code"));
                 
@@ -560,45 +583,52 @@ public class ExportDAO extends DBContext {
         Export export = new Export();
         export.setExportId(rs.getInt("export_id"));
         export.setExportCode(rs.getString("export_code"));
-        
+
+        // Schema v11 fields
+        int soId = rs.getInt("so_id");
+        if (!rs.wasNull()) {
+            export.setSoId(soId);
+        }
+
+        int erId = rs.getInt("er_id");
+        if (!rs.wasNull()) {
+            export.setErId(erId);
+        }
+
+        export.setWarehouseId(rs.getInt("warehouse_id"));
+        export.setExportedBy(rs.getInt("exported_by"));
+        export.setTotalQuantity(rs.getBigDecimal("total_quantity"));
+        export.setStatus(rs.getString("status"));
+        export.setNote(rs.getString("note"));
+
         if (rs.getTimestamp("export_date") != null) {
             export.setExportDate(rs.getTimestamp("export_date").toLocalDateTime());
         }
-        
-        export.setExportedBy(rs.getInt("exported_by"));
-        
-        int recipientId = rs.getInt("recipient_id");
-        if (!rs.wasNull()) {
-            export.setRecipientId(recipientId);
-        }
-        
-        int vehicleId = rs.getInt("vehicle_id");
-        if (!rs.wasNull()) {
-            export.setVehicleId(vehicleId);
-        }
-        
-        int exportRequestId = rs.getInt("export_request_id");
-        if (!rs.wasNull()) {
-            export.setExportRequestId(exportRequestId);
-        }
-        
-        export.setNote(rs.getString("note"));
-        
+
         if (rs.getTimestamp("created_at") != null) {
             export.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
         }
-        
+
         if (rs.getTimestamp("updated_at") != null) {
             export.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
         }
-        
-        // Joined fields
+
+        if (rs.getTimestamp("deleted_at") != null) {
+            export.setDeletedAt(rs.getTimestamp("deleted_at").toLocalDateTime());
+        }
+
+        int createdBy = rs.getInt("created_by");
+        if (!rs.wasNull()) {
+            export.setCreatedBy(createdBy);
+        }
+
+        // Joined fields (Schema v11)
         export.setExportedByName(rs.getString("exported_by_name"));
-        export.setRecipientName(rs.getString("recipient_name"));
-        export.setRecipientLocation(rs.getString("recipient_location"));
-        export.setVehicleLicensePlate(rs.getString("license_plate"));
-        export.setExportRequestCode(rs.getString("request_code"));
-        
+        export.setWarehouseName(rs.getString("warehouse_name"));
+        export.setSalesOrderCode(rs.getString("sales_order_code"));
+        export.setExportRequestCode(rs.getString("export_request_code"));
+        export.setCustomerName(rs.getString("customer_name"));
+
         return export;
     }
 }

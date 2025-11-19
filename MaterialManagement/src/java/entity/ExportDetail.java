@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 
 public class ExportDetail {
 
+    private static final String DEFAULT_MEDIA_URL = "images/material/default-material.png";
+
     private int exportDetailId;
     private int exportId;
     private int materialId;
@@ -31,11 +33,15 @@ public class ExportDetail {
     }
 
     public String getMaterialsUrl() {
-        return materialsUrl;
+        return resolveMediaUrl(materialsUrl);
     }
 
     public void setMaterialsUrl(String materialsUrl) {
-        this.materialsUrl = materialsUrl;
+        this.materialsUrl = materialsUrl != null ? materialsUrl.trim() : null;
+    }
+
+    public String getRawMaterialsUrl() {
+        return materialsUrl;
     }
 
     
@@ -169,5 +175,22 @@ public class ExportDetail {
 
     public void setTotalAmountExport(BigDecimal totalAmountExport) {
         this.totalAmountExport = totalAmountExport;
+    }
+
+    private String resolveMediaUrl(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return DEFAULT_MEDIA_URL;
+        }
+        String trimmed = value.trim();
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("images/")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("material/")) {
+            return "images/" + trimmed;
+        }
+        return "images/material/" + trimmed;
     }
 }

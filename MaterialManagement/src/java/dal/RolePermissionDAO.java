@@ -35,6 +35,7 @@ public class RolePermissionDAO extends DBContext {
     }
 
     public boolean hasPermission(int roleId, String permissionName) {
+        // Check permission_name (this is what exists in database)
         String sql = "SELECT COUNT(*) FROM Role_Permissions rp JOIN Permissions p ON rp.permission_id = p.permission_id WHERE rp.role_id = ? AND p.permission_name = ?";
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -43,7 +44,7 @@ public class RolePermissionDAO extends DBContext {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     boolean hasPerm = rs.getInt(1) > 0;
-                    System.out.println("✅ Kiểm tra permission " + permissionName + " cho role " + roleId + ": " + (hasPerm ? "Có" : "Không"));
+                    System.out.println("🔍 Checking permission '" + permissionName + "' for role " + roleId + ": " + (hasPerm ? "GRANTED" : "DENIED"));
                     return hasPerm;
                 }
             }

@@ -1,5 +1,7 @@
 package entity;
 
+import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.List;
 
@@ -8,55 +10,82 @@ import java.util.List;
  * @author Admin
  */
 public class PurchaseRequest {
-    private int purchaseRequestId;
-    private String requestCode;
-    private int userId;
-    private Timestamp requestDate;
-    private String status; // ENUM: PENDING, APPROVED, REJECTED, CANCELLED
-    private double estimatedPrice;
-    private String reason;
+    private int id;
+    private String code;
+    private int requestBy;
+    private Integer departmentId;
+    private Date requestDate;
+    private Date expectedDate;
+    private BigDecimal totalAmount;
+    private String status; // draft, submitted, approved, rejected, cancelled
     private Integer approvedBy;
-    private String approvalReason;
     private Timestamp approvedAt;
-    private String rejectionReason;
+    private String reason;
     private Timestamp createdAt;
     private Timestamp updatedAt;
-    private boolean disable;
+    private Timestamp deletedAt;
+    private String requesterName;
+    private String departmentName;
     private List<PurchaseRequestDetail> details;
 
     public PurchaseRequest() {
+        this.totalAmount = BigDecimal.ZERO;
     }
 
-    public int getPurchaseRequestId() {
-        return purchaseRequestId;
+    public int getId() {
+        return id;
     }
 
-    public void setPurchaseRequestId(int purchaseRequestId) {
-        this.purchaseRequestId = purchaseRequestId;
+    public void setId(int id) {
+        this.id = id;
     }
 
-    public String getRequestCode() {
-        return requestCode;
+    public String getCode() {
+        return code;
     }
 
-    public void setRequestCode(String requestCode) {
-        this.requestCode = requestCode;
+    public void setCode(String code) {
+        this.code = code;
     }
 
-    public int getUserId() {
-        return userId;
+    public int getRequestBy() {
+        return requestBy;
     }
 
-    public void setUserId(int userId) {
-        this.userId = userId;
+    public void setRequestBy(int requestBy) {
+        this.requestBy = requestBy;
     }
 
-    public Timestamp getRequestDate() {
+    public Integer getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(Integer departmentId) {
+        this.departmentId = departmentId;
+    }
+
+    public Date getRequestDate() {
         return requestDate;
     }
 
-    public void setRequestDate(Timestamp requestDate) {
+    public void setRequestDate(Date requestDate) {
         this.requestDate = requestDate;
+    }
+
+    public Date getExpectedDate() {
+        return expectedDate;
+    }
+
+    public void setExpectedDate(Date expectedDate) {
+        this.expectedDate = expectedDate;
+    }
+
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(BigDecimal totalAmount) {
+        this.totalAmount = totalAmount;
     }
 
     public String getStatus() {
@@ -67,36 +96,12 @@ public class PurchaseRequest {
         this.status = status;
     }
 
-    public double getEstimatedPrice() {
-        return estimatedPrice;
-    }
-
-    public void setEstimatedPrice(double estimatedPrice) {
-        this.estimatedPrice = estimatedPrice;
-    }
-
-    public String getReason() {
-        return reason;
-    }
-
-    public void setReason(String reason) {
-        this.reason = reason;
-    }
-
     public Integer getApprovedBy() {
         return approvedBy;
     }
 
     public void setApprovedBy(Integer approvedBy) {
         this.approvedBy = approvedBy;
-    }
-
-    public String getApprovalReason() {
-        return approvalReason;
-    }
-
-    public void setApprovalReason(String approvalReason) {
-        this.approvalReason = approvalReason;
     }
 
     public Timestamp getApprovedAt() {
@@ -107,12 +112,12 @@ public class PurchaseRequest {
         this.approvedAt = approvedAt;
     }
 
-    public String getRejectionReason() {
-        return rejectionReason;
+    public String getReason() {
+        return reason;
     }
 
-    public void setRejectionReason(String rejectionReason) {
-        this.rejectionReason = rejectionReason;
+    public void setReason(String reason) {
+        this.reason = reason;
     }
 
     public Timestamp getCreatedAt() {
@@ -131,12 +136,28 @@ public class PurchaseRequest {
         this.updatedAt = updatedAt;
     }
 
-    public boolean isDisable() {
-        return disable;
+    public Timestamp getDeletedAt() {
+        return deletedAt;
     }
 
-    public void setDisable(boolean disable) {
-        this.disable = disable;
+    public void setDeletedAt(Timestamp deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
+    public String getRequesterName() {
+        return requesterName;
+    }
+
+    public void setRequesterName(String requesterName) {
+        this.requesterName = requesterName;
+    }
+
+    public String getDepartmentName() {
+        return departmentName;
+    }
+
+    public void setDepartmentName(String departmentName) {
+        this.departmentName = departmentName;
     }
 
     public List<PurchaseRequestDetail> getDetails() {
@@ -145,5 +166,50 @@ public class PurchaseRequest {
 
     public void setDetails(List<PurchaseRequestDetail> details) {
         this.details = details;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    // Compatibility helpers for legacy code ---------------------------------
+    public int getPurchaseRequestId() {
+        return id;
+    }
+
+    public void setPurchaseRequestId(int purchaseRequestId) {
+        this.id = purchaseRequestId;
+    }
+
+    public String getRequestCode() {
+        return code;
+    }
+
+    public void setRequestCode(String requestCode) {
+        this.code = requestCode;
+    }
+
+    public int getUserId() {
+        return requestBy;
+    }
+
+    public void setUserId(int userId) {
+        this.requestBy = userId;
+    }
+
+    public Timestamp getRequestDateTime() {
+        return requestDate != null ? new Timestamp(requestDate.getTime()) : null;
+    }
+
+    public void setRequestDateTime(Timestamp timestamp) {
+        this.requestDate = timestamp != null ? new Date(timestamp.getTime()) : null;
+    }
+
+    public Double getEstimatedPrice() {
+        return totalAmount != null ? totalAmount.doubleValue() : 0.0;
+    }
+
+    public void setEstimatedPrice(double estimatedPrice) {
+        this.totalAmount = BigDecimal.valueOf(estimatedPrice);
     }
 }

@@ -2,6 +2,7 @@ package controller;
 
 import dal.MaterialDAO;
 import dal.RolePermissionDAO;
+import utils.PermissionHelper;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,16 +36,15 @@ public class DashboardMaterialServlet extends HttpServlet {
         try {
             HttpSession session = request.getSession(false);
             User user = (session != null) ? (User) session.getAttribute("user") : null;
-            if (user == null || (user.getRoleId() != 1 && user.getRoleId() != 2 && user.getRoleId() != 3 && user.getRoleId() != 4)) {
-                request.setAttribute("error", "Vui lòng đăng nhập để truy cập trang này.");
-                request.getRequestDispatcher("error.jsp").forward(request, response);
+            if (user == null) {
+                response.sendRedirect("Login.jsp");
                 return;
             }
 
-            int roleId = user.getRoleId();
-            if (roleId != 1 && !rolePermissionDAO.hasPermission(roleId, "VIEW_LIST_MATERIAL")) {
+            // Admin có toàn quyền
+            if (!PermissionHelper.hasPermission(user, "Danh sách NVL")) {
                 request.setAttribute("error", "Bạn không có quyền xem danh sách vật tư.");
-                request.getRequestDispatcher("DashboardMaterial.jsp").forward(request, response);
+                request.getRequestDispatcher("error.jsp").forward(request, response);
                 return;
             }
 

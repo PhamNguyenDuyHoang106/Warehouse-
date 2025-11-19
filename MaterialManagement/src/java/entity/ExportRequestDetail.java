@@ -5,6 +5,8 @@ import java.sql.Timestamp;
 
 public class ExportRequestDetail {
 
+    private static final String DEFAULT_MEDIA_URL = "images/material/default-material.png";
+
     private int detailId;
     private int exportRequestId;
     private int materialId;
@@ -13,6 +15,7 @@ public class ExportRequestDetail {
     private String materialName;
     private String materialUnit;
     private BigDecimal quantity; // Thay đổi từ int sang BigDecimal
+    private BigDecimal unitPriceExport; // V8: Giá xuất - REQUIRED cho profit calculation
     private String status;
     private String materialImageUrl;
     private Timestamp createdAt;
@@ -95,11 +98,15 @@ public class ExportRequestDetail {
     }
 
     public String getMaterialImageUrl() {
-        return materialImageUrl;
+        return resolveMediaUrl(materialImageUrl);
     }
 
     public void setMaterialImageUrl(String materialImageUrl) {
-        this.materialImageUrl = materialImageUrl;
+        this.materialImageUrl = materialImageUrl != null ? materialImageUrl.trim() : null;
+    }
+
+    public String getRawMaterialImageUrl() {
+        return materialImageUrl;
     }
 
     public Timestamp getCreatedAt() {
@@ -124,5 +131,30 @@ public class ExportRequestDetail {
 
     public void setUnitName(String unitName) {
         this.unitName = unitName;
+    }
+
+    private String resolveMediaUrl(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return DEFAULT_MEDIA_URL;
+        }
+        String trimmed = value.trim();
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("images/")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("material/")) {
+            return "images/" + trimmed;
+        }
+        return "images/material/" + trimmed;
+    }
+
+    public BigDecimal getUnitPriceExport() {
+        return unitPriceExport;
+    }
+
+    public void setUnitPriceExport(BigDecimal unitPriceExport) {
+        this.unitPriceExport = unitPriceExport;
     }
 }

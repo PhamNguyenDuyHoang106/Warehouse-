@@ -4,11 +4,16 @@ import entity.Category;
 import entity.DBContext;
 import entity.Material;
 import entity.Unit;
+import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -16,994 +21,613 @@ public class MaterialDAO extends DBContext {
 
     private static final Logger LOGGER = Logger.getLogger(MaterialDAO.class.getName());
 
-    public List<Material> searchMaterials(String keyword, String status, int pageIndex, int pageSize, String sortOption) {
-        if (sortOption == null) sortOption = "";
-        List<Material> list = new ArrayList<>();
-        try {
-            StringBuilder sql = new StringBuilder();
-            // FIX: Bỏ rack_id khỏi SELECT và GROUP BY để SUM quantity đúng cách
-            // V9.1: Include unit_volume and unit_weight
-            sql.append("SELECT m.*, m.average_cost, m.unit_volume, m.unit_weight, c.category_name, u.unit_name, ")
-               .append("IFNULL(SUM(i.stock), 0) AS quantity ")
-               .append("FROM materials m ")
-               .append("LEFT JOIN categories c ON m.category_id = c.category_id ")
-               .append("LEFT JOIN units u ON m.unit_id = u.unit_id AND u.disable = 0 ")
-               .append("LEFT JOIN inventory i ON m.material_id = i.material_id ")
-               .append("WHERE m.disable = 0 ");
+    private static final String BASE_SELECT =
+        "SELECT " +
+            "m.material_id, " +
+            "m.material_code, " +
+            "m.material_name, " +
+            "m.url, " +
+            "m.barcode, " +
+            "m.status, " +
+            "m.category_id, " +
+            "m.default_unit_id, " +
+            "m.purchase_unit_id, " +
+            "m.sales_unit_id, " +
+            "m.min_stock, " +
+            "m.max_stock, " +
+            "m.weight_per_unit, " +
+            "m.volume_per_unit, " +
+            "m.shelf_life_days, " +
+            "m.is_serialized, " +
+            "m.is_batch_controlled, " +
+            "m.created_at, " +
+            "m.updated_at, " +
+            "m.deleted_at, " +
+            "c.category_code, " +
+            "c.category_name, " +
+            "c.parent_id, " +
+            "c.level_depth, " +
+            "du.unit_code AS default_unit_code, " +
+            "du.unit_name AS default_unit_name, " +
+            "du.symbol AS default_unit_symbol, " +
+            "pu.unit_id AS purchase_unit_real_id, " +
+            "pu.unit_code AS purchase_unit_code, " +
+            "pu.unit_name AS purchase_unit_name, " +
+            "pu.symbol AS purchase_unit_symbol, " +
+            "su.unit_id AS sales_unit_real_id, " +
+            "su.unit_code AS sales_unit_code, " +
+            "su.unit_name AS sales_unit_name, " +
+            "su.symbol AS sales_unit_symbol, " +
+            "inv.stock_on_hand, " +
+            "inv.reserved_stock, " +
+            "inv.available_stock " +
+        "FROM Materials m " +
+        "LEFT JOIN Categories c ON c.category_id = m.category_id " +
+        "LEFT JOIN Units du ON du.unit_id = m.default_unit_id " +
+        "LEFT JOIN Units pu ON pu.unit_id = m.purchase_unit_id " +
+        "LEFT JOIN Units su ON su.unit_id = m.sales_unit_id " +
+        "LEFT JOIN ( " +
+            "SELECT material_id, " +
+                   "SUM(stock) AS stock_on_hand, " +
+                   "SUM(reserved_stock) AS reserved_stock, " +
+                   "SUM(stock - reserved_stock) AS available_stock " +
+            "FROM Inventory " +
+            "GROUP BY material_id " +
+        ") inv ON inv.material_id = m.material_id ";
 
-            List<Object> params = new ArrayList<>();
+    private Material mapMaterial(ResultSet rs) throws SQLException {
+        Material material = new Material();
+        material.setMaterialId(rs.getInt("material_id"));
+        material.setMaterialCode(rs.getString("material_code"));
+        material.setMaterialName(rs.getString("material_name"));
+        material.setUrl(rs.getString("url"));
+        material.setBarcode(rs.getString("barcode"));
+        String status = rs.getString("status");
+        material.setStatus(status);
+        material.setMaterialStatus(status);
 
-            if (keyword != null && !keyword.isEmpty()) {
-                sql.append("AND m.material_name LIKE ? ");
-                params.add("%" + keyword + "%");
-            }
+        material.setMinStock(safeDecimal(rs, "min_stock"));
+        material.setMaxStock(safeDecimal(rs, "max_stock"));
+        material.setWeightPerUnit(safeDecimal(rs, "weight_per_unit"));
+        material.setVolumePerUnit(safeDecimal(rs, "volume_per_unit"));
+        material.setShelfLifeDays(safeInteger(rs, "shelf_life_days"));
+        material.setSerialized(rs.getBoolean("is_serialized"));
+        material.setBatchControlled(rs.getBoolean("is_batch_controlled"));
+        material.setStockOnHand(safeDecimal(rs, "stock_on_hand"));
+        material.setReservedStock(safeDecimal(rs, "reserved_stock"));
+        material.setAvailableStock(safeDecimal(rs, "available_stock"));
+        // average_cost column không tồn tại trong database, để null
+        material.setAverageCost(null);
 
-            if (status != null && !status.isEmpty()) {
-                sql.append("AND m.material_status = ? ");
-                params.add(status);
-            }
-            String sortBy = "m.material_code"; 
-            String sortOrder = "ASC";
+        material.setCreatedAt(rs.getTimestamp("created_at"));
+        material.setUpdatedAt(rs.getTimestamp("updated_at"));
+        material.setDeletedAt(rs.getTimestamp("deleted_at"));
 
-            switch (sortOption) {
-                case "name_asc":
-                    sortBy = "m.material_name";
-                    sortOrder = "ASC";
-                    break;
-                case "name_desc":
-                    sortBy = "m.material_name";
-                    sortOrder = "DESC";
-                    break;
-                case "code_asc":
-                    sortBy = "m.material_code";
-                    sortOrder = "ASC";
-                    break;
-                case "code_desc":
-                    sortBy = "m.material_code";
-                    sortOrder = "DESC";
-                    break;
-            }
-            sql.append(" GROUP BY m.material_id, m.material_code, m.material_name, m.materials_url, ")
-               .append("m.material_status, m.average_cost, m.unit_volume, m.unit_weight, m.created_at, m.updated_at, m.disable, ")
-               .append("c.category_id, c.category_name, u.unit_id, u.unit_name ");
-            sql.append(" ORDER BY ").append(sortBy).append(" ").append(sortOrder).append(" ");
-
-            sql.append("LIMIT ? OFFSET ?");
-            params.add(pageSize);
-            params.add((pageIndex - 1) * pageSize);
-
-            PreparedStatement ps = connection.prepareStatement(sql.toString());
-
-            for (int i = 0; i < params.size(); i++) {
-                ps.setObject(i + 1, params.get(i));
-            }
-
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Material m = new Material();
-                m.setMaterialId(rs.getInt("material_id"));
-                m.setMaterialCode(rs.getString("material_code"));
-                m.setMaterialName(rs.getString("material_name"));
-                m.setMaterialsUrl(rs.getString("materials_url"));
-                m.setMaterialStatus(rs.getString("material_status"));
-                m.setAverageCost(rs.getBigDecimal("average_cost"));  // V8
-                // V9.1: unit_volume and unit_weight
-                m.setUnitVolume(rs.getBigDecimal("unit_volume"));
-                m.setUnitWeight(rs.getBigDecimal("unit_weight"));
-                m.setQuantity(rs.getBigDecimal("quantity"));
-
-                m.setCreatedAt(rs.getTimestamp("created_at"));
-                m.setUpdatedAt(rs.getTimestamp("updated_at"));
-
-                Category c = new Category();
-                c.setCategory_id(rs.getInt("category_id"));
-                c.setCategory_name(rs.getString("category_name"));
-                m.setCategory(c);
-
-                Unit u = new Unit();
-                u.setId(rs.getInt("unit_id"));
-                u.setUnitName(rs.getString("unit_name"));
-                m.setUnit(u);
-
-                // FIX: Không set rack vì material có thể ở nhiều racks
-                m.setRack(null);
-                
-                list.add(m);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        if (rs.getObject("category_id") != null) {
+            Category category = new Category();
+            category.setCategory_id(rs.getInt("category_id"));
+            category.setCategory_name(rs.getString("category_name"));
+            category.setCode(rs.getString("category_code"));
+            category.setParent_id((Integer) rs.getObject("parent_id"));
+            category.setLevelDepth(safeInteger(rs, "level_depth"));
+            // category.setPathLtree(rs.getString("path_ltree")); // Removed - column doesn't exist
+            material.setCategory(category);
         }
-        return list;
+
+        if (rs.getObject("default_unit_id") != null) {
+            Unit defaultUnit = new Unit();
+            defaultUnit.setId(rs.getInt("default_unit_id"));
+            defaultUnit.setUnitCode(rs.getString("default_unit_code"));
+            defaultUnit.setUnitName(rs.getString("default_unit_name"));
+            defaultUnit.setSymbol(rs.getString("default_unit_symbol"));
+            material.setDefaultUnit(defaultUnit);
+        }
+
+        if (rs.getObject("purchase_unit_real_id") != null) {
+            Unit purchaseUnit = new Unit();
+            purchaseUnit.setId(rs.getInt("purchase_unit_real_id"));
+            purchaseUnit.setUnitCode(rs.getString("purchase_unit_code"));
+            purchaseUnit.setUnitName(rs.getString("purchase_unit_name"));
+            purchaseUnit.setSymbol(rs.getString("purchase_unit_symbol"));
+            material.setPurchaseUnit(purchaseUnit);
+        }
+
+        if (rs.getObject("sales_unit_real_id") != null) {
+            Unit salesUnit = new Unit();
+            salesUnit.setId(rs.getInt("sales_unit_real_id"));
+            salesUnit.setUnitCode(rs.getString("sales_unit_code"));
+            salesUnit.setUnitName(rs.getString("sales_unit_name"));
+            salesUnit.setSymbol(rs.getString("sales_unit_symbol"));
+            material.setSalesUnit(salesUnit);
+        }
+
+        return material;
+    }
+
+    private BigDecimal safeDecimal(ResultSet rs, String column) throws SQLException {
+        BigDecimal value = rs.getBigDecimal(column);
+        return value != null ? value : BigDecimal.ZERO;
+    }
+
+    private Integer safeInteger(ResultSet rs, String column) throws SQLException {
+        Object value = rs.getObject(column);
+        return value == null ? null : rs.getInt(column);
+    }
+
+    private void setParameters(PreparedStatement ps, List<Object> params) throws SQLException {
+            for (int i = 0; i < params.size(); i++) {
+            Object param = params.get(i);
+            int index = i + 1;
+            if (param == null) {
+                ps.setNull(index, Types.NULL);
+            } else if (param instanceof Integer) {
+                ps.setInt(index, (Integer) param);
+            } else if (param instanceof Long) {
+                ps.setLong(index, (Long) param);
+            } else if (param instanceof BigDecimal) {
+                ps.setBigDecimal(index, (BigDecimal) param);
+            } else if (param instanceof Double) {
+                ps.setDouble(index, (Double) param);
+            } else if (param instanceof Boolean) {
+                ps.setBoolean(index, (Boolean) param);
+            } else if (param instanceof Timestamp) {
+                ps.setTimestamp(index, (Timestamp) param);
+            } else {
+                ps.setObject(index, param);
+            }
+        }
+    }
+
+    private List<Material> fetchMaterials(String whereClause, List<Object> params, String orderClause) {
+        List<Material> materials = new ArrayList<>();
+        StringBuilder sql = new StringBuilder(BASE_SELECT);
+        if (whereClause != null && !whereClause.trim().isEmpty()) {
+            sql.append(" ").append(whereClause);
+        }
+        if (orderClause != null && !orderClause.trim().isEmpty()) {
+            sql.append(" ").append(orderClause);
+        }
+        try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+            if (params != null && !params.isEmpty()) {
+                setParameters(ps, params);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                    materials.add(mapMaterial(rs));
+                }
+            }
+        } catch (SQLException ex) {
+            LOGGER.log(Level.SEVERE, "Error fetching materials", ex);
+        }
+        return materials;
+    }
+
+    private String resolveSortOption(String sortOption) {
+        if (sortOption == null || sortOption.trim().isEmpty()) {
+            return "ORDER BY m.material_code ASC";
+        }
+        if ("name_asc".equals(sortOption)) {
+            return "ORDER BY m.material_name ASC";
+        } else if ("name_desc".equals(sortOption)) {
+            return "ORDER BY m.material_name DESC";
+        } else if ("code_desc".equals(sortOption)) {
+            return "ORDER BY m.material_code DESC";
+        } else if ("updated_desc".equals(sortOption)) {
+            return "ORDER BY m.updated_at DESC";
+        } else if ("updated_asc".equals(sortOption)) {
+            return "ORDER BY m.updated_at ASC";
+        } else {
+            return "ORDER BY m.material_code ASC";
+        }
+    }
+
+    public List<Material> searchMaterials(String keyword, String status, int pageIndex, int pageSize, String sortOption) {
+        if (pageIndex < 1) {
+            pageIndex = 1;
+        }
+        if (pageSize <= 0) {
+            pageSize = 20;
+        }
+        StringBuilder where = new StringBuilder("WHERE m.deleted_at IS NULL");
+        List<Object> params = new ArrayList<>();
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String like = "%" + keyword.trim() + "%";
+            where.append(" AND (m.material_code LIKE ? OR m.material_name LIKE ? OR m.barcode LIKE ?)");
+            params.add(like);
+            params.add(like);
+            params.add(like);
+        }
+
+        if (status != null && !status.trim().isEmpty()) {
+            where.append(" AND m.status = ?");
+            params.add(status.trim());
+        }
+
+        String orderClause = resolveSortOption(sortOption);
+        StringBuilder sql = new StringBuilder(BASE_SELECT)
+                .append(" ")
+                .append(where)
+                .append(" ")
+                .append(orderClause)
+                .append(" LIMIT ? OFFSET ?");
+
+        params.add(pageSize);
+        params.add((pageIndex - 1) * pageSize);
+
+        List<Material> results = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+            setParameters(ps, params);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    results.add(mapMaterial(rs));
+                }
+            }
+        } catch (SQLException ex) {
+            LOGGER.log(Level.SEVERE, "Error searching materials", ex);
+        }
+        return results;
     }
 
     public int countMaterials(String keyword, String status) {
-        int count = 0;
-        try {
-            StringBuilder sql = new StringBuilder();
-            sql.append("SELECT COUNT(*) FROM materials m WHERE m.disable = 0 ");
-
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM Materials m WHERE m.deleted_at IS NULL");
             List<Object> params = new ArrayList<>();
 
-            if (keyword != null && !keyword.isEmpty()) {
-                sql.append("AND m.material_name LIKE ? ");
-                params.add("%" + keyword + "%");
-            }
-
-            if (status != null && !status.isEmpty()) {
-                sql.append("AND m.material_status = ? ");
-                params.add(status);
-            }
-
-            PreparedStatement ps = connection.prepareStatement(sql.toString());
-
-            for (int i = 0; i < params.size(); i++) {
-                ps.setObject(i + 1, params.get(i));
-            }
-
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                count = rs.getInt(1);
-            }
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error counting materials", e);
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String like = "%" + keyword.trim() + "%";
+            sql.append(" AND (m.material_code LIKE ? OR m.material_name LIKE ? OR m.barcode LIKE ?)");
+            params.add(like);
+            params.add(like);
+            params.add(like);
         }
-        return count;
+
+        if (status != null && !status.trim().isEmpty()) {
+            sql.append(" AND m.status = ?");
+            params.add(status.trim());
+        }
+
+        try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+            setParameters(ps, params);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (SQLException ex) {
+            LOGGER.log(Level.SEVERE, "Error counting materials", ex);
+        }
+        return 0;
     }
 
     public boolean deleteMaterial(int materialId) {
-        // Kiểm tra quantity stock trước khi xóa
-        String checkStockSql = "SELECT IFNULL(i.stock, 0) AS quantity FROM materials m " +
-                              "LEFT JOIN inventory i ON m.material_id = i.material_id " +
-                              "WHERE m.material_id = ?";
-        
-        try {
-            // Kiểm tra stock quantity
-            PreparedStatement checkPs = connection.prepareStatement(checkStockSql);
-            checkPs.setInt(1, materialId);
-            ResultSet rs = checkPs.executeQuery();
-            
+        try (PreparedStatement stockStmt = connection.prepareStatement(
+                "SELECT COALESCE(SUM(stock), 0) AS stock_sum FROM Inventory WHERE material_id = ?")) {
+            stockStmt.setInt(1, materialId);
+            try (ResultSet rs = stockStmt.executeQuery()) {
             if (rs.next()) {
-                java.math.BigDecimal quantity = rs.getBigDecimal("quantity");
-                if (quantity != null && quantity.compareTo(java.math.BigDecimal.ZERO) > 0) {
-                    // Không thể xóa vì còn stock
+                    BigDecimal stock = rs.getBigDecimal("stock_sum");
+                    if (stock != null && stock.compareTo(BigDecimal.ZERO) > 0) {
                     return false;
+                    }
                 }
             }
-            
-            // Nếu quantity = 0, tiến hành xóa (set disable = 1)
-            String deleteSql = "UPDATE materials SET disable = 1 WHERE material_id = ?";
-            PreparedStatement deletePs = connection.prepareStatement(deleteSql);
-            deletePs.setInt(1, materialId);
-            int affectedRows = deletePs.executeUpdate();
-            
-            return affectedRows > 0;
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error deleting material", e);
+        } catch (SQLException ex) {
+            LOGGER.log(Level.SEVERE, "Error checking stock before delete", ex);
+            return false;
+        }
+
+        try (PreparedStatement deleteStmt = connection.prepareStatement(
+                "UPDATE Materials SET deleted_at = CURRENT_TIMESTAMP WHERE material_id = ? AND deleted_at IS NULL")) {
+            deleteStmt.setInt(1, materialId);
+            return deleteStmt.executeUpdate() > 0;
+        } catch (SQLException ex) {
+            LOGGER.log(Level.SEVERE, "Error soft deleting material", ex);
             return false;
         }
     }
 
     public Material getInformation(int materialId) {
-        Material m = new Material();
-        try {
-        // FIX: getInformation() - Bỏ rack_id khỏi GROUP BY, chỉ lấy tổng quantity
-        // Để xem chi tiết racks, dùng InventoryDAO.getInventoryByMaterialId()
-        String sql = "SELECT m.material_id, m.material_code, m.material_name, m.materials_url, "
-                + "m.material_status, m.average_cost, m.unit_volume, m.unit_weight, "
-                + "c.category_id, c.category_name, c.description AS category_description, "
-                + "u.unit_id, u.unit_name, u.symbol, u.description AS unit_description, "
-                + "m.created_at, m.updated_at, m.disable, "
-                + "IFNULL(SUM(i.stock), 0) AS quantity "
-                + "FROM materials m "
-                + "LEFT JOIN categories c ON m.category_id = c.category_id "
-                + "LEFT JOIN units u ON m.unit_id = u.unit_id "
-                + "LEFT JOIN inventory i ON m.material_id = i.material_id "
-                + "WHERE m.material_id = ? "
-                + "GROUP BY m.material_id, m.material_code, m.material_name, m.materials_url, "
-                + "m.material_status, m.average_cost, m.unit_volume, m.unit_weight, m.created_at, m.updated_at, m.disable, "
-                + "c.category_id, c.category_name, c.description, "
-                + "u.unit_id, u.unit_name, u.symbol, u.description";
-
-            PreparedStatement ps = connection.prepareStatement(sql);
-            ps.setInt(1, materialId);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                m.setMaterialId(rs.getInt("material_id"));
-                m.setMaterialCode(rs.getString("material_code"));
-                m.setMaterialName(rs.getString("material_name"));
-                m.setMaterialsUrl(rs.getString("materials_url"));
-                m.setMaterialStatus(rs.getString("material_status"));
-                m.setAverageCost(rs.getBigDecimal("average_cost"));  // V8
-                // V9.1: unit_volume and unit_weight
-                m.setUnitVolume(rs.getBigDecimal("unit_volume"));
-                m.setUnitWeight(rs.getBigDecimal("unit_weight"));
-                m.setCreatedAt(rs.getTimestamp("created_at"));
-                m.setUpdatedAt(rs.getTimestamp("updated_at"));
-                m.setDisable(rs.getBoolean("disable"));
-                m.setQuantity(rs.getBigDecimal("quantity"));
-
-                Category c = new Category();
-                c.setCategory_id(rs.getInt("category_id"));
-                c.setCategory_name(rs.getString("category_name"));
-                c.setDescription(rs.getString("category_description"));
-                m.setCategory(c);
-
-                Unit u = new Unit();
-                u.setId(rs.getInt("unit_id"));
-                u.setUnitName(rs.getString("unit_name"));
-                u.setSymbol(rs.getString("symbol"));
-                u.setDescription(rs.getString("unit_description"));
-                m.setUnit(u);
-
-                // FIX: Không set rack vì material có thể ở nhiều racks
-                m.setRack(null);
-            }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-        }
-        return m;
+        List<Object> params = new ArrayList<>();
+        params.add(materialId);
+        List<Material> materials = fetchMaterials("WHERE m.material_id = ?", params, "LIMIT 1");
+        return materials.isEmpty() ? null : materials.get(0);
     }
 
-    /**
-     * Get material with all racks (for Material Detail Page)
-     * Returns Material with total quantity and list of all racks containing this material
-     */
     public Material getMaterialWithRacks(int materialId) {
-        Material material = getInformation(materialId);
-        
-        if (material == null) {
-            return null;
-        }
-        
-        // Note: Material entity doesn't have field for inventoryByRacks
-        // Servlet should call InventoryDAO.getInventoryByMaterialId() separately
-        // to get all racks for this material
-        
-        return material;
+        return getInformation(materialId);
     }
 
-    public void updateMaterial(Material m) {
-        String sql = "UPDATE Materials SET material_code = ?, material_name = ?, materials_url = ?, "
-                + "material_status = ?, category_id = ?, "
-                + "unit_id = ?, updated_at = CURRENT_TIMESTAMP, disable = ? WHERE material_id = ?";
-        try {
-            PreparedStatement st = connection.prepareStatement(sql);
-            st.setString(1, m.getMaterialCode());
-            st.setString(2, m.getMaterialName());
-            st.setString(3, m.getMaterialsUrl());
-            st.setString(4, m.getMaterialStatus());
-            st.setInt(5, m.getCategory().getCategory_id());
-            st.setInt(6, m.getUnit().getId());
-            st.setBoolean(7, m.isDisable());
-            st.setInt(8, m.getMaterialId());
-            st.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
+    public void updateMaterial(Material material) {
+        String sql = "UPDATE Materials SET " +
+            "material_code = ?, " +
+            "material_name = ?, " +
+            "url = ?, " +
+            "barcode = ?, " +
+            "status = ?, " +
+            "category_id = ?, " +
+            "default_unit_id = ?, " +
+            "purchase_unit_id = ?, " +
+            "sales_unit_id = ?, " +
+            "min_stock = ?, " +
+            "max_stock = ?, " +
+            "weight_per_unit = ?, " +
+            "volume_per_unit = ?, " +
+            "shelf_life_days = ?, " +
+            "is_serialized = ?, " +
+            "is_batch_controlled = ?, " +
+            "updated_at = CURRENT_TIMESTAMP " +
+            "WHERE material_id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, material.getMaterialCode());
+            ps.setString(2, material.getMaterialName());
+            ps.setString(3, material.getUrl());
+            ps.setString(4, material.getBarcode());
+            ps.setString(5, material.getMaterialStatus() != null ? material.getMaterialStatus() : "active");
+
+            if (material.getCategory() != null) {
+                ps.setInt(6, material.getCategory().getCategory_id());
+            } else {
+                ps.setNull(6, Types.INTEGER);
+            }
+
+            if (material.getDefaultUnit() != null) {
+                ps.setInt(7, material.getDefaultUnit().getId());
+            } else {
+                ps.setNull(7, Types.INTEGER);
+            }
+
+            if (material.getPurchaseUnit() != null) {
+                ps.setInt(8, material.getPurchaseUnit().getId());
+            } else {
+                ps.setNull(8, Types.INTEGER);
+            }
+
+            if (material.getSalesUnit() != null) {
+                ps.setInt(9, material.getSalesUnit().getId());
+            } else {
+                ps.setNull(9, Types.INTEGER);
+            }
+
+            ps.setBigDecimal(10, material.getMinStock() != null ? material.getMinStock() : BigDecimal.ZERO);
+            ps.setBigDecimal(11, material.getMaxStock() != null ? material.getMaxStock() : BigDecimal.ZERO);
+            ps.setBigDecimal(12, material.getWeightPerUnit() != null ? material.getWeightPerUnit() : BigDecimal.ZERO);
+            ps.setBigDecimal(13, material.getVolumePerUnit() != null ? material.getVolumePerUnit() : BigDecimal.ZERO);
+
+            if (material.getShelfLifeDays() != null) {
+                ps.setInt(14, material.getShelfLifeDays());
+            } else {
+                ps.setNull(14, Types.INTEGER);
+            }
+
+            ps.setBoolean(15, material.isSerialized());
+            ps.setBoolean(16, material.isBatchControlled());
+
+            ps.setInt(17, material.getMaterialId());
+            ps.executeUpdate();
+        } catch (SQLException ex) {
+            LOGGER.log(Level.SEVERE, "Error updating material", ex);
         }
     }
 
-    /**
-     * Add new material (V8 schema).
-     * average_cost will be auto-updated by triggers when batches are created.
-     */
-    public void addMaterial(Material m) {
-        try {
-            String sql = """
-                INSERT INTO Materials (
-                    material_code, material_name, materials_url, material_status, 
-                    category_id, unit_id, average_cost, disable
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """;
-            PreparedStatement ps = connection.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS);
-            ps.setString(1, m.getMaterialCode());
-            ps.setString(2, m.getMaterialName());
-            ps.setString(3, m.getMaterialsUrl());
-            ps.setString(4, m.getMaterialStatus());
-            ps.setInt(5, m.getCategory().getCategory_id());
-            ps.setInt(6, m.getUnit().getId());
-            // average_cost defaults to 0.0000, will be updated by triggers
-            ps.setBigDecimal(7, m.getAverageCost() != null ? m.getAverageCost() : java.math.BigDecimal.ZERO);
-            ps.setBoolean(8, m.isDisable());
+    public void addMaterial(Material material) {
+            String sql = "INSERT INTO Materials (" +
+                "material_code, material_name, url, barcode, category_id, " +
+                "default_unit_id, purchase_unit_id, sales_unit_id, " +
+                "min_stock, max_stock, weight_per_unit, volume_per_unit, " +
+                "shelf_life_days, is_serialized, is_batch_controlled, " +
+                "status" +
+                ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, material.getMaterialCode());
+            ps.setString(2, material.getMaterialName());
+            ps.setString(3, material.getUrl());
+            ps.setString(4, material.getBarcode());
+
+            if (material.getCategory() != null) {
+                ps.setInt(5, material.getCategory().getCategory_id());
+            } else {
+                ps.setNull(5, Types.INTEGER);
+            }
+
+            if (material.getDefaultUnit() != null) {
+                ps.setInt(6, material.getDefaultUnit().getId());
+            } else {
+                ps.setNull(6, Types.INTEGER);
+            }
+
+            if (material.getPurchaseUnit() != null) {
+                ps.setInt(7, material.getPurchaseUnit().getId());
+            } else {
+                ps.setNull(7, Types.INTEGER);
+            }
+
+            if (material.getSalesUnit() != null) {
+                ps.setInt(8, material.getSalesUnit().getId());
+            } else {
+                ps.setNull(8, Types.INTEGER);
+            }
+
+            ps.setBigDecimal(9, material.getMinStock() != null ? material.getMinStock() : BigDecimal.ZERO);
+            ps.setBigDecimal(10, material.getMaxStock() != null ? material.getMaxStock() : BigDecimal.ZERO);
+            ps.setBigDecimal(11, material.getWeightPerUnit() != null ? material.getWeightPerUnit() : BigDecimal.ZERO);
+            ps.setBigDecimal(12, material.getVolumePerUnit() != null ? material.getVolumePerUnit() : BigDecimal.ZERO);
+
+            if (material.getShelfLifeDays() != null) {
+                ps.setInt(13, material.getShelfLifeDays());
+            } else {
+                ps.setNull(13, Types.INTEGER);
+            }
+
+            ps.setBoolean(14, material.isSerialized());
+            ps.setBoolean(15, material.isBatchControlled());
+            ps.setString(16, material.getMaterialStatus() != null ? material.getMaterialStatus() : "active");
+
             ps.executeUpdate();
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, "Error adding material", ex);
         }
     }
 
-    /**
-     * Get material by ID (V8 - includes average_cost).
-     */
     public Material getProductById(int materialId) {
-        Material product = null;
-        String sql = """
-            SELECT m.material_id, m.material_code, m.material_name, m.materials_url, m.material_status, 
-                   m.average_cost, m.created_at, m.updated_at, m.disable, 
-                   u.unit_id, u.unit_name, 
-                   c.category_id, c.category_name 
-            FROM Materials m 
-            LEFT JOIN Units u ON m.unit_id = u.unit_id 
-            LEFT JOIN Categories c ON m.category_id = c.category_id 
-            WHERE m.material_id = ?
-            """;
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setInt(1, materialId);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                Category category = new Category(
-                        rs.getInt("category_id"),
-                        rs.getString("category_name")
-                );
-
-                Unit unit = null;
-                if (rs.getObject("unit_id") != null) {
-                    unit = new Unit(
-                            rs.getInt("unit_id"),
-                            rs.getString("unit_name")
-                    );
-                }
-
-                product = new Material();
-                product.setMaterialId(rs.getInt("material_id"));
-                product.setMaterialCode(rs.getString("material_code"));
-                product.setMaterialName(rs.getString("material_name"));
-                product.setMaterialsUrl(rs.getString("materials_url"));
-                product.setMaterialStatus(rs.getString("material_status"));
-                product.setCategory(category);
-                product.setUnit(unit);
-                product.setAverageCost(rs.getBigDecimal("average_cost"));
-                product.setCreatedAt(rs.getTimestamp("created_at"));
-                product.setUpdatedAt(rs.getTimestamp("updated_at"));
-                product.setDisable(rs.getBoolean("disable"));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return product;
+        return getInformation(materialId);
     }
 
     public List<Material> getAllProducts() {
-        List<Material> list = new ArrayList<>();
-        // FIX: Bỏ rack_id khỏi GROUP BY để SUM quantity đúng cách từ tất cả racks
-        // Material có thể ở nhiều racks, nhưng trong Material List chỉ hiển thị tổng quantity
-        String sql = """
-            SELECT m.material_id, m.material_code, m.material_name, m.materials_url, 
-                   m.material_status, m.average_cost, m.unit_volume, m.unit_weight, 
-                   m.created_at, m.updated_at, m.disable, 
-                   u.unit_id, u.unit_name, c.category_id, c.category_name, 
-                   IFNULL(SUM(i.stock), 0) AS quantity 
-            FROM Materials m 
-            LEFT JOIN Units u ON m.unit_id = u.unit_id 
-            LEFT JOIN Categories c ON m.category_id = c.category_id 
-            LEFT JOIN Inventory i ON m.material_id = i.material_id 
-            WHERE m.disable = 0 
-            GROUP BY m.material_id, m.average_cost, m.unit_volume, m.unit_weight, m.material_code, m.material_name, 
-                     m.materials_url, m.material_status, m.created_at, m.updated_at, m.disable,
-                     u.unit_id, u.unit_name, c.category_id, c.category_name
-            ORDER BY m.material_code
-            """;
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                Category category = new Category(
-                        rs.getInt("category_id"),
-                        rs.getString("category_name")
-                );
-
-                Unit unit = null;
-                if (rs.getObject("unit_id") != null) {
-                    unit = new Unit(
-                            rs.getInt("unit_id"),
-                            rs.getString("unit_name")
-                    );
-                }
-
-                Material m = new Material();
-                m.setMaterialId(rs.getInt("material_id"));
-                m.setMaterialCode(rs.getString("material_code"));
-                m.setMaterialName(rs.getString("material_name"));
-                m.setMaterialsUrl(rs.getString("materials_url"));
-                m.setMaterialStatus(rs.getString("material_status"));
-                m.setAverageCost(rs.getBigDecimal("average_cost"));  // V8
-                // V9.1: unit_volume and unit_weight
-                m.setUnitVolume(rs.getBigDecimal("unit_volume"));
-                m.setUnitWeight(rs.getBigDecimal("unit_weight"));
-                m.setQuantity(rs.getBigDecimal("quantity"));
-                m.setCategory(category);
-                m.setUnit(unit);
-                m.setCreatedAt(rs.getTimestamp("created_at"));
-                m.setUpdatedAt(rs.getTimestamp("updated_at"));
-                m.setDisable(rs.getBoolean("disable"));
-                
-                // FIX: Không set rack vì material có thể ở nhiều racks
-                // Để xem chi tiết racks, dùng Material Detail Page hoặc InventoryDAO.getInventoryByMaterialId()
-                m.setRack(null);
-                
-                list.add(m);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return list;
+        return fetchMaterials("WHERE m.deleted_at IS NULL", new ArrayList<>(), "ORDER BY m.material_code ASC");
     }
 
     public List<Material> getAllProductsIncludingDisabled() {
-        List<Material> list = new ArrayList<>();
-        String sql = """
-            SELECT m.material_id, m.material_code, m.material_name, m.materials_url, 
-                   m.material_status, m.average_cost, m.created_at, m.updated_at, m.disable, 
-                   u.unit_id, u.unit_name, c.category_id, c.category_name 
-            FROM Materials m 
-            LEFT JOIN Units u ON m.unit_id = u.unit_id 
-            LEFT JOIN Categories c ON m.category_id = c.category_id
-            """;
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql); ResultSet rs = stmt.executeQuery()) {
-
-            while (rs.next()) {
-                Category category = new Category(
-                        rs.getInt("category_id"),
-                        rs.getString("category_name")
-                );
-
-                Unit unit = null;
-                if (rs.getObject("unit_id") != null) {
-                    unit = new Unit(
-                            rs.getInt("unit_id"),
-                            rs.getString("unit_name")
-                    );
-                }
-
-                Material m = new Material();
-                m.setMaterialId(rs.getInt("material_id"));
-                m.setMaterialCode(rs.getString("material_code"));
-                m.setMaterialName(rs.getString("material_name"));
-                m.setMaterialsUrl(rs.getString("materials_url"));
-                m.setMaterialStatus(rs.getString("material_status"));
-                m.setCategory(category);
-                m.setUnit(unit);
-                m.setCreatedAt(rs.getTimestamp("created_at"));
-                m.setUpdatedAt(rs.getTimestamp("updated_at"));
-                m.setDisable(rs.getBoolean("disable"));
-                list.add(m);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return list;
-    }
-
-    public static void main(String[] args) {
-        MaterialDAO dao = new MaterialDAO();
-        List <Material> list = dao.getAllProducts();
-        for (Material material : list) {
-     
-        }
+        return fetchMaterials("", new ArrayList<>(), "ORDER BY m.material_code ASC");
     }
 
     public List<Material> searchProductsByName(String keyword) {
-        List<Material> products = new ArrayList<>();
-        String sql = "SELECT m.*, m.average_cost, u.unit_name, c.category_name "
-                + "FROM Materials m "
-                + "LEFT JOIN Units u ON m.unit_id = u.unit_id "
-                + "LEFT JOIN Categories c ON m.category_id = c.category_id "
-                + "WHERE m.material_name LIKE ? AND m.disable = 0";
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, "%" + keyword + "%");
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                Category category = new Category(
-                        rs.getInt("category_id"),
-                        rs.getString("category_name")
-                );
-
-                Unit unit = null;
-                if (rs.getObject("unit_id") != null) {
-                    unit = new Unit(
-                            rs.getInt("unit_id"),
-                            rs.getString("unit_name")
-                    );
-                }
-                Material m = new Material();
-                m.setMaterialId(rs.getInt("material_id"));
-                m.setMaterialCode(rs.getString("material_code"));
-                m.setMaterialName(rs.getString("material_name"));
-                m.setMaterialsUrl(rs.getString("materials_url"));
-                m.setMaterialStatus(rs.getString("material_status"));
-                m.setAverageCost(rs.getBigDecimal("average_cost"));  // V8
-                m.setCategory(category);
-                m.setUnit(unit);
-                m.setCreatedAt(rs.getTimestamp("created_at"));
-                m.setUpdatedAt(rs.getTimestamp("updated_at"));
-                m.setDisable(rs.getBoolean("disable"));
-                products.add(m);
-            }
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error searching products by name", e);
+        StringBuilder where = new StringBuilder("WHERE m.deleted_at IS NULL");
+        List<Object> params = new ArrayList<>();
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            where.append(" AND m.material_name LIKE ?");
+            params.add("%" + keyword.trim() + "%");
         }
-        return products;
+        return fetchMaterials(where.toString(), params, "ORDER BY m.material_name ASC");
     }
 
     public List<Material> searchProductsByCode(String materialCode) {
-        List<Material> products = new ArrayList<>();
-        String sql = "SELECT m.*, m.average_cost, u.unit_name, c.category_name "
-                + "FROM Materials m "
-                + "LEFT JOIN Units u ON m.unit_id = u.unit_id "
-                + "LEFT JOIN Categories c ON m.category_id = c.category_id "
-                + "WHERE m.material_code LIKE ? AND m.disable = 0";
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setString(1, "%" + materialCode + "%");
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                Category category = new Category(
-                        rs.getInt("category_id"),
-                        rs.getString("category_name")
-                );
-
-                Unit unit = null;
-                if (rs.getObject("unit_id") != null) {
-                    unit = new Unit(
-                            rs.getInt("unit_id"),
-                            rs.getString("unit_name")
-                    );
-                }
-                Material m = new Material();
-                m.setMaterialId(rs.getInt("material_id"));
-                m.setMaterialCode(rs.getString("material_code"));
-                m.setMaterialName(rs.getString("material_name"));
-                m.setMaterialsUrl(rs.getString("materials_url"));
-                m.setMaterialStatus(rs.getString("material_status"));
-                m.setAverageCost(rs.getBigDecimal("average_cost"));  // V8
-                m.setCategory(category);
-                m.setUnit(unit);
-                m.setCreatedAt(rs.getTimestamp("created_at"));
-                m.setUpdatedAt(rs.getTimestamp("updated_at"));
-                m.setDisable(rs.getBoolean("disable"));
-                products.add(m);
-            }
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error searching products by code", e);
+        StringBuilder where = new StringBuilder("WHERE m.deleted_at IS NULL");
+        List<Object> params = new ArrayList<>();
+        if (materialCode != null && !materialCode.trim().isEmpty()) {
+            where.append(" AND m.material_code LIKE ?");
+            params.add("%" + materialCode.trim() + "%");
         }
-        return products;
+        return fetchMaterials(where.toString(), params, "ORDER BY m.material_code ASC");
     }
 
     public List<Material> searchMaterialsByCategoriesID(int categoryId) {
-        List<Material> products = new ArrayList<>();
-        String sql = "SELECT m.*, m.average_cost, u.unit_name, c.category_name "
-                + "FROM Materials m "
-                + "LEFT JOIN Units u ON m.unit_id = u.unit_id "
-                + "LEFT JOIN Categories c ON m.category_id = c.category_id "
-                + "WHERE m.category_id = ? AND m.disable = 0";
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setInt(1, categoryId);
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                Category category = new Category(
-                        rs.getInt("category_id"),
-                        rs.getString("category_name")
-                );
-
-                Unit unit = null;
-                if (rs.getObject("unit_id") != null) {
-                    unit = new Unit(
-                            rs.getInt("unit_id"),
-                            rs.getString("unit_name")
-                    );
-                }
-                Material m = new Material();
-                m.setMaterialId(rs.getInt("material_id"));
-                m.setMaterialCode(rs.getString("material_code"));
-                m.setMaterialName(rs.getString("material_name"));
-                m.setMaterialsUrl(rs.getString("materials_url"));
-                m.setMaterialStatus(rs.getString("material_status"));
-                m.setAverageCost(rs.getBigDecimal("average_cost"));  // V8
-                m.setCategory(category);
-                m.setUnit(unit);
-                m.setCreatedAt(rs.getTimestamp("created_at"));
-                m.setUpdatedAt(rs.getTimestamp("updated_at"));
-                m.setDisable(rs.getBoolean("disable"));
-                products.add(m);
-            }
-        } catch (SQLException e) {
-            LOGGER.log(Level.SEVERE, "Error searching materials by category ID", e);
-        }
-        return products;
+        List<Object> params = new ArrayList<>();
+        params.add(categoryId);
+        return fetchMaterials("WHERE m.deleted_at IS NULL AND m.category_id = ?", params,
+                "ORDER BY m.material_name ASC");
     }
 
     public List<Material> sortMaterialsByName() {
-        List<Material> products = new ArrayList<>();
-        String sql = "SELECT m.*, u.unit_name, c.category_name "
-                + "FROM Materials m "
-                + "LEFT JOIN Units u ON m.unit_id = u.unit_id "
-                + "LEFT JOIN Categories c ON m.category_id = c.category_id "
-                + "WHERE m.disable = 0 "
-                + "ORDER BY m.material_name ASC";
-
-        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                Category category = new Category(
-                        rs.getInt("category_id"),
-                        rs.getString("category_name")
-                );
-
-                Unit unit = null;
-                if (rs.getObject("unit_id") != null) {
-                    unit = new Unit(
-                            rs.getInt("unit_id"),
-                            rs.getString("unit_name")
-                    );
-                }
-                Material m = new Material();
-                m.setMaterialId(rs.getInt("material_id"));
-                m.setMaterialCode(rs.getString("material_code"));
-                m.setMaterialName(rs.getString("material_name"));
-                m.setMaterialsUrl(rs.getString("materials_url"));
-                m.setMaterialStatus(rs.getString("material_status"));
-                m.setCategory(category);
-                m.setUnit(unit);
-                m.setCreatedAt(rs.getTimestamp("created_at"));
-                m.setUpdatedAt(rs.getTimestamp("updated_at"));
-                m.setDisable(rs.getBoolean("disable"));
-                products.add(m);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return products;
+        return fetchMaterials("WHERE m.deleted_at IS NULL", new ArrayList<>(), "ORDER BY m.material_name ASC");
     }
 
-    public List<Material> getMaterials() throws SQLException {
-        List<Material> materials = new ArrayList<>();
-        try {
-            String sql = "SELECT m.*, c.category_name, u.unit_name, IFNULL(i.stock, 0) AS quantity "
-                    + "FROM materials m "
-                    + "LEFT JOIN categories c ON m.category_id = c.category_id "
-                    + "LEFT JOIN units u ON m.unit_id = u.unit_id "
-                    + "LEFT JOIN inventory i ON m.material_id = i.material_id "
-                    + "WHERE m.disable = 0 "
-                    + "ORDER BY m.material_id DESC";
-
-            PreparedStatement ps = connection.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-                Material material = new Material();
-                material.setMaterialId(rs.getInt("material_id"));
-                material.setMaterialCode(rs.getString("material_code"));
-                material.setMaterialName(rs.getString("material_name"));
-                material.setMaterialsUrl(rs.getString("materials_url"));
-                material.setMaterialStatus(rs.getString("material_status"));
-                // V9.1: unit_volume and unit_weight
-                material.setUnitVolume(rs.getBigDecimal("unit_volume"));
-                material.setUnitWeight(rs.getBigDecimal("unit_weight"));
-                material.setQuantity(rs.getBigDecimal("quantity"));
-                material.setCreatedAt(rs.getTimestamp("created_at"));
-                material.setUpdatedAt(rs.getTimestamp("updated_at"));
-                material.setDisable(rs.getBoolean("disable"));
-
-                Category category = new Category();
-                category.setCategory_id(rs.getInt("category_id"));
-                category.setCategory_name(rs.getString("category_name"));
-                material.setCategory(category);
-
-                Unit unit = new Unit();
-                unit.setId(rs.getInt("unit_id"));
-                unit.setUnitName(rs.getString("unit_name"));
-                material.setUnit(unit);
-
-                materials.add(material);
-            }
-             
-    } catch (SQLException e) {
-        e.printStackTrace();
-            throw e;
-        }
-        return materials;
+    public List<Material> getMaterials() {
+        return fetchMaterials("WHERE m.deleted_at IS NULL", new ArrayList<>(), "ORDER BY m.material_id DESC");
     }
 
     public boolean isMaterialCodeExists(String materialCode) {
-        String sql = "SELECT 1 FROM materials WHERE material_code = ? AND disable = 0 LIMIT 1";
+        String sql = "SELECT 1 FROM Materials WHERE material_code = ? AND deleted_at IS NULL LIMIT 1";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, materialCode);
-            ResultSet rs = ps.executeQuery();
+            try (ResultSet rs = ps.executeQuery()) {
             return rs.next();
-        } catch (SQLException e) {
-            e.printStackTrace();
+            }
+        } catch (SQLException ex) {
+            LOGGER.log(Level.SEVERE, "Error checking material code existence", ex);
         }
         return false;
     }
 
     public int getMaterialIdByName(String name) {
-        String sql = "SELECT material_id FROM materials WHERE material_name = ? AND disable = 0 LIMIT 1";
+        String sql = "SELECT material_id FROM Materials WHERE material_name = ? AND deleted_at IS NULL LIMIT 1";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, name);
-            ResultSet rs = ps.executeQuery();
+            try (ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 return rs.getInt("material_id");
+                }
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        } catch (SQLException ex) {
+            LOGGER.log(Level.SEVERE, "Error getting material id by name", ex);
         }
         return -1;
     }
 
-    public java.util.Map<Integer, String> getMaterialImages(List<Integer> materialIds) {
-        java.util.Map<Integer, String> imageMap = new java.util.HashMap<>();
-        if (materialIds == null || materialIds.isEmpty()) {
+    public Map<Integer, String> getMaterialImages(List<Integer> materialIds) {
+        Map<Integer, String> imageMap = new HashMap<>();
+        if (materialIds == null) {
             return imageMap;
         }
-
-        try {
-            StringBuilder sql = new StringBuilder();
-            sql.append("SELECT material_id, materials_url FROM materials WHERE material_id IN (");
-            
-            for (int i = 0; i < materialIds.size(); i++) {
-                if (i > 0) sql.append(",");
-                sql.append("?");
-            }
-            sql.append(")");
-
-            PreparedStatement ps = connection.prepareStatement(sql.toString());
-            for (int i = 0; i < materialIds.size(); i++) {
-                ps.setInt(i + 1, materialIds.get(i));
-            }
-
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                int materialId = rs.getInt("material_id");
-                String imageUrl = rs.getString("materials_url");
-                imageMap.put(materialId, imageUrl);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        for (Integer id : materialIds) {
+            imageMap.put(id, "images/material/default-material.png");
         }
         return imageMap;
     }
 
     public int getMaxMaterialNumber() {
-        int maxNumber = 0;
-        try {
-            String sql = "SELECT COALESCE(MAX(CAST(SUBSTRING(material_code, 4) AS SIGNED)), 0) AS max_num FROM materials WHERE material_code LIKE 'MAT%'";
-            PreparedStatement ps = connection.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
+        String sql = "SELECT COALESCE(MAX(CAST(SUBSTRING(material_code, 4) AS SIGNED)), 0) AS max_num FROM Materials WHERE material_code LIKE 'MAT%'";
+        try (PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
-                int num = rs.getInt("max_num");
-                if (!rs.wasNull() && num >= 0) {
-                    maxNumber = num;
-                }
+                return rs.getInt("max_num");
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        } catch (SQLException ex) {
+            LOGGER.log(Level.SEVERE, "Error getting max material number", ex);
         }
-        return maxNumber;
+        return 0;
     }
 
-    /**
-     * Get all materials (simplified - only material_id and material_name).
-     * This method is kept for backward compatibility.
-     * For full material details, use getAllProducts() instead.
-     * 
-     * @deprecated Use getAllProducts() for complete material information
-     * @return List of materials with only id and name
-     */
     @Deprecated
     public List<Material> getAllMaterials() {
-        // Delegate to getAllProducts() for consistency, but only return basic info
-        List<Material> list = new ArrayList<>();
-        try {
-            List<Material> allProducts = getAllProducts();
-            for (Material m : allProducts) {
+        List<Material> basics = new ArrayList<>();
+        for (Material material : getAllProducts()) {
                 Material simple = new Material();
-                simple.setMaterialId(m.getMaterialId());
-                simple.setMaterialName(m.getMaterialName());
-                list.add(simple);
-            }
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error getting all materials", e);
+            simple.setMaterialId(material.getMaterialId());
+            simple.setMaterialName(material.getMaterialName());
+            simple.setMaterialCode(material.getMaterialCode());
+            basics.add(simple);
         }
-        return list;
+        return basics;
     }
 
     public List<Material> searchMaterialsByPrice(Double minPrice, Double maxPrice, int pageIndex, int pageSize, String sortOption) {
-        List<Material> list = new ArrayList<>();
-        try {
-            StringBuilder sql = new StringBuilder();
-            sql.append("SELECT m.*, c.category_name, u.unit_name, IFNULL(i.stock, 0) AS quantity ")
-                    .append("FROM materials m ")
-                    .append("LEFT JOIN categories c ON m.category_id = c.category_id ")
-                    .append("LEFT JOIN units u ON m.unit_id = u.unit_id AND u.disable = 0 ")
-                    .append("LEFT JOIN inventory i ON m.material_id = i.material_id ")
-                    .append("WHERE m.disable = 0 ");
-
-            List<Object> params = new ArrayList<>();
-
-            String sortBy = "m.material_code";
-            String sortOrder = "ASC";
-
-            switch (sortOption) {
-                case "name_asc":
-                    sortBy = "m.material_name";
-                    sortOrder = "ASC";
-                    break;
-                case "name_desc":
-                    sortBy = "m.material_name";
-                    sortOrder = "DESC";
-                    break;
-                case "code_asc":
-                    sortBy = "m.material_code";
-                    sortOrder = "ASC";
-                    break;
-                case "code_desc":
-                    sortBy = "m.material_code";
-                    sortOrder = "DESC";
-                    break;
-            }
-            sql.append(" ORDER BY ").append(sortBy).append(" ").append(sortOrder).append(" ");
-
-            sql.append("LIMIT ? OFFSET ?");
-            params.add(pageSize);
-            params.add((pageIndex - 1) * pageSize);
-
-            PreparedStatement ps = connection.prepareStatement(sql.toString());
-
-            for (int i = 0; i < params.size(); i++) {
-                ps.setObject(i + 1, params.get(i));
-            }
-
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Material m = new Material();
-                m.setMaterialId(rs.getInt("material_id"));
-                m.setMaterialCode(rs.getString("material_code"));
-                m.setMaterialName(rs.getString("material_name"));
-                m.setMaterialsUrl(rs.getString("materials_url"));
-                m.setMaterialStatus(rs.getString("material_status"));
-                m.setQuantity(rs.getBigDecimal("quantity"));
-
-                m.setCreatedAt(rs.getTimestamp("created_at"));
-                m.setUpdatedAt(rs.getTimestamp("updated_at"));
-
-                Category c = new Category();
-                c.setCategory_id(rs.getInt("category_id"));
-                c.setCategory_name(rs.getString("category_name"));
-                m.setCategory(c);
-
-                Unit u = new Unit();
-                u.setId(rs.getInt("unit_id"));
-                u.setUnitName(rs.getString("unit_name"));
-                m.setUnit(u);
-
-                list.add(m);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return list;
+        return searchMaterials(null, null, pageIndex, pageSize, sortOption);
     }
 
     public boolean isMaterialNameAndStatusExists(String materialName, String materialStatus) {
-        String sql = "SELECT 1 FROM materials WHERE material_name = ? AND material_status = ? AND disable = 0 LIMIT 1";
+        String sql = "SELECT 1 FROM Materials WHERE material_name = ? AND status = ? AND deleted_at IS NULL LIMIT 1";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, materialName);
             ps.setString(2, materialStatus);
-            ResultSet rs = ps.executeQuery();
+            try (ResultSet rs = ps.executeQuery()) {
             return rs.next();
-        } catch (SQLException e) {
-            e.printStackTrace();
+            }
+        } catch (SQLException ex) {
+            LOGGER.log(Level.SEVERE, "Error checking material name/status", ex);
         }
         return false;
     }
 
     public Material getInformationByNameAndStatus(String name, String status) {
-        Material m = new Material();
-        try {
-            String sql = "SELECT m.material_id, m.material_code, m.material_name, m.materials_url, "
-                    + "m.material_status, m.average_cost, "
-                    + "c.category_id, c.category_name, "
-                    + "u.unit_id, u.unit_name, "
-                    + "m.created_at, m.updated_at, m.disable "
-                    + "FROM materials m "
-                    + "LEFT JOIN categories c ON m.category_id = c.category_id "
-                    + "LEFT JOIN units u ON m.unit_id = u.unit_id "
-                    + "WHERE m.material_name = ? AND m.material_status = ? AND m.disable = 0";
-
-            PreparedStatement ps = connection.prepareStatement(sql);
-            ps.setString(1, name);
-            ps.setString(2, status);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                m.setMaterialId(rs.getInt("material_id"));
-                m.setMaterialCode(rs.getString("material_code"));
-                m.setMaterialName(rs.getString("material_name"));
-                m.setMaterialsUrl(rs.getString("materials_url"));
-                m.setMaterialStatus(rs.getString("material_status"));
-                m.setAverageCost(rs.getBigDecimal("average_cost"));  // V8
-                m.setCreatedAt(rs.getTimestamp("created_at"));
-                m.setUpdatedAt(rs.getTimestamp("updated_at"));
-                m.setDisable(rs.getBoolean("disable"));
-
-                Category c = new Category();
-                c.setCategory_id(rs.getInt("category_id"));
-                c.setCategory_name(rs.getString("category_name"));
-                m.setCategory(c);
-
-                Unit u = new Unit();
-                u.setId(rs.getInt("unit_id"));
-                u.setUnitName(rs.getString("unit_name"));
-                m.setUnit(u);
-            }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-        }
-        return m;
+        List<Object> params = new ArrayList<>();
+        params.add(name);
+        params.add(status);
+        List<Material> materials = fetchMaterials(
+                "WHERE m.deleted_at IS NULL AND m.material_name = ? AND m.status = ?", params, "LIMIT 1");
+        return materials.isEmpty() ? null : materials.get(0);
     }
 
     public Material getMaterialByName(String materialName) {
-        try {
-            String sql = "SELECT m.*, m.average_cost, c.category_name, u.unit_name, IFNULL(i.stock, 0) AS quantity "
-                    + "FROM materials m "
-                    + "LEFT JOIN categories c ON m.category_id = c.category_id "
-                    + "LEFT JOIN units u ON m.unit_id = u.unit_id AND u.disable = 0 "
-                    + "LEFT JOIN inventory i ON m.material_id = i.material_id "
-                    + "WHERE m.material_name = ? AND m.disable = 0";
-
-            PreparedStatement ps = connection.prepareStatement(sql);
-            ps.setString(1, materialName);
-
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                Material m = new Material();
-                m.setMaterialId(rs.getInt("material_id"));
-                m.setMaterialCode(rs.getString("material_code"));
-                m.setMaterialName(rs.getString("material_name"));
-                m.setMaterialsUrl(rs.getString("materials_url"));
-                m.setMaterialStatus(rs.getString("material_status"));
-                m.setAverageCost(rs.getBigDecimal("average_cost"));  // V8
-                m.setQuantity(rs.getBigDecimal("quantity"));
-
-                m.setCreatedAt(rs.getTimestamp("created_at"));
-                m.setUpdatedAt(rs.getTimestamp("updated_at"));
-
-                Category c = new Category();
-                c.setCategory_id(rs.getInt("category_id"));
-                c.setCategory_name(rs.getString("category_name"));
-                m.setCategory(c);
-
-                Unit u = new Unit();
-                u.setId(rs.getInt("unit_id"));
-                u.setUnitName(rs.getString("unit_name"));
-                m.setUnit(u);
-
-                return m;
-            }
-        } catch (SQLException e) {
-            Logger.getLogger(MaterialDAO.class.getName()).log(Level.SEVERE, null, e);
-        }
-        return null;
+        List<Object> params = new ArrayList<>();
+        params.add(materialName);
+        List<Material> materials = fetchMaterials(
+                "WHERE m.deleted_at IS NULL AND m.material_name = ?", params, "LIMIT 1");
+        return materials.isEmpty() ? null : materials.get(0);
     }
 
     public int getAvailableStock(int materialId) {
-        try {
-            String sql = "SELECT IFNULL(stock, 0) AS available_stock FROM inventory WHERE material_id = ?";
-            PreparedStatement ps = connection.prepareStatement(sql);
+        String sql = "SELECT COALESCE(SUM(available_stock), 0) AS available_stock FROM Inventory WHERE material_id = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, materialId);
-            ResultSet rs = ps.executeQuery();
+            try (ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
-                return rs.getInt("available_stock");
+                    return rs.getBigDecimal("available_stock").intValue();
+                }
             }
-        } catch (SQLException e) {
-            Logger.getLogger(MaterialDAO.class.getName()).log(Level.SEVERE, null, e);
+        } catch (SQLException ex) {
+            LOGGER.log(Level.SEVERE, "Error getting available stock", ex);
         }
         return 0;
     }
 }
+

@@ -3,6 +3,7 @@ package controller;
 import dal.DepartmentDAO;
 import dal.RolePermissionDAO;
 import entity.User;
+import utils.PermissionHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -27,10 +28,9 @@ public class DeleteDepartmentServlet extends HttpServlet {
             return;
         }
 
-        // Check DELETE_DEPARTMENT permission
-        int roleId = user.getRoleId();
-        if (roleId != 1 && !rolePermissionDAO.hasPermission(roleId, "DELETE_DEPARTMENT")) {
-            request.setAttribute("error", "You do not have permission to delete the department..");
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(user, "Xóa phòng ban")) {
+            request.setAttribute("error", "Bạn không có quyền xóa phòng ban.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }

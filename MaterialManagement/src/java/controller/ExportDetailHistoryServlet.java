@@ -1,13 +1,16 @@
 package controller;
 
 import dal.ExportDAO;
-import dal.RecipientDAO;
+import dal.ExportPricingDAO;
+import dal.CustomerDAO;
+import dal.ExportRequestDAO;
 import dal.VehicleDAO;
 import dal.UserDAO;
 import dal.WarehouseDAO;
 import entity.Export;
 import entity.ExportDetail;
-import entity.Recipient;
+import entity.ExportRequest;
+import entity.Customer;
 import entity.Vehicle;
 import entity.User;
 import entity.Warehouse;
@@ -28,7 +31,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-@WebServlet(name="ExportDetailHistoryServlet", urlPatterns={"/ExportDetail"})
+@WebServlet(name="ExportDetailHistoryServlet", urlPatterns={"/ExportDetailHistory", "/ExportDetail"})
 public class ExportDetailHistoryServlet extends HttpServlet {
 
     @Override
@@ -46,14 +49,18 @@ public class ExportDetailHistoryServlet extends HttpServlet {
         try {
             int exportId = Integer.parseInt(exportIdStr);
             ExportDAO exportDAO = null;
-            RecipientDAO recipientDAO = null;
+            ExportPricingDAO pricingDAO = null;
+            CustomerDAO customerDAO = null;
+            ExportRequestDAO exportRequestDAO = null;
             VehicleDAO vehicleDAO = null;
             UserDAO userDAO = null;
             WarehouseDAO warehouseDAO = null;
             
             try {
                 exportDAO = new ExportDAO();
-                recipientDAO = new RecipientDAO();
+                pricingDAO = new ExportPricingDAO();
+                customerDAO = new CustomerDAO();
+                exportRequestDAO = new ExportRequestDAO();
                 vehicleDAO = new VehicleDAO();
                 userDAO = new UserDAO();
                 warehouseDAO = new WarehouseDAO();
@@ -73,13 +80,16 @@ public class ExportDetailHistoryServlet extends HttpServlet {
                 }
 
                 // Lấy thông tin bổ sung
-                // Recipient information
-                Recipient recipient = null;
-                if (exportData.getRecipientId() != null) {
+                // Customer information (from Export_Requests)
+                Customer customer = null;
+                if (exportData.getErId() != null) {
                     try {
-                        recipient = recipientDAO.getRecipientById(exportData.getRecipientId());
+                        ExportRequest exportRequest = exportRequestDAO.getById(exportData.getErId());
+                        if (exportRequest != null && exportRequest.getCustomerId() != null) {
+                            customer = customerDAO.getCustomerById(exportRequest.getCustomerId());
+                        }
                     } catch (Exception e) {
-                        Logger.getLogger(ExportDetailHistoryServlet.class.getName()).log(Level.WARNING, "Error getting recipient", e);
+                        Logger.getLogger(ExportDetailHistoryServlet.class.getName()).log(Level.WARNING, "Error getting customer", e);
                     }
                 }
                 
@@ -149,15 +159,49 @@ public class ExportDetailHistoryServlet extends HttpServlet {
                     request.setAttribute("exportDate", exportDate);
                 }
                 
+                // V8: Get Export_Pricing data for profit calculation (accounting)
+                Map<Integer, entity.ExportPricing> pricingMap = new HashMap<>();
+                BigDecimal totalRevenue = BigDecimal.ZERO;
+                BigDecimal totalCost = BigDecimal.ZERO;
+                BigDecimal totalProfit = BigDecimal.ZERO;
+                
+                if (exportDetails != null && !exportDetails.isEmpty()) {
+                    for (ExportDetail detail : exportDetails) {
+                        try {
+                            entity.ExportPricing pricing = pricingDAO.getPricingByExportDetail(detail.getExportDetailId());
+                            if (pricing != null) {
+                                pricingMap.put(detail.getExportDetailId(), pricing);
+                                if (pricing.getProfit() != null) {
+                                    totalProfit = totalProfit.add(pricing.getProfit());
+                                }
+                                if (pricing.getUnitPrice() != null && pricing.getQuantity() != null) {
+                                    totalRevenue = totalRevenue.add(pricing.getUnitPrice().multiply(pricing.getQuantity()));
+                                }
+                                if (pricing.getUnitCost() != null && pricing.getQuantity() != null) {
+                                    totalCost = totalCost.add(pricing.getUnitCost().multiply(pricing.getQuantity()));
+                                }
+                            }
+                        } catch (Exception e) {
+                            Logger.getLogger(ExportDetailHistoryServlet.class.getName()).log(Level.WARNING, 
+                                "Error getting pricing for export detail: " + detail.getExportDetailId(), e);
+                        }
+                    }
+                }
+                
                 request.setAttribute("exportData", exportData);
                 request.setAttribute("exportDetails", exportDetails != null ? exportDetails : new ArrayList<>());
-                request.setAttribute("recipient", recipient);
+                request.setAttribute("customer", customer);
                 request.setAttribute("vehicle", vehicle);
                 request.setAttribute("exportedByUser", exportedByUser);
                 request.setAttribute("warehouses", new ArrayList<>(warehousesMap.values()));
                 request.setAttribute("warehouseNames", warehouseNames.isEmpty() ? "" : String.join(", ", warehouseNames));
                 request.setAttribute("rackToWarehouseMap", rackToWarehouseMap);
                 request.setAttribute("totalValue", totalValue);
+                // V8: Accounting data
+                request.setAttribute("pricingMap", pricingMap);
+                request.setAttribute("totalRevenue", totalRevenue);
+                request.setAttribute("totalCost", totalCost);
+                request.setAttribute("totalProfit", totalProfit);
                 request.getRequestDispatcher("ExportDetail.jsp").forward(request, response);
             } catch (Exception e) {
                 Logger.getLogger(ExportDetailHistoryServlet.class.getName()).log(Level.SEVERE, "Error in ExportDetailHistoryServlet", e);

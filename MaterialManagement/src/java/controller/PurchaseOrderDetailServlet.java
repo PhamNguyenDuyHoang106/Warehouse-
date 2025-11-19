@@ -5,6 +5,7 @@ import dal.RolePermissionDAO;
 import dal.UserDAO;
 import entity.PurchaseOrder;
 import entity.User;
+import utils.PermissionHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -31,16 +32,19 @@ public class PurchaseOrderDetailServlet extends HttpServlet {
         }
 
         User user = (User) session.getAttribute("user");
-        boolean hasListPermission = rolePermissionDAO.hasPermission(user.getRoleId(), "VIEW_PURCHASE_ORDER_LIST");
+        // Admin có toàn quyền
+        boolean hasListPermission = PermissionHelper.hasPermission(user, "DS đơn đặt hàng");
         request.setAttribute("hasViewPurchaseOrderDetailPermission", hasListPermission);
         if (!hasListPermission) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
+            request.setAttribute("error", "You do not have permission to view purchase order details.");
+            request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }
 
-        boolean hasHandleRequestPermission = rolePermissionDAO.hasPermission(user.getRoleId(), "HANDLE_REQUEST");
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        boolean hasHandleRequestPermission = PermissionHelper.hasPermission(user, "Xác nhận PO");
         request.setAttribute("hasHandleRequestPermission", hasHandleRequestPermission);
-        boolean hasSendToSupplierPermission = rolePermissionDAO.hasPermission(user.getRoleId(), "SENT_TO_SUPPLIER");
+        boolean hasSendToSupplierPermission = PermissionHelper.hasPermission(user, "Gửi PO");
         request.setAttribute("hasSendToSupplierPermission", hasSendToSupplierPermission);
 
         try {
@@ -73,7 +77,7 @@ public class PurchaseOrderDetailServlet extends HttpServlet {
             if (totalPages == 0) totalPages = 1;
             int fromIndex = (currentPage - 1) * itemsPerPage;
             int toIndex = Math.min(fromIndex + itemsPerPage, totalItems);
-            List pagedDetails = new java.util.ArrayList();
+            List<entity.PurchaseOrderDetail> pagedDetails = new java.util.ArrayList<>();
             if (purchaseOrder.getDetails() != null && totalItems > 0 && fromIndex < totalItems) {
                 pagedDetails = purchaseOrder.getDetails().subList(fromIndex, toIndex);
             }
@@ -128,23 +132,36 @@ public class PurchaseOrderDetailServlet extends HttpServlet {
             String rejectionReason = request.getParameter("rejectionReason");
             PurchaseOrder purchaseOrder = purchaseOrderDAO.getPurchaseOrderById(poId);
             if ("updateStatus".equals(action)) {
-                if ("approved".equals(status) || "rejected".equals(status)) {
-                    boolean hasHandleRequestPermission = rolePermissionDAO.hasPermission(user.getRoleId(), "HANDLE_REQUEST");
-                    if (!hasHandleRequestPermission || purchaseOrder == null || !"pending".equals(purchaseOrder.getStatus())) {
-                        response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
+                String normalizedStatus = status != null ? status.trim().toLowerCase() : "";
+                if ("sent".equals(normalizedStatus)) {
+                    // Admin có toàn quyền - PermissionHelper đã xử lý
+                    boolean hasSendToSupplierPermission = PermissionHelper.hasPermission(user, "Gửi PO");
+                    if (!hasSendToSupplierPermission || purchaseOrder == null || !"draft".equalsIgnoreCase(purchaseOrder.getStatus())) {
+                        request.setAttribute("error", "You do not have permission to send purchase order.");
+                        request.getRequestDispatcher("error.jsp").forward(request, response);
                         return;
                     }
-                } else if ("sent_to_supplier".equals(status)) {
-                    boolean hasSendToSupplierPermission = rolePermissionDAO.hasPermission(user.getRoleId(), "SENT_TO_SUPPLIER");
-                    if (!hasSendToSupplierPermission || purchaseOrder == null || !"approved".equals(purchaseOrder.getStatus())) {
-                        response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
+                } else if ("confirmed".equals(normalizedStatus)) {
+                    // Admin có toàn quyền - PermissionHelper đã xử lý
+                    boolean hasConfirmPermission = PermissionHelper.hasPermission(user, "Xác nhận PO");
+                    if (!hasConfirmPermission || purchaseOrder == null) {
+                        request.setAttribute("error", "You do not have permission to confirm purchase order.");
+                        request.getRequestDispatcher("error.jsp").forward(request, response);
+                        return;
+                    }
+                } else if ("cancelled".equals(normalizedStatus)) {
+                    // Admin có toàn quyền - PermissionHelper đã xử lý
+                    boolean hasCancelPermission = PermissionHelper.hasPermission(user, "Hủy PO");
+                    if (!hasCancelPermission || purchaseOrder == null) {
+                        request.setAttribute("error", "You do not have permission to cancel purchase order.");
+                        request.getRequestDispatcher("error.jsp").forward(request, response);
                         return;
                     }
                 } else {
                     response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid status update");
                     return;
                 }
-                boolean success = purchaseOrderDAO.updatePurchaseOrderStatus(poId, status, user.getUserId(), approvalReason, rejectionReason);
+                boolean success = purchaseOrderDAO.updatePurchaseOrderStatus(poId, normalizedStatus, user.getUserId(), approvalReason, rejectionReason);
                 if (success) {
                     response.sendRedirect(request.getContextPath() + "/PurchaseOrderDetail?id=" + poId + "&message=Status updated successfully");
                 } else {

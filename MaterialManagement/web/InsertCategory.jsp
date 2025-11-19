@@ -58,13 +58,12 @@
                                         String error = (String) request.getAttribute("error");
                                     %>
                                     <% if (message != null) { %>
-                                    <div class="alert alert-success">${fn:escapeXml(message)}</div>
+                                    <div class="alert alert-success"><c:out value="${message}" escapeXml="false"/></div>
                                     <% } %>
                                     <% if (error != null) { %>
-                                    <div class="alert alert-danger">${fn:escapeXml(error)}</div>
+                                    <div class="alert alert-danger"><c:out value="${error}" escapeXml="false"/></div>
                                     <% } %>
                                     <form action="${pageContext.request.contextPath}/Category?service=addCategory" method="post" id="createCategoryForm">
-                                        <input type="hidden" name="disable" value="0">
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <div class="mb-3">
@@ -98,19 +97,6 @@
                                             </div>
                                             <div class="col-md-6">
                                                 <div class="mb-3">
-                                                    <label for="priority" class="form-label text-muted">Priority</label>
-                                                    <select id="priority" name="priority" class="form-select" required>
-                                                        <option value="" ${enteredPriority == null || enteredPriority.isEmpty() ? "selected" : ""}>Select Priority</option>
-                                                        <option value="high" ${"high".equals(enteredPriority) ? "selected" : ""}>High</option>
-                                                        <option value="medium" ${"medium".equals(enteredPriority) ? "selected" : ""}>Medium</option>
-                                                        <option value="low" ${"low".equals(enteredPriority) ? "selected" : ""}>Low</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="mb-3">
                                                     <label for="parentID" class="form-label text-muted">Parent Category</label>
                                                     <select id="parentID" name="parentID" class="form-select">
                                                         <option value="">None</option>
@@ -128,7 +114,7 @@
                                                 <div class="mb-3">
                                                     <label for="description" class="form-label text-muted">Description</label>
                                                     <textarea id="description" name="description" class="form-control" 
-                                                              placeholder="Enter Description" rows="4" required>${fn:escapeXml(enteredDescription != null ? enteredDescription : '')}</textarea>
+                                                              placeholder="Enter Description" rows="4">${fn:escapeXml(enteredDescription != null ? enteredDescription : '')}</textarea>
                                                 </div>
                                             </div>
                                         </div>
@@ -184,20 +170,9 @@
                         document.getElementById('status').classList.remove('is-invalid');
                     }
 
-                    const priority = document.getElementById('priority').value;
-                    if (!priority) {
-                        errors.push('Priority is required.');
-                        document.getElementById('priority').classList.add('is-invalid');
-                    } else {
-                        document.getElementById('priority').classList.remove('is-invalid');
-                    }
-
                     const description = document.getElementById('description').value;
                     if (!description) {
-                        errors.push('Description is required.');
-                        document.getElementById('description').classList.add('is-invalid');
-                    } else {
-                        document.getElementById('description').classList.remove('is-invalid');
+                        errors.push('Description should not be empty.');
                     }
 
                     if (errors.length > 0) {

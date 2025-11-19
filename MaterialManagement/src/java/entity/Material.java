@@ -8,64 +8,48 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 
 /**
- *
- * @author Admin
+ * Domain object đại diện bảng Materials (schema v11).
+ * Giữ lại một số getter/setter cũ để hạn chế tác động lên các servlet/JSP hiện có.
  */
 public class Material {
+
+    private static final String DEFAULT_MEDIA_URL = "images/material/default.jpg";
 
     private int materialId;
     private String materialCode;
     private String materialName;
-    private String materialsUrl;
-    private String materialStatus;
+    private String barcode;
+    private String url; // Link ảnh/datasheet/video (material.url)
+    private String status;   // ENUM('active','inactive','discontinued')
 
     private Category category;
-    private Unit unit;
-    private WarehouseRack rack; // Vị trí kệ gợi ý (optional default rack)
-    private BigDecimal quantity; // Current stock (joined from Inventory)
-    private BigDecimal averageCost; // Weighted average cost (V8 - auto-updated)
-    private BigDecimal unitVolume; // V9.1: Thể tích 1 đơn vị (m³)
-    private BigDecimal unitWeight; // V9.1: Khối lượng 1 đơn vị (kg)
+    private Unit defaultUnit;    // default_unit_id
+    private Unit purchaseUnit;   // purchase_unit_id
+    private Unit salesUnit;      // sales_unit_id
+    private WarehouseRack rack;  // Vị trí gợi ý (không bắt buộc)
+
+    private BigDecimal minStock;
+    private BigDecimal maxStock;
+    private BigDecimal weightPerUnit; // kg
+    private BigDecimal volumePerUnit; // m3
+    private Integer shelfLifeDays;
+    private boolean serialized;
+    private boolean batchControlled;
+
+    private BigDecimal stockOnHand;     // Tổng stock (Inventory.stock)
+    private BigDecimal reservedStock;   // Tổng reserved_stock
+    private BigDecimal availableStock;  // Tổng available_stock
+    private BigDecimal averageCost;      // Giá trung bình (từ Materials.average_cost)
 
     private Timestamp createdAt;
     private Timestamp updatedAt;
-    private boolean disable;
+    private Timestamp deletedAt;
+    private Integer createdBy;
+    private Integer updatedBy;
+
+    private boolean disable; // Giữ để tương thích (true nếu deletedAt != null)
 
     public Material() {
-    }
-
-    public Material(int materialId, String materialCode, String materialName, String materialsUrl, String materialStatus,
-             Category category, Unit unit, WarehouseRack rack, BigDecimal quantity,
-            Timestamp createdAt, Timestamp updatedAt, boolean disable) {
-        this.materialId = materialId;
-        this.materialCode = materialCode;
-        this.materialName = materialName;
-        this.materialsUrl = materialsUrl;
-        this.materialStatus = materialStatus;
-        this.category = category;
-        this.unit = unit;
-        this.rack = rack;
-        this.quantity = quantity;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-        this.disable = disable;
-    }
-
-    // Getters và Setters
-    public Timestamp getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Timestamp createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Timestamp getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(Timestamp updatedAt) {
-        this.updatedAt = updatedAt;
     }
 
     public int getMaterialId() {
@@ -92,22 +76,69 @@ public class Material {
         this.materialName = materialName;
     }
 
+    public String getBarcode() {
+        return barcode;
+    }
+
+    public void setBarcode(String barcode) {
+        this.barcode = barcode;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url != null ? url.trim() : null;
+    }
+
+    /**
+     * Getter giữ tên cũ để tránh sửa đổi lớn ở JSP/Servlet.
+     */
     public String getMaterialsUrl() {
-        return materialsUrl;
+        return resolveMediaUrl(url);
+    }
+
+    public String getRawUrl() {
+        return url;
     }
 
     public void setMaterialsUrl(String materialsUrl) {
-        this.materialsUrl = materialsUrl;
+        this.url = materialsUrl != null ? materialsUrl.trim() : null;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public String getMaterialStatus() {
-        return materialStatus;
+        return status;
     }
 
     public void setMaterialStatus(String materialStatus) {
-        this.materialStatus = materialStatus;
+        this.status = materialStatus;
     }
 
+    private String resolveMediaUrl(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return DEFAULT_MEDIA_URL;
+        }
+        String trimmed = value.trim();
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("/")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("images/")) {
+            return trimmed;
+        }
+        if (trimmed.startsWith("material/")) {
+            return "images/" + trimmed;
+        }
+        return "images/material/" + trimmed;
+    }
 
     public Category getCategory() {
         return category;
@@ -117,20 +148,36 @@ public class Material {
         this.category = category;
     }
 
+    public Unit getDefaultUnit() {
+        return defaultUnit;
+    }
+
+    public void setDefaultUnit(Unit defaultUnit) {
+        this.defaultUnit = defaultUnit;
+    }
+
     public Unit getUnit() {
-        return unit;
+        return defaultUnit;
     }
 
     public void setUnit(Unit unit) {
-        this.unit = unit;
+        this.defaultUnit = unit;
     }
 
-    public BigDecimal getQuantity() {
-        return quantity;
+    public Unit getPurchaseUnit() {
+        return purchaseUnit;
     }
 
-    public void setQuantity(BigDecimal quantity) {
-        this.quantity = quantity;
+    public void setPurchaseUnit(Unit purchaseUnit) {
+        this.purchaseUnit = purchaseUnit;
+    }
+
+    public Unit getSalesUnit() {
+        return salesUnit;
+    }
+
+    public void setSalesUnit(Unit salesUnit) {
+        this.salesUnit = salesUnit;
     }
 
     public WarehouseRack getRack() {
@@ -141,12 +188,100 @@ public class Material {
         this.rack = rack;
     }
 
-    public boolean isDisable() {
-        return disable;
+    public BigDecimal getMinStock() {
+        return minStock;
     }
 
-    public void setDisable(boolean disable) {
-        this.disable = disable;
+    public void setMinStock(BigDecimal minStock) {
+        this.minStock = minStock;
+    }
+
+    public BigDecimal getMaxStock() {
+        return maxStock;
+    }
+
+    public void setMaxStock(BigDecimal maxStock) {
+        this.maxStock = maxStock;
+    }
+
+    public BigDecimal getWeightPerUnit() {
+        return weightPerUnit;
+    }
+
+    public void setWeightPerUnit(BigDecimal weightPerUnit) {
+        this.weightPerUnit = weightPerUnit;
+    }
+
+    public BigDecimal getUnitWeight() {
+        return weightPerUnit;
+    }
+
+    public void setUnitWeight(BigDecimal unitWeight) {
+        this.weightPerUnit = unitWeight;
+    }
+
+    public BigDecimal getVolumePerUnit() {
+        return volumePerUnit;
+    }
+
+    public void setVolumePerUnit(BigDecimal volumePerUnit) {
+        this.volumePerUnit = volumePerUnit;
+    }
+
+    public BigDecimal getUnitVolume() {
+        return volumePerUnit;
+    }
+
+    public void setUnitVolume(BigDecimal unitVolume) {
+        this.volumePerUnit = unitVolume;
+    }
+
+    public Integer getShelfLifeDays() {
+        return shelfLifeDays;
+    }
+
+    public void setShelfLifeDays(Integer shelfLifeDays) {
+        this.shelfLifeDays = shelfLifeDays;
+    }
+
+    public boolean isSerialized() {
+        return serialized;
+    }
+
+    public void setSerialized(boolean serialized) {
+        this.serialized = serialized;
+    }
+
+    public boolean isBatchControlled() {
+        return batchControlled;
+    }
+
+    public void setBatchControlled(boolean batchControlled) {
+        this.batchControlled = batchControlled;
+    }
+
+    public BigDecimal getStockOnHand() {
+        return stockOnHand;
+    }
+
+    public void setStockOnHand(BigDecimal stockOnHand) {
+        this.stockOnHand = stockOnHand;
+    }
+
+    public BigDecimal getReservedStock() {
+        return reservedStock;
+    }
+
+    public void setReservedStock(BigDecimal reservedStock) {
+        this.reservedStock = reservedStock;
+    }
+
+    public BigDecimal getAvailableStock() {
+        return availableStock;
+    }
+
+    public void setAvailableStock(BigDecimal availableStock) {
+        this.availableStock = availableStock;
     }
 
     public BigDecimal getAverageCost() {
@@ -157,25 +292,94 @@ public class Material {
         this.averageCost = averageCost;
     }
 
-    // V9.1: Unit volume and weight getters and setters
-    public BigDecimal getUnitVolume() {
-        return unitVolume;
+    public BigDecimal getQuantity() {
+        return availableStock;
     }
 
-    public void setUnitVolume(BigDecimal unitVolume) {
-        this.unitVolume = unitVolume;
+    public void setQuantity(BigDecimal quantity) {
+        this.availableStock = quantity;
     }
 
-    public BigDecimal getUnitWeight() {
-        return unitWeight;
+    public Timestamp getCreatedAt() {
+        return createdAt;
     }
 
-    public void setUnitWeight(BigDecimal unitWeight) {
-        this.unitWeight = unitWeight;
+    public void setCreatedAt(Timestamp createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Timestamp getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Timestamp updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public Timestamp getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Timestamp deletedAt) {
+        this.deletedAt = deletedAt;
+        this.disable = deletedAt != null;
+    }
+
+    public Integer getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(Integer createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public Integer getUpdatedBy() {
+        return updatedBy;
+    }
+
+    public void setUpdatedBy(Integer updatedBy) {
+        this.updatedBy = updatedBy;
+    }
+
+    public boolean isDisable() {
+        return disable;
+    }
+
+    public void setDisable(boolean disable) {
+        this.disable = disable;
+        if (disable && this.deletedAt == null) {
+            this.deletedAt = new Timestamp(System.currentTimeMillis());
+        }
+        if (!disable) {
+            this.deletedAt = null;
+        }
     }
 
     @Override
     public String toString() {
-        return "Material{" + "materialId=" + materialId + ", materialCode=" + materialCode + ", materialName=" + materialName + ", materialsUrl=" + materialsUrl + ", materialStatus=" + materialStatus + ", category=" + category + ", unit=" + unit + ", quantity=" + quantity + ", averageCost=" + averageCost + ", unitVolume=" + unitVolume + ", unitWeight=" + unitWeight + ", createdAt=" + createdAt + ", updatedAt=" + updatedAt + ", disable=" + disable + '}';
+        return "Material{" +
+                "materialId=" + materialId +
+                ", materialCode='" + materialCode + '\'' +
+                ", materialName='" + materialName + '\'' +
+                ", barcode='" + barcode + '\'' +
+                ", status='" + status + '\'' +
+                ", category=" + category +
+                ", defaultUnit=" + defaultUnit +
+                ", purchaseUnit=" + purchaseUnit +
+                ", salesUnit=" + salesUnit +
+                ", minStock=" + minStock +
+                ", maxStock=" + maxStock +
+                ", weightPerUnit=" + weightPerUnit +
+                ", volumePerUnit=" + volumePerUnit +
+                ", shelfLifeDays=" + shelfLifeDays +
+                ", serialized=" + serialized +
+                ", batchControlled=" + batchControlled +
+                ", stockOnHand=" + stockOnHand +
+                ", reservedStock=" + reservedStock +
+                ", availableStock=" + availableStock +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                ", deletedAt=" + deletedAt +
+                '}';
     }
 }

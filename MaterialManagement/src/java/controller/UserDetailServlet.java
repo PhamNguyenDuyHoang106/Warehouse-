@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import dal.RolePermissionDAO;
+import utils.PermissionHelper;
 
 import java.io.IOException;
 
@@ -22,9 +23,14 @@ public class UserDetailServlet extends HttpServlet {
         request.setCharacterEncoding("UTF-8");
 
         User currentUser = (User) request.getSession().getAttribute("user");
-        if (currentUser == null || !rolePermissionDAO.hasPermission(currentUser.getRoleId(), "VIEW_DETAIL_USER")) {
-            request.setAttribute("error", "You do not have permission to view user details.");
-            request.getRequestDispatcher("UserList").forward(request, response);
+        if (currentUser == null) {
+            response.sendRedirect("Login.jsp");
+            return;
+        }
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(currentUser, "Xem chi tiết")) {
+            request.setAttribute("error", "Bạn không có quyền xem chi tiết người dùng.");
+            request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }
 

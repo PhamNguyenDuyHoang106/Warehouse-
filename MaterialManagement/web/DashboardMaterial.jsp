@@ -130,10 +130,10 @@
                 <c:if test="${not empty error}">
                     <div class="alert alert-danger">${error}</div>
                 </c:if>
-                <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'VIEW_LIST_MATERIAL')}">
+                <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Danh sách NVL')}">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h2 class="text-primary fw-bold display-6 border-bottom pb-2"><i class="bi bi-box"></i> Material List</h2>
-                        <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'CREATE_MATERIAL')}">
+                        <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Tạo NVL')}">
                             <a href="${pageContext.request.contextPath}/addmaterial" class="btn btn-primary">
                                 <i class="fas fa-plus me-1"></i> Add New Material
                             </a>
@@ -148,9 +148,9 @@
                                 </div>
                                 <select name="status" class="form-select" style="width: 150px; height: 50px; border: 2px solid gray">
                                     <option value="">All Status</option>
-                                    <option value="NEW" ${status == 'NEW' ? 'selected' : ''}>New</option>
-                                    <option value="USED" ${status == 'USED' ? 'selected' : ''}>Used</option>
-                                    <option value="DAMAGED" ${status == 'DAMAGED' ? 'selected' : ''}>Damaged</option>
+                                    <option value="active" ${status == 'active' ? 'selected' : ''}>Active</option>
+                                    <option value="inactive" ${status == 'inactive' ? 'selected' : ''}>Inactive</option>
+                                    <option value="discontinued" ${status == 'discontinued' ? 'selected' : ''}>Discontinued</option>
                                 </select>
                                 <select name="sortOption" class="form-select" style="width: 150px; height: 50px; border: 2px solid gray">
                                     <option value="">Sort By</option>
@@ -178,7 +178,7 @@
                                     <th scope="col" style="width: 120px">Unit Volume (m³)</th>
                                     <th scope="col" style="width: 120px">Unit Weight (kg)</th>
                                     <th scope="col" style="width: 120px">Average Cost</th>
-                                    <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'VIEW_DETAIL_MATERIAL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_MATERIAL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_MATERIAL')}">
+                                    <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xem chi tiết NVL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Sửa NVL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xóa NVL')}">
                                         <th scope="col">Actions</th>
                                     </c:if>
                                 </tr>
@@ -190,11 +190,11 @@
                                             <tr>
                                                 <td>
                                                     <c:choose>
-                                                        <c:when test="${fn:startsWith(material.materialsUrl, 'http://') || fn:startsWith(material.materialsUrl, 'https://')}">
+                                                        <c:when test="${fn:startsWith(material.materialsUrl, 'http://') || fn:startsWith(material.materialsUrl, 'https://') || fn:startsWith(material.materialsUrl, '/')}">
                                                             <img src="${material.materialsUrl}" alt="${material.materialCode}" class="material-image">
                                                         </c:when>
                                                         <c:otherwise>
-                                                            <img src="images/material/${material.materialsUrl}" alt="${material.materialCode}" class="material-image">
+                                                            <img src="${pageContext.request.contextPath}/${material.materialsUrl}" alt="${material.materialCode}" class="material-image">
                                                         </c:otherwise>
                                                     </c:choose>
                                                 </td>
@@ -202,14 +202,14 @@
                                                 <td>${material.materialName != null ? material.materialName : 'N/A'}</td>
                                                 <td>
                                                     <c:choose>
-                                                        <c:when test="${material.materialStatus == 'new'}">
-                                                            New
+                                                        <c:when test="${material.materialStatus == 'active'}">
+                                                            Active
                                                         </c:when>
-                                                        <c:when test="${material.materialStatus == 'used'}">
-                                                            Used
+                                                        <c:when test="${material.materialStatus == 'inactive'}">
+                                                            Inactive
                                                         </c:when>
                                                         <c:otherwise>
-                                                            Damaged
+                                                            Discontinued
                                                         </c:otherwise>
                                                     </c:choose>
                                                 </td>
@@ -245,24 +245,24 @@
                                                         </c:otherwise>
                                                     </c:choose>
                                                 </td>
-                                                <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'VIEW_DETAIL_MATERIAL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_MATERIAL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_MATERIAL')}">
+                                                <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xem chi tiết NVL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Sửa NVL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xóa NVL')}">
                                                     <td>
                                                         <div class="d-flex justify-content-center">
-                                                            <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'VIEW_DETAIL_MATERIAL')}">
+                                                            <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xem chi tiết NVL')}">
                                                                 <a href="${pageContext.request.contextPath}/viewmaterial?materialId=${material.materialId}" 
                                                                    class="btn btn-info btn-action" 
                                                                    title="View Details">
                                                                     <i class="fas fa-eye"></i>
                                                                 </a>
                                                             </c:if>
-                                                            <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_MATERIAL')}">
+                                                            <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Sửa NVL')}">
                                                                 <a href="${pageContext.request.contextPath}/editmaterial?materialId=${material.materialId}" 
                                                                    class="btn btn-warning btn-action" 
                                                                    title="Edit Material">
                                                                     <i class="fas fa-edit"></i>
                                                                 </a>
                                                             </c:if>
-                                                            <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_MATERIAL')}">
+                                                            <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xóa NVL')}">
                                                                 <form method="post" action="${pageContext.request.contextPath}/deletematerial" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this material? (Only materials with stock quantity = 0 can be deleted)');">
                                                                     <input type="hidden" name="materialId" value="${material.materialId}" />
                                                                     <button type="submit" class="btn btn-danger btn-action" title="Delete Material">

@@ -5,6 +5,7 @@ import dal.RepairRequestDAO;
 import dal.UserDAO;
 import dal.RolePermissionDAO;
 import dal.SupplierDAO;
+import utils.PermissionHelper;
 import entity.Material;
 import entity.RepairRequest;
 import entity.RepairRequestDetail;
@@ -48,7 +49,8 @@ public class RepairRequestServlet extends HttpServlet {
             return;
         }
 
-        if (!rolePermissionDAO.hasPermission(currentUser.getRoleId(), "CREATE_REPAIR_REQUEST")) {
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(currentUser, "Tạo yêu cầu sửa")) {
             request.setAttribute("error", "You do not have permission to access the repair request creation page.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
@@ -108,8 +110,9 @@ public class RepairRequestServlet extends HttpServlet {
                 return;
             }
 
-            if (!rolePermissionDAO.hasPermission(user.getRoleId(), "CREATE_REPAIR_REQUEST")) {
-                request.setAttribute("error", "You do not have permission to create a repair request.");
+            // Admin có toàn quyền - PermissionHelper đã xử lý
+            if (!PermissionHelper.hasPermission(user, "Tạo yêu cầu sửa")) {
+                request.setAttribute("error", "You do not have permission to create repair request.");
                 request.getRequestDispatcher("error.jsp").forward(request, response);
                 return;
             }
@@ -187,15 +190,23 @@ public class RepairRequestServlet extends HttpServlet {
             RepairRequest requestObj = new RepairRequest();
             requestObj.setRequestCode(requestCode);
             requestObj.setUserId(userId);
-            requestObj.setRepairPersonPhoneNumber(null); 
-            requestObj.setRepairPersonEmail(null); 
-            requestObj.setRepairLocation(null); 
-            requestObj.setReason(reason);
+            requestObj.setRepairPersonPhoneNumber(null);
+            requestObj.setRepairPersonEmail(null);
+            requestObj.setRepairLocation(null);
+            requestObj.setReason(reason); // Maps to issue_description in v12
             requestObj.setRequestDate(now);
-            requestObj.setStatus("Pending");
+            requestObj.setStatus("draft"); // v12 uses 'draft' instead of 'Pending'
             requestObj.setCreatedAt(now);
             requestObj.setUpdatedAt(now);
             requestObj.setDisable(false);
+
+            // Schema v12: Set direct material/batch/rack references
+            // For now, set to null - form needs to be updated for full v12 support
+            requestObj.setMaterialId(null);
+            requestObj.setBatchId(null);
+            requestObj.setRackId(null);
+            requestObj.setDepartmentId(null); // Get from user session
+            requestObj.setPriority("medium"); // Default priority
 
             List<RepairRequestDetail> detailList = new ArrayList<>();
 
@@ -271,8 +282,10 @@ public class RepairRequestServlet extends HttpServlet {
                 RepairRequestDetail detail = new RepairRequestDetail();
                 detail.setMaterialId(materialId);
                 detail.setQuantity(quantity);
-                detail.setDamageDescription(damageDescription);
-                detail.setSupplierId(supplierId); 
+                detail.setDamageDescription(damageDescription); // Still works for backward compatibility
+                // Schema v12: Repair_Request_Details uses 'note' instead of damage_description
+                // But entity still has damageDescription field for compatibility
+                // detail.setSupplierId(supplierId); // Removed in v12 - supplier info at PO level
                 detail.setCreatedAt(now);
                 detail.setUpdatedAt(now);
 

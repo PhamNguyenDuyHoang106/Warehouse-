@@ -3,6 +3,7 @@ package controller;
 import dal.RepairRequestDAO;
 import dal.RolePermissionDAO;
 import entity.User;
+import utils.PermissionHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -32,9 +33,9 @@ public class ApproveRepairRequestServlet extends HttpServlet {
             return;
         }
 
-        int roleId = user.getRoleId();
-        if (roleId != 1 && roleId != 2 && !rolePermissionDAO.hasPermission(roleId, "APPROVE_REPAIR_REQUEST")) {
-            request.setAttribute("error", "You do not have permission to approve repair requests.");
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(user, "Duyệt yêu cầu sửa")) {
+            request.setAttribute("error", "Bạn không có quyền duyệt yêu cầu sửa.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }

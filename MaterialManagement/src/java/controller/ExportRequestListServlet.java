@@ -4,6 +4,7 @@ import dal.ExportRequestDAO;
 import dal.RolePermissionDAO;
 import entity.ExportRequest;
 import entity.User;
+import utils.PermissionHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -34,7 +35,7 @@ public class ExportRequestListServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/Login.jsp");
             return;
         }
-        boolean canView = rolePermissionDAO.hasPermission(user.getRoleId(), "VIEW_EXPORT_REQUEST_LIST");
+        boolean canView = PermissionHelper.hasPermission(user, "DS yêu cầu xuất");
         request.setAttribute("canViewExportRequest", canView);
         if (!canView) {
             LOGGER.log(Level.WARNING, "User {0} attempted to access ExportRequestList without permission.", user.getUsername());
@@ -42,6 +43,10 @@ public class ExportRequestListServlet extends HttpServlet {
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }
+        
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        boolean hasHandleRequestPermission = PermissionHelper.hasPermission(user, "Duyệt yêu cầu xuất") || user.getRoleId() == 1;
+        request.setAttribute("hasHandleRequestPermission", hasHandleRequestPermission);
         
         // Filter parameters
         String searchKeyword = request.getParameter("search");

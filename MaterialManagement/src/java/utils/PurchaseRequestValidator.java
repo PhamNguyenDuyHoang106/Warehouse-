@@ -5,6 +5,7 @@ import entity.PurchaseRequestDetail;
 import dal.MaterialDAO;
 import entity.Material;
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +19,18 @@ public class PurchaseRequestValidator {
             errors.put("reason", "Reason for request cannot be empty.");
         }
 
-        if (purchaseRequest.getUserId() <= 0) {
-            errors.put("userId", "Invalid user ID.");
+        if (purchaseRequest.getRequestBy() <= 0) {
+            errors.put("requestBy", "Invalid requester.");
+        }
+
+        if (purchaseRequest.getDepartmentId() == null) {
+            errors.put("departmentId", "Department must be specified.");
+        }
+
+        Date requestDate = purchaseRequest.getRequestDate();
+        Date expectedDate = purchaseRequest.getExpectedDate();
+        if (expectedDate != null && requestDate != null && expectedDate.before(requestDate)) {
+            errors.put("expectedDate", "Expected date cannot be before request date.");
         }
 
         if (purchaseRequest.getDetails() == null || purchaseRequest.getDetails().isEmpty()) {
@@ -29,10 +40,21 @@ public class PurchaseRequestValidator {
         return errors;
     }
 
-    public static Map<String, String> validatePurchaseRequestFormData(String reason) {
+    public static Map<String, String> validatePurchaseRequestFormData(String reason, String expectedDateStr) {
         Map<String, String> errors = new HashMap<>();
         if (reason == null || reason.trim().isEmpty()) {
             errors.put("reason", "Reason for request cannot be empty.");
+        }
+        if (expectedDateStr != null && !expectedDateStr.trim().isEmpty()) {
+            try {
+                Date expected = Date.valueOf(expectedDateStr);
+                Date today = new Date(System.currentTimeMillis());
+                if (expected.before(today)) {
+                    errors.put("expectedDate", "Expected date should not be in the past.");
+                }
+            } catch (IllegalArgumentException e) {
+                errors.put("expectedDate", "Invalid expected date format.");
+            }
         }
         return errors;
     }
@@ -56,7 +78,6 @@ public class PurchaseRequestValidator {
                 continue;
             }
 
-            // Check if material exists in database
             String trimmedMaterialName = materialName.trim();
             Material material = materialDAO.getMaterialByName(trimmedMaterialName);
             if (material == null) {
@@ -67,9 +88,8 @@ public class PurchaseRequestValidator {
             if (quantityStr == null || quantityStr.trim().isEmpty()) {
                 errors.put("quantity_" + i, "Quantity cannot be empty for material " + trimmedMaterialName + ".");
             } else {
-                String trimmedQuantity = quantityStr.trim();
                 try {
-                    BigDecimal quantity = new BigDecimal(trimmedQuantity);
+                    BigDecimal quantity = new BigDecimal(quantityStr.trim());
                     if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
                         errors.put("quantity_" + i, "Quantity must be greater than 0 for material " + trimmedMaterialName + ".");
                     }
@@ -99,6 +119,10 @@ public class PurchaseRequestValidator {
             errors.put("quantity", "Quantity must be greater than 0.");
         }
 
+        if (detail.getUnitPriceEstimate() != null && detail.getUnitPriceEstimate().compareTo(BigDecimal.ZERO) < 0) {
+            errors.put("unitPriceEstimate", "Unit price estimate cannot be negative.");
+        }
+
         return errors;
     }
 
@@ -121,9 +145,8 @@ public class PurchaseRequestValidator {
         if (quantityStr == null || quantityStr.trim().isEmpty()) {
             errors.put("quantity", "Quantity cannot be empty.");
         } else {
-            String trimmedQuantity = quantityStr.trim();
             try {
-                BigDecimal quantity = new BigDecimal(trimmedQuantity);
+                BigDecimal quantity = new BigDecimal(quantityStr.trim());
                 if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
                     errors.put("quantity", "Quantity must be greater than 0.");
                 }
@@ -135,26 +158,25 @@ public class PurchaseRequestValidator {
         return errors;
     }
 
-    // New method to validate material names against database
     public static Map<String, String> validateMaterialNames(String[] materialNames) {
         Map<String, String> errors = new HashMap<>();
-        
+
         if (materialNames == null) {
             return errors;
         }
 
         MaterialDAO materialDAO = new MaterialDAO();
-        
+
         for (int i = 0; i < materialNames.length; i++) {
             String materialName = materialNames[i];
-            
+
             if (materialName == null || materialName.trim().isEmpty()) {
                 continue;
             }
 
             String trimmedMaterialName = materialName.trim();
             Material material = materialDAO.getMaterialByName(trimmedMaterialName);
-            
+
             if (material == null) {
                 errors.put("material_" + i, "Material '" + trimmedMaterialName + "' does not exist in inventory.");
             }

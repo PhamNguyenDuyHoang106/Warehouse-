@@ -5,6 +5,7 @@ import dal.UserDAO;
 import dal.RolePermissionDAO;
 import entity.PurchaseRequest;
 import entity.User;
+import utils.PermissionHelper;
 import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -36,7 +37,7 @@ public class ListPurchaseRequestsServlet extends HttpServlet {
         UserDAO userDAO = new UserDAO();
         RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
 
-        boolean hasPermission = rolePermissionDAO.hasPermission(currentUser.getRoleId(), "VIEW_PURCHASE_REQUEST_LIST");
+        boolean hasPermission = PermissionHelper.hasPermission(currentUser, "DS yêu cầu mua");
         if (!hasPermission) {
             request.setAttribute("error", "You do not have permission to view purchase requests.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
@@ -61,37 +62,17 @@ public class ListPurchaseRequestsServlet extends HttpServlet {
             }
 
             if (sortOption == null || sortOption.isEmpty()) {
-                sortOption = "code_desc"; // Sort by request code descending to show newest PR codes first
+                sortOption = "code_desc";
             }
 
-            // Debug: Show all request codes
-            prd.debugAllRequestCodes();
-            
             List<PurchaseRequest> list = prd.searchPurchaseRequest(keyword, status, startDate, endDate, pageIndex, pageSize, sortOption);
             int totalItems = prd.countPurchaseRequest(keyword, status, startDate, endDate);
 
-            // Lọc bỏ các đơn có trạng thái cancel
-            for (int i = list.size() - 1; i >= 0; i--) {
-                if ("cancel".equalsIgnoreCase(list.get(i).getStatus())) {
-                    list.remove(i);
-                }
-            }
-            
-            // Debug: Check pagination
-            System.out.println("=== DEBUG: Pagination ===");
-            System.out.println("Page Index: " + pageIndex);
-            System.out.println("Page Size: " + pageSize);
-            System.out.println("Total Items (before filter): " + totalItems);
-            System.out.println("List size (after filter): " + list.size());
-            System.out.println("Request codes in current page:");
-            for (PurchaseRequest pr : list) {
-                System.out.println("  - " + pr.getRequestCode() + " (Status: " + pr.getStatus() + ")");
-            }
+            list.removeIf(pr -> "cancelled".equalsIgnoreCase(pr.getStatus()));
 
-            // Tạo Map userId -> tên requester
             HashMap<Integer, String> userIdToName = new HashMap<>();
             for (PurchaseRequest pr : list) {
-                int uid = pr.getUserId();
+                int uid = pr.getRequestBy();
                 if (!userIdToName.containsKey(uid)) {
                     User requester = userDAO.getUserById(uid);
                     userIdToName.put(uid, requester != null ? requester.getFullName() : "Không xác định");
@@ -109,8 +90,9 @@ public class ListPurchaseRequestsServlet extends HttpServlet {
             request.setAttribute("sortOption", sortOption);
             request.setAttribute("startDate", startDate);
             request.setAttribute("endDate", endDate);
-            request.setAttribute("rolePermissionDAO", rolePermissionDAO); // Để JSP sử dụng
-            request.setAttribute("canApprove", rolePermissionDAO.hasPermission(currentUser.getRoleId(), "HANDLE_REQUEST"));
+            request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+            // Admin có toàn quyền - PermissionHelper đã xử lý
+            request.setAttribute("canApprove", PermissionHelper.hasPermission(currentUser, "Duyệt PR"));
 
             request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
 

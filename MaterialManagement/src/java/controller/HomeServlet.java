@@ -117,7 +117,7 @@ public class HomeServlet extends HttpServlet {
 
         // Số yêu cầu mua vật tư chờ duyệt
         PurchaseRequestDAO purchaseRequestDAO = new PurchaseRequestDAO();
-        int pendingPurchaseRequestCount = purchaseRequestDAO.countPurchaseRequest(null, "pending", null, null);
+        int pendingPurchaseRequestCount = purchaseRequestDAO.countPurchaseRequest(null, "submitted", null, null);
         request.setAttribute("pendingPurchaseRequestCount", pendingPurchaseRequestCount);
 
         // Số yêu cầu sửa chữa chờ duyệt
@@ -141,15 +141,42 @@ public class HomeServlet extends HttpServlet {
         
         if (user != null) {
             RequestDAO requestDAO = new RequestDAO();
-            myPurchaseRequestCount = requestDAO.getPurchaseRequestCountByUser(user.getUserId(), null, null, null, null, null);
-            myRepairRequestCount = requestDAO.getRepairRequestCountByUser(user.getUserId(), null, null, null, null, null);
+            try {
+                myPurchaseRequestCount = requestDAO.getPurchaseRequestCountByUser(user.getUserId(), null, null, null, null, null);
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Failed to get purchase request count: " + e.getMessage(), e);
+                myPurchaseRequestCount = 0;
+            }
+            
+            try {
+                myRepairRequestCount = requestDAO.getRepairRequestCountByUser(user.getUserId(), null, null, null, null, null);
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Failed to get repair request count: " + e.getMessage(), e);
+                myRepairRequestCount = 0;
+            }
             
             // Đếm yêu cầu pending và approved của user
-            myPendingRequestCount = requestDAO.getExportRequestCountByUser(user.getUserId(), "pending", null, null, null, null);
-            myApprovedRequestCount = requestDAO.getExportRequestCountByUser(user.getUserId(), "approved", null, null, null, null);
+            try {
+                myPendingRequestCount = requestDAO.getExportRequestCountByUser(user.getUserId(), "pending", null, null, null, null);
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Failed to get pending export request count: " + e.getMessage(), e);
+                myPendingRequestCount = 0;
+            }
             
-            // Đếm vật tư có sẵn (có stock > 0)
-            availableMaterialsCount = dao.countMaterials(null, "new") + dao.countMaterials(null, "used");
+            try {
+                myApprovedRequestCount = requestDAO.getExportRequestCountByUser(user.getUserId(), "approved", null, null, null, null);
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Failed to get approved export request count: " + e.getMessage(), e);
+                myApprovedRequestCount = 0;
+            }
+            
+            // Đếm vật tư đang hoạt động (active)
+            try {
+                availableMaterialsCount = dao.countMaterials(null, "active");
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Failed to get available materials count: " + e.getMessage(), e);
+                availableMaterialsCount = 0;
+            }
         }
         request.setAttribute("myPurchaseRequestCount", myPurchaseRequestCount);
         request.setAttribute("myRepairRequestCount", myRepairRequestCount);
@@ -167,8 +194,8 @@ public class HomeServlet extends HttpServlet {
         request.setAttribute("lowStockCount", lowStockCount);
         request.setAttribute("outOfStockCount", outOfStockCount);
 
-        // Đếm vật tư bị hư hỏng
-        int damagedMaterialsCount = dao.countMaterials(null, "damaged");
+        // Đếm vật tư đang tạm ngưng (inactive)
+        int damagedMaterialsCount = dao.countMaterials(null, "inactive");
         request.setAttribute("damagedMaterialsCount", damagedMaterialsCount);
 
         // Thống kê Import/Export cho Reports section

@@ -22,8 +22,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -118,19 +123,16 @@ public class ImportMaterialServlet extends HttpServlet {
                 return;
             }
             
-            if (!"sent_to_supplier".equalsIgnoreCase(po.getStatus())) {
-                response.getWriter().write("{\"error\": \"Purchase Order status is not 'sent_to_supplier'\"}");
+            String poStatus = po.getStatus() != null ? po.getStatus().toLowerCase() : "";
+            if (!"sent".equals(poStatus) && !"partially_received".equals(poStatus)) {
+                response.getWriter().write("{\"error\": \"Purchase Order must be sent to supplier or partially received\"}");
                 return;
             }
             
             // Get PO details
             List<PurchaseOrderDetail> details = purchaseOrderDAO.getPurchaseOrderDetails(poId);
             
-            // Extract supplier ID from first detail (all details should have same supplier)
-            Integer supplierId = null;
-            if (details != null && !details.isEmpty()) {
-                supplierId = details.get(0).getSupplierId();
-            }
+            Integer supplierId = po.getSupplierId();
             
             // Build JSON response
             java.io.PrintWriter out = response.getWriter();
@@ -145,11 +147,22 @@ public class ImportMaterialServlet extends HttpServlet {
                     PurchaseOrderDetail detail = details.get(i);
                     if (i > 0) out.print(",");
                     out.print("{");
+                    BigDecimal orderedQty = detail.getQuantityOrdered() != null ? detail.getQuantityOrdered() : BigDecimal.ZERO;
+                    BigDecimal receivedQty = detail.getReceivedQuantity() != null ? detail.getReceivedQuantity() : BigDecimal.ZERO;
+                    BigDecimal remainingQty = orderedQty.subtract(receivedQty);
+                    if (remainingQty.compareTo(BigDecimal.ZERO) < 0) {
+                        remainingQty = BigDecimal.ZERO;
+                    }
+                    out.print("\"poDetailId\":" + detail.getPoDetailId() + ",");
                     out.print("\"materialId\":" + detail.getMaterialId() + ",");
                     out.print("\"materialName\":\"" + escapeJson(detail.getMaterialName() != null ? detail.getMaterialName() : "") + "\",");
                     out.print("\"materialImageUrl\":\"" + escapeJson(detail.getMaterialImageUrl() != null ? detail.getMaterialImageUrl() : "") + "\",");
-                    out.print("\"quantity\":" + detail.getQuantity() + ",");
-                    out.print("\"unitPrice\":" + detail.getUnitPrice() + ",");
+                    out.print("\"unitId\":" + (detail.getUnitId() != null ? detail.getUnitId() : "null") + ",");
+                    out.print("\"unitName\":\"" + escapeJson(detail.getUnitName() != null ? detail.getUnitName() : "") + "\",");
+                    out.print("\"quantity\":" + orderedQty + ",");
+                    out.print("\"receivedQuantity\":" + receivedQty + ",");
+                    out.print("\"remainingQuantity\":" + remainingQty + ",");
+                    out.print("\"unitPrice\":" + (detail.getUnitPrice() != null ? detail.getUnitPrice() : BigDecimal.ZERO) + ",");
                     out.print("\"categoryId\":" + detail.getCategoryId() + ",");
                     out.print("\"categoryName\":\"" + escapeJson(detail.getCategoryName() != null ? detail.getCategoryName() : "") + "\"");
                     out.print("}");
@@ -202,8 +215,9 @@ public class ImportMaterialServlet extends HttpServlet {
             return;
         }
 
-        // Check permission: Admin has full access, others need CREATE_IMPORT permission
-        if (!PermissionHelper.hasPermission(user, "CREATE_IMPORT")) {
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(user, "Tạo nhập kho")) {
             request.setAttribute("error", "You do not have permission to import materials.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
@@ -228,9 +242,15 @@ public class ImportMaterialServlet extends HttpServlet {
             List<Material> materials = materialDAO.getAllProducts();
             request.setAttribute("materials", materials);
 
-            // Get Purchase Orders with status 'sent_to_supplier' for dropdown
-            List<PurchaseOrder> purchaseOrders = purchaseOrderDAO.getPurchaseOrdersByStatus("sent_to_supplier");
-            request.setAttribute("purchaseOrders", purchaseOrders);
+            // Get Purchase Orders eligible for receiving (only sent orders can be imported)
+            Map<Integer, PurchaseOrder> purchaseOrderMap = new LinkedHashMap<>();
+            for (String status : new String[]{"sent", "partially_received"}) {
+                List<PurchaseOrder> pos = purchaseOrderDAO.getPurchaseOrdersByStatus(status);
+                for (PurchaseOrder po : pos) {
+                    purchaseOrderMap.putIfAbsent(po.getPoId(), po);
+                }
+            }
+            request.setAttribute("purchaseOrders", new ArrayList<>(purchaseOrderMap.values()));
 
             // Get all warehouses for dropdown
             List<Warehouse> warehouses = warehouseDAO.getAllWarehouses();
@@ -261,8 +281,9 @@ public class ImportMaterialServlet extends HttpServlet {
             return;
         }
 
-        // Check permission: Admin has full access, others need CREATE_IMPORT permission
-        if (!PermissionHelper.hasPermission(user, "CREATE_IMPORT")) {
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(user, "Tạo nhập kho")) {
             request.setAttribute("error", "You do not have permission to import materials.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
@@ -270,8 +291,8 @@ public class ImportMaterialServlet extends HttpServlet {
 
         // Read form data
         String importCode = request.getParameter("importCode");
-        String poIdStr = request.getParameter("poId"); // Purchase Order ID instead of supplier
-        String supplierIdStr = request.getParameter("supplierId"); // Will be extracted from PO if poId is provided
+        String poIdStr = request.getParameter("poId");
+        String warehouseIdStr = request.getParameter("warehouseId");
         String importDateStr = request.getParameter("importDate");
         String note = request.getParameter("note");
 
@@ -279,10 +300,13 @@ public class ImportMaterialServlet extends HttpServlet {
         String[] quantities = request.getParameterValues("quantity[]");
         String[] unitPrices = request.getParameterValues("unitPrice[]");
         String[] rackIds = request.getParameterValues("rackId[]");
+        String[] poDetailIds = request.getParameterValues("poDetailId[]");
+        String[] unitIds = request.getParameterValues("unitId[]");
+        String[] batchCodes = request.getParameterValues("batchCode[]");
+        String[] expiryDates = request.getParameterValues("expiryDate[]");
 
-        // Log received parameters
-        LOGGER.log(Level.INFO, "Import form submitted - Code: {0}, PO ID: {1}, Supplier ID: {2}, Date: {3}, Materials: {4}",
-                new Object[]{importCode, poIdStr, supplierIdStr, importDateStr, 
+        LOGGER.log(Level.INFO, "Import form submitted - Code: {0}, PO ID: {1}, Warehouse ID: {2}, Date: {3}, Materials: {4}",
+                new Object[]{importCode, poIdStr, warehouseIdStr, importDateStr,
                     materialIds != null ? materialIds.length : 0});
 
         Map<String, String> errors = new HashMap<>();
@@ -293,16 +317,17 @@ public class ImportMaterialServlet extends HttpServlet {
             errors.put("importCode", importCodeError);
         }
 
-        // Validate supplier (optional)
-        String supplierError = ImportValidator.validateSupplierId(supplierIdStr);
-        if (supplierError != null) {
-            errors.put("supplierId", supplierError);
+        if (poIdStr == null || poIdStr.trim().isEmpty()) {
+            errors.put("poId", "Purchase Order is required");
         }
 
-        // Validate import details
-        Map<String, String> detailErrors = ImportValidator.validateImportDetails(
-                materialIds, quantities, unitPrices, rackIds);
-        errors.putAll(detailErrors);
+        if (warehouseIdStr == null || warehouseIdStr.trim().isEmpty()) {
+            errors.put("warehouseId", "Warehouse is required");
+        }
+
+        if (materialIds == null || materialIds.length == 0) {
+            errors.put("materials", "At least one material is required");
+        }
 
         // Check for duplicate materials
         if (materialIds != null && materialIds.length > 0) {
@@ -310,107 +335,266 @@ public class ImportMaterialServlet extends HttpServlet {
             errors.putAll(duplicateErrors);
         }
 
-        // If there are errors, go back to form
+        if (poDetailIds == null || materialIds == null || poDetailIds.length != materialIds.length) {
+            errors.put("poDetails", "Purchase Order detail mapping is required for each material");
+        }
+
         if (!errors.isEmpty()) {
             LOGGER.log(Level.WARNING, "Validation errors found: {0}", errors);
             request.setAttribute("errors", errors);
-            request.setAttribute("submittedImportCode", importCode);
-            request.setAttribute("submittedPoId", poIdStr);
-            request.setAttribute("submittedSupplierId", supplierIdStr);
-            request.setAttribute("submittedImportDate", importDateStr);
-            request.setAttribute("submittedNote", note);
-            request.setAttribute("submittedMaterialIds", materialIds);
-            request.setAttribute("submittedQuantities", quantities);
-            request.setAttribute("submittedUnitPrices", unitPrices);
-            request.setAttribute("submittedRackIds", rackIds);
+            preserveFormState(request, importCode, poIdStr, warehouseIdStr, importDateStr, note,
+                    materialIds, quantities, unitPrices, rackIds, batchCodes, expiryDates);
             doGet(request, response);
             return;
         }
 
         LOGGER.log(Level.INFO, "Validation passed, proceeding to create import");
 
-        // Process import
         ImportDAO importDAO = null;
         ImportDetailDAO detailDAO = null;
+        MaterialDAO materialDAO = null;
+        PurchaseOrderDAO purchaseOrderDAO = null;
 
         try {
             importDAO = new ImportDAO();
             detailDAO = new ImportDetailDAO();
+            materialDAO = new MaterialDAO();
+            purchaseOrderDAO = new PurchaseOrderDAO();
 
-            // Extract supplier from PO if poId is provided
-            PurchaseOrderDAO purchaseOrderDAO = null;
-            if (poIdStr != null && !poIdStr.trim().isEmpty()) {
-                try {
-                    purchaseOrderDAO = new PurchaseOrderDAO();
-                    int poId = Integer.parseInt(poIdStr);
-                    PurchaseOrder po = purchaseOrderDAO.getPurchaseOrderById(poId);
-                    
-                    if (po != null && "sent_to_supplier".equalsIgnoreCase(po.getStatus())) {
-                        // Get supplier from first PO detail
-                        List<PurchaseOrderDetail> poDetails = purchaseOrderDAO.getPurchaseOrderDetails(poId);
-                        if (poDetails != null && !poDetails.isEmpty() && poDetails.get(0).getSupplierId() != null) {
-                            supplierIdStr = String.valueOf(poDetails.get(0).getSupplierId());
-                        }
-                    }
-                } catch (Exception e) {
-                    LOGGER.log(Level.WARNING, "Error extracting supplier from PO: " + e.getMessage(), e);
-                } finally {
-                    if (purchaseOrderDAO != null) purchaseOrderDAO.close();
+            int poId;
+            int warehouseId;
+            try {
+                poId = Integer.parseInt(poIdStr);
+            } catch (NumberFormatException e) {
+                errors.put("poId", "Invalid Purchase Order ID");
+                poId = -1;
+            }
+            try {
+                warehouseId = Integer.parseInt(warehouseIdStr);
+            } catch (NumberFormatException e) {
+                errors.put("warehouseId", "Invalid warehouse");
+                warehouseId = -1;
+            }
+
+            PurchaseOrder po = poId > 0 ? purchaseOrderDAO.getPurchaseOrderById(poId) : null;
+            if (po == null) {
+                errors.put("poId", "Purchase Order not found");
+            } else {
+                String status = po.getStatus() != null ? po.getStatus().toLowerCase() : "";
+                if (!"sent".equals(status) && !"partially_received".equals(status)) {
+                    errors.put("poId", "Purchase Order must be sent to supplier or partially received");
                 }
             }
 
-            // Create Import record
+            List<PurchaseOrderDetail> poDetails = po != null
+                    ? purchaseOrderDAO.getPurchaseOrderDetails(po.getPoId())
+                    : new ArrayList<>();
+            Map<Integer, PurchaseOrderDetail> poDetailMap = new HashMap<>();
+            for (PurchaseOrderDetail detail : poDetails) {
+                poDetailMap.put(detail.getPoDetailId(), detail);
+            }
+
+            List<ImportDetailPayload> payloads = new ArrayList<>();
+            BigDecimal totalQuantity = BigDecimal.ZERO;
+            BigDecimal totalAmount = BigDecimal.ZERO;
+
+            for (int i = 0; i < materialIds.length; i++) {
+                String materialIndexKey = "item_" + i;
+                int materialId;
+                try {
+                    materialId = Integer.parseInt(materialIds[i]);
+                } catch (NumberFormatException e) {
+                    errors.put(materialIndexKey + "_materialId", "Invalid material selected");
+                    continue;
+                }
+
+                int poDetailId;
+                try {
+                    poDetailId = Integer.parseInt(poDetailIds[i]);
+                } catch (NumberFormatException e) {
+                    errors.put(materialIndexKey + "_poDetailId", "Invalid PO detail");
+                    continue;
+                }
+
+                PurchaseOrderDetail poDetail = poDetailMap.get(poDetailId);
+                if (poDetail == null) {
+                    errors.put(materialIndexKey + "_poDetailId", "PO detail not found");
+                    continue;
+                }
+
+                if (poDetail.getMaterialId() != materialId) {
+                    errors.put(materialIndexKey + "_materialId", "Material does not match PO detail");
+                    continue;
+                }
+
+                BigDecimal quantity;
+                try {
+                    quantity = new BigDecimal(quantities[i]);
+                    if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
+                        errors.put(materialIndexKey + "_quantity", "Quantity must be greater than 0");
+                        continue;
+                    }
+                } catch (Exception e) {
+                    errors.put(materialIndexKey + "_quantity", "Invalid quantity");
+                    continue;
+                }
+
+                BigDecimal orderedQty = poDetail.getQuantityOrdered() != null ? poDetail.getQuantityOrdered() : BigDecimal.ZERO;
+                BigDecimal receivedQty = poDetail.getReceivedQuantity() != null ? poDetail.getReceivedQuantity() : BigDecimal.ZERO;
+                BigDecimal availableQty = orderedQty.subtract(receivedQty);
+                if (availableQty.compareTo(BigDecimal.ZERO) < 0) {
+                    availableQty = BigDecimal.ZERO;
+                }
+                if (quantity.compareTo(availableQty) > 0) {
+                    errors.put(materialIndexKey + "_quantity", "Quantity exceeds remaining PO amount (" + availableQty + ")");
+                    continue;
+                }
+
+                BigDecimal unitCost;
+                try {
+                    if (unitPrices != null && i < unitPrices.length && unitPrices[i] != null && !unitPrices[i].trim().isEmpty()) {
+                        unitCost = new BigDecimal(unitPrices[i]);
+                    } else {
+                        unitCost = poDetail.getUnitPrice() != null ? poDetail.getUnitPrice() : BigDecimal.ZERO;
+                    }
+                    if (unitCost.compareTo(BigDecimal.ZERO) < 0) {
+                        errors.put(materialIndexKey + "_unitPrice", "Unit cost must be positive");
+                        continue;
+                    }
+                } catch (Exception e) {
+                    errors.put(materialIndexKey + "_unitPrice", "Invalid unit cost");
+                    continue;
+                }
+
+                Integer rackId = null;
+                if (rackIds != null && i < rackIds.length && rackIds[i] != null && !rackIds[i].trim().isEmpty()) {
+                    try {
+                        rackId = Integer.parseInt(rackIds[i]);
+                    } catch (NumberFormatException e) {
+                        errors.put(materialIndexKey + "_rackId", "Invalid rack selected");
+                    }
+                }
+
+                Integer unitId = null;
+                if (unitIds != null && i < unitIds.length && unitIds[i] != null && !unitIds[i].trim().isEmpty()) {
+                    try {
+                        unitId = Integer.parseInt(unitIds[i]);
+                    } catch (NumberFormatException e) {
+                        errors.put(materialIndexKey + "_unitId", "Invalid unit");
+                    }
+                }
+                if (unitId == null) {
+                    unitId = poDetail.getUnitId();
+                }
+                if (unitId == null) {
+                    Material material = materialDAO.getProductById(materialId);
+                    if (material != null && material.getDefaultUnit() != null) {
+                        unitId = material.getDefaultUnit().getId();
+                    }
+                }
+                if (unitId == null) {
+                    errors.put(materialIndexKey + "_unitId", "Unit is required");
+                    continue;
+                }
+
+                String batchCode = null;
+                if (batchCodes != null && i < batchCodes.length && batchCodes[i] != null && !batchCodes[i].trim().isEmpty()) {
+                    batchCode = batchCodes[i].trim();
+                }
+                if (batchCode == null) {
+                    batchCode = generateBatchCode(importCode, materialId, i + 1);
+                }
+
+                Date expiryDate = null;
+                if (expiryDates != null && i < expiryDates.length && expiryDates[i] != null && !expiryDates[i].trim().isEmpty()) {
+                    try {
+                        expiryDate = Date.valueOf(expiryDates[i]);
+                    } catch (IllegalArgumentException e) {
+                        errors.put(materialIndexKey + "_expiryDate", "Invalid expiry date");
+                    }
+                }
+
+                ImportDetailPayload payload = new ImportDetailPayload();
+                payload.materialId = materialId;
+                payload.poDetailId = poDetailId;
+                payload.unitId = unitId;
+                payload.rackId = rackId;
+                payload.quantity = quantity;
+                payload.unitCost = unitCost;
+                payload.batchCode = batchCode;
+                payload.expiryDate = expiryDate;
+
+                payloads.add(payload);
+                totalQuantity = totalQuantity.add(quantity);
+                totalAmount = totalAmount.add(unitCost.multiply(quantity));
+            }
+
+            if (payloads.isEmpty()) {
+                errors.put("materials", "No valid materials to import");
+            }
+
+            if (!errors.isEmpty()) {
+                request.setAttribute("errors", errors);
+                preserveFormState(request, importCode, poIdStr, warehouseIdStr, importDateStr, note,
+                        materialIds, quantities, unitPrices, rackIds, batchCodes, expiryDates);
+                doGet(request, response);
+                return;
+            }
+
+            LocalDate importDate;
+            try {
+                importDate = (importDateStr != null && !importDateStr.trim().isEmpty())
+                        ? LocalDate.parse(importDateStr)
+                        : LocalDate.now();
+            } catch (Exception e) {
+                errors.put("importDate", "Invalid import date");
+                request.setAttribute("errors", errors);
+                preserveFormState(request, importCode, poIdStr, warehouseIdStr, importDateStr, note,
+                        materialIds, quantities, unitPrices, rackIds, batchCodes, expiryDates);
+                doGet(request, response);
+                return;
+            }
+
             Import importObj = new Import();
             importObj.setImportCode(importCode);
-            importObj.setImportedBy(user.getUserId());
-
-            if (supplierIdStr != null && !supplierIdStr.trim().isEmpty()) {
-                importObj.setSupplierId(Integer.parseInt(supplierIdStr));
-            }
-
-            // Parse import date or use current time
-            if (importDateStr != null && !importDateStr.trim().isEmpty()) {
-                importObj.setImportDate(LocalDateTime.parse(importDateStr + "T00:00:00"));
-            } else {
-                importObj.setImportDate(LocalDateTime.now());
-            }
-
+            importObj.setPoId(poId);
+            importObj.setWarehouseId(warehouseId);
+            importObj.setImportDate(importDate);
+            importObj.setReceivedBy(user.getUserId());
+            importObj.setCreatedBy(user.getUserId());
+            importObj.setStatus("completed");
             importObj.setNote(note);
+            importObj.setTotalQuantity(totalQuantity);
+            importObj.setTotalAmount(totalAmount);
 
             int importId = importDAO.createImport(importObj);
             LOGGER.log(Level.INFO, "Import created with ID: {0}", importId);
 
             if (importId > 0) {
-                LOGGER.log(Level.INFO, "Creating {0} import details", materialIds.length);
-                // Create Import_Details
+                LOGGER.log(Level.INFO, "Creating {0} import details", payloads.size());
                 boolean allDetailsAdded = true;
-                for (int i = 0; i < materialIds.length; i++) {
+                Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+
+                for (ImportDetailPayload payload : payloads) {
                     ImportDetail detail = new ImportDetail();
                     detail.setImportId(importId);
-                    detail.setMaterialId(Integer.parseInt(materialIds[i]));
-
-                    // Rack ID is optional
-                    if (rackIds != null && i < rackIds.length && 
-                        rackIds[i] != null && !rackIds[i].trim().isEmpty()) {
-                        detail.setRackId(Integer.parseInt(rackIds[i]));
-                    }
-
-                    detail.setQuantity(new BigDecimal(quantities[i]));
-                    
-                    // Unit price is optional - default to 0 if not provided
-                    if (unitPrices != null && i < unitPrices.length && 
-                        unitPrices[i] != null && !unitPrices[i].trim().isEmpty()) {
-                        detail.setUnitPrice(new BigDecimal(unitPrices[i]));
-                    } else {
-                        detail.setUnitPrice(BigDecimal.ZERO);
-                    }
-                    
+                    detail.setPoDetailId(payload.poDetailId);
+                    detail.setMaterialId(payload.materialId);
+                    detail.setUnitId(payload.unitId);
+                    detail.setRackId(payload.rackId);
+                    detail.setQuantity(payload.quantity);
+                    detail.setUnitCost(payload.unitCost);
+                    detail.setBatchCode(payload.batchCode);
+                    detail.setExpiryDate(payload.expiryDate);
                     detail.setStatus("imported");
+                    detail.setImportedBy(user.getUserId());
+                    detail.setImportedAt(now);
+                    detail.setCreatedAt(now);
 
                     boolean added = detailDAO.addImportDetail(detail);
                     if (!added) {
                         allDetailsAdded = false;
-                        LOGGER.log(Level.WARNING, "Failed to add import detail for material ID: " + materialIds[i]);
+                        LOGGER.log(Level.WARNING, "Failed to add import detail for material ID: {0}", payload.materialId);
                     }
                 }
 
@@ -421,25 +605,55 @@ public class ImportMaterialServlet extends HttpServlet {
                 }
             } else {
                 request.setAttribute("error", "Failed to create import record");
+                preserveFormState(request, importCode, poIdStr, warehouseIdStr, importDateStr, note,
+                        materialIds, quantities, unitPrices, rackIds, batchCodes, expiryDates);
                 doGet(request, response);
             }
 
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error processing import", e);
             request.setAttribute("error", "Error processing import: " + e.getMessage());
-            request.setAttribute("submittedImportCode", importCode);
-            request.setAttribute("submittedPoId", poIdStr);
-            request.setAttribute("submittedSupplierId", supplierIdStr);
-            request.setAttribute("submittedImportDate", importDateStr);
-            request.setAttribute("submittedNote", note);
-            request.setAttribute("submittedMaterialIds", materialIds);
-            request.setAttribute("submittedQuantities", quantities);
-            request.setAttribute("submittedUnitPrices", unitPrices);
-            request.setAttribute("submittedRackIds", rackIds);
+            preserveFormState(request, importCode, poIdStr, warehouseIdStr, importDateStr, note,
+                    materialIds, quantities, unitPrices, rackIds, batchCodes, expiryDates);
             doGet(request, response);
         } finally {
             if (importDAO != null) importDAO.close();
             if (detailDAO != null) detailDAO.close();
+            if (materialDAO != null) materialDAO.close();
+            if (purchaseOrderDAO != null) purchaseOrderDAO.close();
         }
+    }
+
+    private void preserveFormState(HttpServletRequest request, String importCode, String poId,
+                                   String warehouseId, String importDate, String note,
+                                   String[] materialIds, String[] quantities, String[] unitPrices,
+                                   String[] rackIds, String[] batchCodes, String[] expiryDates) {
+        request.setAttribute("submittedImportCode", importCode);
+        request.setAttribute("submittedPoId", poId);
+        request.setAttribute("submittedWarehouseId", warehouseId);
+        request.setAttribute("submittedImportDate", importDate);
+        request.setAttribute("submittedNote", note);
+        request.setAttribute("submittedMaterialIds", materialIds);
+        request.setAttribute("submittedQuantities", quantities);
+        request.setAttribute("submittedUnitPrices", unitPrices);
+        request.setAttribute("submittedRackIds", rackIds);
+        request.setAttribute("submittedBatchCodes", batchCodes);
+        request.setAttribute("submittedExpiryDates", expiryDates);
+    }
+
+    private String generateBatchCode(String importCode, int materialId, int rowIndex) {
+        String prefix = (importCode != null && !importCode.trim().isEmpty()) ? importCode : "IMP";
+        return prefix + "-MAT" + materialId + "-" + rowIndex;
+    }
+
+    private static class ImportDetailPayload {
+        int materialId;
+        int poDetailId;
+        Integer unitId;
+        Integer rackId;
+        BigDecimal quantity;
+        BigDecimal unitCost;
+        String batchCode;
+        Date expiryDate;
     }
 }

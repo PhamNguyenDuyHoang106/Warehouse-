@@ -124,8 +124,17 @@
                                                     <input type="hidden" name="materialIds[]" value="${detail.materialId}">
                                                     
                                                     <div class="col-md-2 text-center">
-                                                        <img src="images/material/${materialImages[detail.materialId]}" 
-                                                             alt="${detail.materialName}" class="material-image">
+                                                        <c:set var="mediaUrl" value="${materialImages[detail.materialId]}" />
+                                                        <c:choose>
+                                                            <c:when test="${fn:startsWith(mediaUrl, 'http://') || fn:startsWith(mediaUrl, 'https://') || fn:startsWith(mediaUrl, '/')}">
+                                                                <img src="${mediaUrl}" 
+                                                                     alt="${detail.materialName}" class="material-image">
+                                                            </c:when>
+                                                            <c:otherwise>
+                                                                <img src="${pageContext.request.contextPath}/${mediaUrl}" 
+                                                                     alt="${detail.materialName}" class="material-image">
+                                                            </c:otherwise>
+                                                        </c:choose>
                                                     </div>
                                                     
                                                     <div class="col-md-3">

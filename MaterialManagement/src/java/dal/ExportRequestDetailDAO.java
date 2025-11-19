@@ -16,12 +16,12 @@ public class ExportRequestDetailDAO extends DBContext {
         connection = getConnection();
         List<ExportRequestDetail> details = new ArrayList<>();
         String sql = "SELECT erd.detail_id, erd.export_request_id, erd.material_id, erd.rack_id, "
-                + "erd.quantity, erd.created_at, erd.updated_at, "
-                + "m.material_code, m.material_name, m.materials_url, u.unit_name as material_unit, "
+                + "erd.quantity, erd.unit_price_export, erd.created_at, erd.updated_at, "
+                + "m.material_code, m.material_name, m.url, du.unit_name as material_unit, "
                 + "wr.rack_name, wr.rack_code "
                 + "FROM Export_Request_Details erd "
                 + "JOIN Materials m ON erd.material_id = m.material_id "
-                + "LEFT JOIN Units u ON m.unit_id = u.unit_id "
+                + "LEFT JOIN Units du ON m.default_unit_id = du.unit_id "
                 + "LEFT JOIN Warehouse_Racks wr ON erd.rack_id = wr.rack_id "
                 + "WHERE erd.export_request_id = ?";
                 
@@ -38,12 +38,8 @@ public class ExportRequestDetailDAO extends DBContext {
                     detail.setMaterialName(rs.getString("material_name"));
                     detail.setMaterialUnit(rs.getString("material_unit"));
                     detail.setQuantity(rs.getBigDecimal("quantity"));
-                    String rawUrl = rs.getString("materials_url");
-                    String imgUrl = rawUrl;
-                    if (imgUrl != null && !imgUrl.isEmpty() && !imgUrl.startsWith("/") && !imgUrl.startsWith("http") && !imgUrl.startsWith("images/material/")) {
-                        imgUrl = "images/material/" + imgUrl;
-                    }
-                    detail.setMaterialImageUrl(imgUrl);
+                    detail.setUnitPriceExport(rs.getBigDecimal("unit_price_export"));
+                    detail.setMaterialImageUrl(rs.getString("url"));
                     detail.setCreatedAt(rs.getTimestamp("created_at"));
                     detail.setUpdatedAt(rs.getTimestamp("updated_at"));
                     details.add(detail);
@@ -61,7 +57,7 @@ public class ExportRequestDetailDAO extends DBContext {
             return true;
         }
         
-        String sql = "INSERT INTO Export_Request_Details (export_request_id, material_id, rack_id, quantity) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO Export_Request_Details (export_request_id, material_id, rack_id, quantity, unit_price_export) VALUES (?, ?, ?, ?, ?)";
         
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             for (ExportRequestDetail detail : details) {
@@ -69,6 +65,11 @@ public class ExportRequestDetailDAO extends DBContext {
                 ps.setInt(2, detail.getMaterialId());
                 ps.setObject(3, detail.getRackId());
                 ps.setBigDecimal(4, detail.getQuantity());
+                if (detail.getUnitPriceExport() != null) {
+                    ps.setBigDecimal(5, detail.getUnitPriceExport());
+                } else {
+                    ps.setNull(5, java.sql.Types.DECIMAL);
+                }
                 ps.addBatch();
             }
             int[] results = ps.executeBatch();

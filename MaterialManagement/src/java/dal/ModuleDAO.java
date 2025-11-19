@@ -11,7 +11,8 @@ public class ModuleDAO extends DBContext {
 
     public List<Module> getAllModules() {
         List<Module> moduleList = new ArrayList<>();
-        String sql = "SELECT * FROM Modules WHERE disable = 0 ORDER BY module_id";
+        // Query: lấy tất cả modules, không filter theo status (vì có thể status không tồn tại hoặc có giá trị khác)
+        String sql = "SELECT * FROM Modules ORDER BY module_id";
 
         try (PreparedStatement ps = connection.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
@@ -19,7 +20,14 @@ public class ModuleDAO extends DBContext {
                 Module module = new Module();
                 module.setModuleId(rs.getInt("module_id"));
                 module.setModuleName(rs.getString("module_name"));
-                module.setDescription(rs.getString("description"));
+                
+                // Handle description: có thể null
+                try {
+                    module.setDescription(rs.getString("description"));
+                } catch (Exception e) {
+                    module.setDescription(null);
+                }
+                
                 moduleList.add(module);
             }
             System.out.println("✅ Lấy danh sách module thành công, số lượng: " + moduleList.size());

@@ -34,17 +34,17 @@ public class ExportRequestDAO extends DBContext {
         List<ExportRequest> requests = new ArrayList<>();
         StringBuilder sql = new StringBuilder(
                 "SELECT er.*, COALESCE(u.full_name, 'Unknown') as userName, "
-                + "COALESCE(r.recipient_name, 'Unknown') as recipientName, "
+                + "COALESCE(d.department_name, 'Unknown') as departmentName, "
                 + "COALESCE(a.full_name, 'Unknown') as approverName "
                 + "FROM Export_Requests er "
-                + "LEFT JOIN Users u ON er.user_id = u.user_id "
-                + "LEFT JOIN Recipients r ON er.recipient_id = r.recipient_id "
+                + "LEFT JOIN Users u ON er.request_by = u.user_id "
+                + "LEFT JOIN Departments d ON er.department_id = d.department_id "
                 + "LEFT JOIN Users a ON er.approved_by = a.user_id "
-                + "WHERE er.disable = 0"
+                + "WHERE er.deleted_at IS NULL"
         );
         
         if (searchKeyword != null && !searchKeyword.trim().isEmpty()) {
-            sql.append(" AND (er.request_code LIKE ? OR u.full_name LIKE ?)");
+            sql.append(" AND (er.er_code LIKE ? OR u.full_name LIKE ?)");
         }
         if (status != null && !status.equalsIgnoreCase("all")) {
             sql.append(" AND er.status = ?");
@@ -59,10 +59,10 @@ public class ExportRequestDAO extends DBContext {
         
         if (sortByName != null && !sortByName.isEmpty()) {
             if ("oldest".equalsIgnoreCase(sortByName)) {
-                sql.append(" ORDER BY er.created_at ASC, er.export_request_id ASC");
+                sql.append(" ORDER BY er.created_at ASC, er.er_id ASC");
             }
         } else {
-            sql.append(" ORDER BY er.created_at DESC, er.export_request_id DESC");
+            sql.append(" ORDER BY er.created_at DESC, er.er_id DESC");
         }
         sql.append(" LIMIT ? OFFSET ?");
 
@@ -108,13 +108,13 @@ public class ExportRequestDAO extends DBContext {
         StringBuilder sql = new StringBuilder(
                 "SELECT COUNT(*) "
                 + "FROM Export_Requests er "
-                + "LEFT JOIN Users u ON er.user_id = u.user_id "
+                + "LEFT JOIN Users u ON er.request_by = u.user_id "
                 + "LEFT JOIN Users a ON er.approved_by = a.user_id "
-                + "WHERE er.disable = 0"
+                + "WHERE er.deleted_at IS NULL"
         );
         
         if (searchKeyword != null && !searchKeyword.trim().isEmpty()) {
-            sql.append(" AND (er.request_code LIKE ? OR u.full_name LIKE ?)");
+            sql.append(" AND (er.er_code LIKE ? OR u.full_name LIKE ?)");
         }
         if (status != null && !status.equalsIgnoreCase("all")) {
             sql.append(" AND er.status = ?");
@@ -158,24 +158,39 @@ public class ExportRequestDAO extends DBContext {
     public ExportRequest getById(int id) {
         connection = getConnection();
         String sql = "SELECT er.*, COALESCE(u.full_name, 'Unknown') as userName, " +
-                     "COALESCE(r.recipient_name, 'Unknown') as recipientName, " +
+                     "COALESCE(d.department_name, 'Unknown') as departmentName, " +
                      "COALESCE(a.full_name, 'Unknown') as approverName " +
                      "FROM Export_Requests er " +
-                     "LEFT JOIN Users u ON er.user_id = u.user_id " +
-                     "LEFT JOIN Recipients r ON er.recipient_id = r.recipient_id " +
+                     "LEFT JOIN Users u ON er.request_by = u.user_id " +
+                     "LEFT JOIN Departments d ON er.department_id = d.department_id " +
                      "LEFT JOIN Users a ON er.approved_by = a.user_id " +
-                     "WHERE er.export_request_id = ? AND er.disable = 0";
+                     "WHERE er.er_id = ? AND er.deleted_at IS NULL";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     ExportRequest request = mapResultSetToExportRequest(rs);
-                    // Also set recipient_id directly from the table
-                    Object recipientIdObj = rs.getObject("recipient_id");
-                    if (recipientIdObj != null) {
-                        request.setRecipientId(rs.getInt("recipient_id"));
-                    } else {
-                        request.setRecipientId(null);
+                    // Also set customer_id directly from the table (Customer replaces Recipient)
+                    // Wrap in try-catch in case column doesn't exist
+                    try {
+                        Object customerIdObj = rs.getObject("customer_id");
+                        if (customerIdObj != null) {
+                            request.setCustomerId(rs.getInt("customer_id"));
+                        } else {
+                            request.setCustomerId(null);
+                        }
+                    } catch (SQLException e) {
+                        // Column may not exist, try recipient_id for backward compatibility
+                        try {
+                            Object recipientIdObj = rs.getObject("recipient_id");
+                            if (recipientIdObj != null) {
+                                request.setCustomerId(rs.getInt("recipient_id"));
+                            } else {
+                                request.setCustomerId(null);
+                            }
+                        } catch (SQLException e2) {
+                            request.setCustomerId(null);
+                        }
                     }
                     return request;
                 }
@@ -192,13 +207,13 @@ public class ExportRequestDAO extends DBContext {
     public List<ExportRequest> getAllRequestsByStatus(String status) {
         List<ExportRequest> requests = new ArrayList<>();
         String sql = "SELECT er.*, COALESCE(u.full_name, 'Unknown') as userName, " +
-                     "COALESCE(r.recipient_name, 'Unknown') as recipientName, " +
+                     "COALESCE(d.department_name, 'Unknown') as departmentName, " +
                      "COALESCE(a.full_name, 'Unknown') as approverName " +
                      "FROM Export_Requests er " +
-                     "LEFT JOIN Users u ON er.user_id = u.user_id " +
-                     "LEFT JOIN Recipients r ON er.recipient_id = r.recipient_id " +
+                     "LEFT JOIN Users u ON er.request_by = u.user_id " +
+                     "LEFT JOIN Departments d ON er.department_id = d.department_id " +
                      "LEFT JOIN Users a ON er.approved_by = a.user_id " +
-                     "WHERE er.status = ? AND er.disable = 0 " +
+                     "WHERE er.status = ? AND er.deleted_at IS NULL " +
                      "ORDER BY er.created_at DESC";
         
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -225,7 +240,7 @@ public class ExportRequestDAO extends DBContext {
                 + (("approved".equals(request.getStatus()) || "rejected".equals(request.getStatus())) ? "approved_at = CURRENT_TIMESTAMP, " : "")
                 + "approval_reason = ?, "
                 + "rejection_reason = ? "
-                + "WHERE export_request_id = ? AND disable = 0";
+                + "WHERE er_id = ? AND deleted_at IS NULL";
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             int idx = 1;
@@ -246,7 +261,7 @@ public class ExportRequestDAO extends DBContext {
             return false;
         }
 
-        String sql = "UPDATE Export_Requests SET disable = 1 WHERE export_request_id = ?";
+        String sql = "UPDATE Export_Requests SET deleted_at = CURRENT_TIMESTAMP WHERE er_id = ?";
         
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, id);
@@ -262,20 +277,14 @@ public class ExportRequestDAO extends DBContext {
         try {
             conn = getConnection();
             conn.setAutoCommit(false);
-            String sql = "INSERT INTO Export_Requests (request_code, user_id, recipient_id, status, delivery_date, reason) "
-                       + "VALUES (?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO Export_Requests (er_code, request_by, status, expected_date, purpose) "
+                       + "VALUES (?, ?, ?, ?, ?)";
             try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
                 ps.setString(1, request.getRequestCode());
                 ps.setInt(2, request.getUserId());
-                // Handle null recipientId properly
-                if (request.getRecipientId() != null) {
-                    ps.setInt(3, request.getRecipientId());
-                } else {
-                    ps.setNull(3, java.sql.Types.INTEGER);
-                }
-                ps.setString(4, request.getStatus());
-                ps.setDate(5, request.getDeliveryDate());
-                ps.setString(6, request.getReason());
+                ps.setString(3, request.getStatus());
+                ps.setDate(4, request.getDeliveryDate());
+                ps.setString(5, request.getReason());
                 int affectedRows = ps.executeUpdate();
                 if (affectedRows == 0) {
                     throw new SQLException("Creating request failed, no rows affected.");
@@ -288,14 +297,19 @@ public class ExportRequestDAO extends DBContext {
                     }
                 }
             }
-            String detailSql = "INSERT INTO Export_Request_Details (export_request_id, material_id, rack_id, quantity) "
-                             + "VALUES (?, ?, ?, ?)";
+            String detailSql = "INSERT INTO Export_Request_Details (er_id, material_id, rack_id, quantity, unit_price_export) "
+                             + "VALUES (?, ?, ?, ?, ?)";
             try (PreparedStatement ps = conn.prepareStatement(detailSql)) {
                 for (ExportRequestDetail detail : details) {
                     ps.setInt(1, request.getExportRequestId());
                     ps.setInt(2, detail.getMaterialId());
                     ps.setObject(3, detail.getRackId());
                     ps.setBigDecimal(4, detail.getQuantity());
+                    if (detail.getUnitPriceExport() != null) {
+                        ps.setBigDecimal(5, detail.getUnitPriceExport());
+                    } else {
+                        ps.setNull(5, java.sql.Types.DECIMAL);
+                    }
                     ps.addBatch();
                 }
                 ps.executeBatch();
@@ -359,11 +373,13 @@ public class ExportRequestDAO extends DBContext {
         }
 
         String sql = "SELECT er.*, COALESCE(u.full_name, 'Unknown') as userName, " +
+                     "COALESCE(d.department_name, 'Unknown') as departmentName, " +
                      "COALESCE(a.full_name, 'Unknown') as approverName " +
                      "FROM Export_Requests er " +
-                     "LEFT JOIN Users u ON er.user_id = u.user_id " +
+                     "LEFT JOIN Users u ON er.request_by = u.user_id " +
+                     "LEFT JOIN Departments d ON er.department_id = d.department_id " +
                      "LEFT JOIN Users a ON er.approved_by = a.user_id " +
-                     "WHERE er.disable = 0 " +
+                     "WHERE er.deleted_at IS NULL " +
                      "ORDER BY er." + sortColumn + " " + ("desc".equalsIgnoreCase(order) ? "DESC" : "ASC");
 
         try (PreparedStatement ps = connection.prepareStatement(sql);
@@ -379,41 +395,59 @@ public class ExportRequestDAO extends DBContext {
 
     private ExportRequest mapResultSetToExportRequest(ResultSet rs) throws SQLException {
         ExportRequest request = new ExportRequest();
-        request.setExportRequestId(rs.getInt("export_request_id"));
-        request.setRequestCode(rs.getString("request_code"));
+        request.setExportRequestId(rs.getInt("er_id"));
+        request.setRequestCode(rs.getString("er_code"));
         request.setRequestDate(rs.getTimestamp("request_date"));
-        request.setDeliveryDate(rs.getDate("delivery_date"));
+        request.setDeliveryDate(rs.getDate("expected_date"));
         request.setStatus(rs.getString("status"));
-        request.setReason(rs.getString("reason"));
-        request.setUserId(rs.getInt("user_id"));
+        request.setReason(rs.getString("purpose"));
+        request.setUserId(rs.getInt("request_by"));
         request.setUserName(rs.getString("userName"));
         
-        // Map recipient_id and recipientName
+        // Map customer_id and customerName (Customer replaces Recipient)
         try {
-            Object recipientIdObj = rs.getObject("recipient_id");
-            if (recipientIdObj != null) {
-                request.setRecipientId(rs.getInt("recipient_id"));
+            Object customerIdObj = rs.getObject("customer_id");
+            if (customerIdObj != null) {
+                request.setCustomerId(rs.getInt("customer_id"));
             } else {
-                request.setRecipientId(null);
+                request.setCustomerId(null);
             }
         } catch (SQLException e) {
-            // Column may not exist in all queries
-            request.setRecipientId(null);
+            // Column may not exist in all queries, try recipient_id for backward compatibility
+            try {
+                Object recipientIdObj = rs.getObject("recipient_id");
+                if (recipientIdObj != null) {
+                    request.setCustomerId(rs.getInt("recipient_id"));
+                } else {
+                    request.setCustomerId(null);
+                }
+            } catch (SQLException e2) {
+                request.setCustomerId(null);
+            }
         }
         
         try {
-            String recipientName = rs.getString("recipientName");
-            request.setRecipientName(recipientName != null && !recipientName.equals("Unknown") ? recipientName : null);
+            String customerName = rs.getString("customerName");
+            if (customerName == null || customerName.equals("Unknown")) {
+                customerName = rs.getString("customer_name"); // Try alternative column name
+            }
+            request.setCustomerName(customerName != null && !customerName.equals("Unknown") ? customerName : null);
         } catch (SQLException e) {
-            // Column may not exist in all queries
-            request.setRecipientName(null);
+            // Column may not exist in all queries, try recipientName for backward compatibility
+            try {
+                String recipientName = rs.getString("recipientName");
+                request.setCustomerName(recipientName != null && !recipientName.equals("Unknown") ? recipientName : null);
+            } catch (SQLException e2) {
+                request.setCustomerName(null);
+            }
         }
         
         request.setApprovedBy(rs.getInt("approved_by"));
         request.setApproverName(rs.getString("approverName"));
         request.setApprovedAt(rs.getTimestamp("approved_at"));
-        request.setApprovalReason(rs.getString("approval_reason"));
-        request.setRejectionReason(rs.getString("rejection_reason"));
+        // Schema v11: Export_Requests doesn't have approval_reason or rejection_reason columns
+        // request.setApprovalReason(rs.getString("approval_reason"));
+        // request.setRejectionReason(rs.getString("rejection_reason"));
         
         // Set other fields
         try {
@@ -432,7 +466,7 @@ public class ExportRequestDAO extends DBContext {
             // Column may not exist
         }
         try {
-            request.setDisable(rs.getBoolean("disable"));
+            request.setDeletedAt(rs.getTimestamp("deleted_at"));
         } catch (SQLException e) {
             // Column may not exist
         }

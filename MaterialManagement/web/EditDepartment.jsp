@@ -55,7 +55,7 @@
                                     </c:if>
 
                                     <c:choose>
-                                        <c:when test="${sessionScope.user.roleId == 1 or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_DEPARTMENT')}">
+                                        <c:when test="${sessionScope.user.roleId == 1 or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Sửa phòng ban')}">
                                             <form action="editdepartment" method="post" id="departmentForm">
                                                 <input type="hidden" name="id" value="${department.departmentId}">
                                                 <div class="row">
@@ -110,8 +110,8 @@
                                         <c:otherwise>
                                             <div class="alert alert-danger text-center">
                                                 <h4><i class="fas fa-exclamation-triangle"></i> Access Denied</h4>
-                                                <p>Bạn không có quyền chỉnh sửa phòng ban.</p>
-                                                <a href="depairmentlist" class="btn btn-primary">Quay lại danh sách</a>
+                                                <p>You do not have permission to edit department.</p>
+                                                <a href="depairmentlist" class="btn btn-primary">Back to List</a>
                                             </div>
                                         </c:otherwise>
                                     </c:choose>

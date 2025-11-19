@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -156,6 +157,18 @@
                     <button type="submit" class="btn btn-filter" style="background-color: #DEAD6F; border-color: #DEAD6F; color:white;">Filter</button>
                     <a href="${pageContext.request.contextPath}/ExportRequestList" class="btn btn-secondary" style="width: 75px; height: 50px; display: flex; justify-content: center; align-items: center">Clear</a>
                 </form>
+                <c:if test="${not empty param.success}">
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-check-circle me-2"></i>${param.success}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                </c:if>
+                <c:if test="${not empty param.error}">
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>${param.error}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                </c:if>
                 <c:if test="${not empty error}">
                     <p class="error">${error}</p>
                 </c:if>
@@ -215,9 +228,19 @@
                                             </c:choose>
                                         </td>
                                         <td>
-                                          <a href="${pageContext.request.contextPath}/ViewExportRequest?id=${request.exportRequestId}&status=${status}&search=${search}" class="btn-detail" style="pointer-events:auto;z-index:9999;position:relative;">
-                                                <i class="fas fa-eye"></i> Details
-                                            </a>
+                                            <div class="d-flex gap-1">
+                                                <a href="${pageContext.request.contextPath}/ViewExportRequest?id=${request.exportRequestId}&status=${status}&search=${search}" class="btn-detail" style="pointer-events:auto;z-index:9999;position:relative;">
+                                                    <i class="fas fa-eye"></i> Details
+                                                </a>
+                                                <c:if test="${request.status == 'pending' && hasHandleRequestPermission}">
+                                                    <button type="button" class="btn btn-success btn-sm" onclick="setModalAction('approved', '${request.exportRequestId}')" title="Approve">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-danger btn-sm" onclick="setModalAction('rejected', '${request.exportRequestId}')" title="Reject">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </c:if>
+                                            </div>
                                         </td>
                                     </tr>
                                 </c:forEach>
@@ -260,6 +283,69 @@
     </div>
 </div>
 <jsp:include page="Footer.jsp" />
+
+<!-- Status Update Modal -->
+<div class="modal fade" id="statusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Export Request Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="statusForm" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="requestId" id="modalRequestId">
+                    <div class="mb-3" id="approvalReasonDiv" style="display: none;">
+                        <label for="approvalReason" class="form-label">Approval Reason</label>
+                        <textarea class="form-control" name="approvalReason" id="approvalReason" rows="3" placeholder="Enter approval reason..."></textarea>
+                    </div>
+                    <div class="mb-3" id="rejectionReasonDiv" style="display: none;">
+                        <label for="rejectionReason" class="form-label">Rejection Reason <span style="color:red">*</span></label>
+                        <textarea class="form-control" name="rejectionReason" id="rejectionReason" rows="3" placeholder="Enter rejection reason..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function setModalAction(status, requestId) {
+        document.getElementById('modalRequestId').value = requestId;
+        
+        const approvalReasonDiv = document.getElementById('approvalReasonDiv');
+        const rejectionReasonDiv = document.getElementById('rejectionReasonDiv');
+        const approvalReason = document.getElementById('approvalReason');
+        const rejectionReason = document.getElementById('rejectionReason');
+        const statusForm = document.getElementById('statusForm');
+        
+        // Clear previous values
+        if (approvalReason) approvalReason.value = '';
+        if (rejectionReason) rejectionReason.value = '';
+        
+        if (status === 'approved') {
+            approvalReasonDiv.style.display = 'block';
+            rejectionReasonDiv.style.display = 'none';
+            if (rejectionReason) rejectionReason.removeAttribute('required');
+            if (approvalReason) approvalReason.removeAttribute('required');
+            statusForm.action = '${pageContext.request.contextPath}/ApproveExportRequest';
+        } else if (status === 'rejected') {
+            approvalReasonDiv.style.display = 'none';
+            rejectionReasonDiv.style.display = 'block';
+            if (rejectionReason) rejectionReason.setAttribute('required', 'required');
+            if (approvalReason) approvalReason.removeAttribute('required');
+            statusForm.action = '${pageContext.request.contextPath}/RejectExportRequest';
+        }
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('statusModal'));
+        modal.show();
+    }
+</script>
 </body>
 </html>

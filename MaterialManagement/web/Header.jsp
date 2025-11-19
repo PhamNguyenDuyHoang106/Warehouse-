@@ -2,11 +2,15 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ page import="dal.PermissionDAO" %>
 <%@ page import="entity.User" %>
+<%@ page import="utils.PermissionHelper" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.stream.Collectors" %>
 
 <%
-User user = (User) session.getAttribute("user");
+User user = null;
+if (session != null) {
+    user = (User) session.getAttribute("user");
+}
 if (user != null) {
     // Only query permissions if not already in session to avoid repeated database queries
     List<String> userPermissions = (List<String>) session.getAttribute("userPermissions");
@@ -37,10 +41,9 @@ if (user != null) {
 
 <head>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
-          integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ=="
           crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
-        /* Đảm bảo header, body và footer đồng nhất khi zoom - tất cả đều full width */
+        /* Ensure header, body and footer are consistent when zooming - all full width */
         * {
             box-sizing: border-box;
         }
@@ -60,7 +63,7 @@ if (user != null) {
             padding: 0;
         }
         
-        /* Đảm bảo container-fluid cho header và footer giống body content */
+        /* Ensure container-fluid for header and footer matches body content */
         header .container-fluid, footer .container-fluid {
             width: 100%;
             padding-left: calc(var(--bs-gutter-x, 0.75rem) * 1);
@@ -70,7 +73,7 @@ if (user != null) {
             box-sizing: border-box;
         }
         
-        /* Đảm bảo header menu không bị overflow */
+        /* Ensure header menu doesn't overflow */
         header nav.main-menu {
             overflow-x: auto;
             overflow-y: hidden;
@@ -78,14 +81,20 @@ if (user != null) {
             width: 100%;
         }
         
-        /* Đảm bảo dropdown không bị overflow */
+        /* Ensure dropdown doesn't overflow */
         header .filter-categories {
             max-width: 100%;
             white-space: nowrap;
             box-sizing: border-box;
+            min-width: 180px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            font-size: 14px;
         }
         
-        /* Responsive cho mobile */
+        /* Responsive for mobile */
         @media (max-width: 991px) {
             header .offcanvas-body {
                 overflow-x: hidden;
@@ -97,7 +106,7 @@ if (user != null) {
             }
         }
         
-        /* Đảm bảo row trong header và footer có cùng gutter */
+        /* Ensure row in header and footer has same gutter */
         header .row, footer .row {
             margin-left: calc(-0.5 * var(--bs-gutter-x, 0.75rem));
             margin-right: calc(-0.5 * var(--bs-gutter-x, 0.75rem));
@@ -154,135 +163,335 @@ if (user != null) {
                 </div>
                 <div class="offcanvas-body d-flex flex-column flex-lg-row align-items-lg-center justify-content-between">
 
-                    <!-- System Management Dropdown - Hệ thống, ai cũng có thể truy cập -->
-                    <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 
-                                  || sessionScope.userPermissions.contains('VIEW_INVENTORY')
-                                  || sessionScope.userPermissions.contains('VIEW_LIST_USER') 
-                                  || sessionScope.userPermissions.contains('VIEW_LIST_DEPARTMENT') 
-                                  || sessionScope.userPermissions.contains('VIEW_LIST_UNIT') 
-                                  || sessionScope.userPermissions.contains('VIEW_LIST_MATERIAL') 
-                                  || sessionScope.userPermissions.contains('VIEW_LIST_CATEGORY') 
-                                  || sessionScope.userPermissions.contains('VIEW_LIST_SUPPLIER')
-                                  || sessionScope.userPermissions.contains('VIEW_LIST_RECIPIENT')
-                                  || sessionScope.userPermissions.contains('VIEW_LIST_RACK')
-                                  || sessionScope.userPermissions.contains('VIEW_LIST_VEHICLE'))}">
-                          <select class="filter-categories border-0 mb-0 me-5" onchange="location.href = this.value;">
-                              <option selected disabled>System Management</option>
-                              <c:if test="${not empty sessionScope.user && sessionScope.user.roleId == 1}">
-                                  <option value="RolePermission">Permission</option>
-                              </c:if>
-                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_INVENTORY'))}">
-                                  <option value="InventoryReport">Inventory Report</option>
-                              </c:if>
-                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_LIST_RACK'))}">
-                                  <option value="WarehouseRackList">Warehouse Racks</option>
-                              </c:if>
-                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_LIST_VEHICLE'))}">
-                                  <option value="VehicleList">Vehicles</option>
-                              </c:if>
-                              <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_USER')}">
-                                  <option value="UserList">Users</option>
-                              </c:if>
-                              <c:if test="${not empty sessionScope.user && sessionScope.user.roleId == 1}">
-                                  <option value="PasswordResetRequests">Password Reset Requests</option>
-                              </c:if>                                
-                              <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_DEPARTMENT')}">
-                                  <option value="depairmentlist">Department</option>
-                              </c:if>
-                              <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_UNIT')}">
-                                  <option value="UnitList">Unit</option>
-                              </c:if>                                
-                              <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_MATERIAL')}">
-                                  <option value="dashboardmaterial">Material</option>
-                              </c:if>
-                              <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_CATEGORY')}">
-                                  <option value="Category">Category</option>
-                              </c:if>
-                              <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_SUPPLIER')}">
-                                  <option value="Supplier">Supplier</option>
-                              </c:if>
-                              <c:if test="${sessionScope.userPermissions.contains('VIEW_LIST_RECIPIENT')}">
-                                  <option value="Recipient">Recipient</option>
-                              </c:if>                                
-                          </select>
-                    </c:if>
+                    <c:if test="${not empty sessionScope.user}">
+                        <!-- ============================================ -->
+                        <!-- SYSTEM MANAGEMENT - Cho admin và chức năng chung -->
+                        <!-- ============================================ -->
+                        <c:if test="${sessionScope.user.roleId == 1 
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'DS KH')
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'DS NCC')
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'Danh sách NVL')
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'Báo cáo tồn kho')}">
+                            <select class="filter-categories border-0 mb-0 me-3" onchange="if(this.value) location.href = this.value;">
+                                <option value="" selected disabled>🔧 System</option>
+                                
+                                <!-- Admin only -->
+                                <c:if test="${sessionScope.user.roleId == 1}">
+                                    <option value="RolePermission">📋 Permissions</option>
+                                    <option value="UserList">👥 User Management</option>
+                                </c:if>
+                                
+                                <!-- Common system functions -->
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS KH')}">
+                                    <option value="Customer?action=list">👤 Customers</option>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS NCC')}">
+                                    <option value="Supplier?action=list">🏢 Suppliers</option>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Danh sách NVL')}">
+                                    <option value="dashboardmaterial">📦 Materials</option>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS danh mục')}">
+                                    <option value="Category?service=listCategory">📁 Categories</option>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1}">
+                                    <option value="UnitList">📏 Units</option>
+                                    <option value="depairmentlist">🏛️ Departments</option>
+                                    <option value="WarehouseRackList">🗄️ Warehouse Racks</option>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Danh sách phương tiện')}">
+                                    <option value="VehicleList">🚚 Vehicles</option>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Báo cáo tồn kho')}">
+                                    <option value="InventoryReport">📊 Inventory Report</option>
+                                    <option value="StaticInventory">📊 Static Inventory</option>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1}">
+                                    <option value="InventoryMovement?action=list">📜 Inventory History</option>
+                                </c:if>
+                            </select>
+                        </c:if>
 
-                    <!-- Import/Export Operations Dropdown -->
-                    <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_IMPORT') || sessionScope.userPermissions.contains('CREATE_EXPORT') || sessionScope.userPermissions.contains('VIEW_IMPORT_LIST') || sessionScope.userPermissions.contains('VIEW_EXPORT_LIST'))}">
-                        <select class="filter-categories border-0 mb-0 me-5" onchange="location.href = this.value;">
-                            <option selected disabled>Import/Export</option>
-                            <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_IMPORT'))}">
-                                <option value="ImportMaterial">Import Material</option>
+                        <!-- ============================================ -->
+                        <!-- GIÁM ĐỐC - Role 2: Xem báo cáo, duyệt yêu cầu -->
+                        <!-- ============================================ -->
+                        <!-- Admin luôn thấy menu này, các role khác cần có permission -->
+                        <c:if test="${sessionScope.user.roleId == 1 
+                                      || sessionScope.user.roleId == 2
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'Xem báo cáo lợi nhuận')
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'Xem báo cáo công nợ')
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'Duyệt PR')
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'Duyệt yêu cầu xuất')
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'Duyệt PO')
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'Duyệt SO')}">
+                            <select class="filter-categories border-0 mb-0 me-3" onchange="if(this.value) location.href = this.value;">
+                                <option value="" selected disabled>👔 Director</option>
+                                
+                                <!-- Reports -->
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Báo cáo lợi nhuận')}">
+                                    <option value="ProfitTracking?type=daily">📈 Profit Report</option>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Báo cáo công nợ')}">
+                                    <option value="AccountsReceivable?action=list">💰 Accounts Receivable</option>
+                                    <option value="AccountsPayable?action=list">💸 Accounts Payable</option>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Báo cáo tồn kho')}">
+                                    <option value="InventoryReport">📦 Inventory Report</option>
+                                </c:if>
+                                
+                                <!-- Approvals -->
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Duyệt PR')}">
+                                    <option value="ListPurchaseRequests">✅ Approve Purchase Requests</option>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Duyệt yêu cầu xuất')}">
+                                    <option value="ExportRequestList">✅ Approve Export Requests</option>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Duyệt PO')}">
+                                    <option value="PurchaseOrderList">✅ Approve Purchase Orders</option>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Duyệt SO')}">
+                                    <option value="SalesOrder?action=list">✅ Approve Sales Orders</option>
+                                </c:if>
+                            </select>
+                        </c:if>
+
+                        <!-- ============================================ -->
+                        <!-- KẾ TOÁN - Role 3, 4: Hóa đơn, công nợ, bút toán -->
+                        <!-- ============================================ -->
+                        <c:if test="${sessionScope.user.roleId == 1 || sessionScope.user.roleId == 3 || sessionScope.user.roleId == 4}">
+                            <c:if test="${sessionScope.user.roleId == 1 
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'DS hóa đơn')
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'DS công nợ phải thu')
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'DS công nợ phải trả')
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'Tạo bút toán')
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'DS đơn đặt hàng')}">
+                                <select class="filter-categories border-0 mb-0 me-3" onchange="if(this.value) location.href = this.value;">
+                                    <option value="" selected disabled>💰 Accounting</option>
+                                    
+                                    <!-- Invoices -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS hóa đơn')}">
+                                        <option value="Invoice?action=list">🧾 Invoices</option>
+                                    </c:if>
+                                    
+                                    <!-- Tax Invoices -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS hóa đơn')}">
+                                        <option value="TaxInvoiceList">🧾 Tax Invoices</option>
+                                    </c:if>
+                                    
+                                    <!-- Currency Management -->
+                                    <c:if test="${sessionScope.user.roleId == 1}">
+                                        <option value="CurrencyList">💰 Currency Management</option>
+                                    </c:if>
+                                    
+                                    <!-- Accounts Receivable/Payable -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS công nợ phải thu')}">
+                                        <option value="AccountsReceivable?action=list">📥 Accounts Receivable</option>
+                                    </c:if>
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS công nợ phải trả')}">
+                                        <option value="AccountsPayable?action=list">📤 Accounts Payable</option>
+                                    </c:if>
+                                    
+                                    <!-- Payments -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Tạo bút toán')}">
+                                        <option value="Payment?action=list">💳 Payments</option>
+                                    </c:if>
+                                    
+                                    <!-- Journals -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Tạo bút toán')}">
+                                        <option value="Journal?action=list">📝 Journal Entries</option>
+                                    </c:if>
+                                    
+                                    <!-- Purchase Orders (for accounting) -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS đơn đặt hàng')}">
+                                        <option value="PurchaseOrderList">🛒 Purchase Orders</option>
+                                    </c:if>
+                                    
+                                    <!-- Accounts Chart -->
+                                    <c:if test="${sessionScope.user.roleId == 1}">
+                                        <option value="Account?action=list">📊 Chart of Accounts</option>
+                                    </c:if>
+                                </select>
                             </c:if>
-                            <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_IMPORT_LIST'))}">
-                                <option value="ImportList">Import List</option>
+                        </c:if>
+
+                        <!-- ============================================ -->
+                        <!-- MUA HÀNG - Role 5, 6: Yêu cầu mua, đơn đặt hàng -->
+                        <!-- ============================================ -->
+                        <c:if test="${sessionScope.user.roleId == 1 || sessionScope.user.roleId == 5 || sessionScope.user.roleId == 6}">
+                            <c:if test="${sessionScope.user.roleId == 1 
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'DS yêu cầu mua')
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'DS đơn đặt hàng')
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'DS phiếu nhập')}">
+                                <select class="filter-categories border-0 mb-0 me-3" onchange="if(this.value) location.href = this.value;">
+                                    <option value="" selected disabled>🛒 Purchasing</option>
+                                    
+                                    <!-- Purchase Requests -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS yêu cầu mua')}">
+                                        <option value="ListPurchaseRequests">📋 Purchase Requests</option>
+                                    </c:if>
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Tạo PR')}">
+                                        <option value="CreatePurchaseRequest">➕ Create Purchase Request</option>
+                                    </c:if>
+                                    
+                                    <!-- Purchase Orders -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS đơn đặt hàng')}">
+                                        <option value="PurchaseOrderList">📦 Purchase Orders</option>
+                                    </c:if>
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Tạo PO')}">
+                                        <option value="CreatePurchaseOrder">➕ Create Purchase Order</option>
+                                    </c:if>
+                                    
+                                    <!-- Imports -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS phiếu nhập')}">
+                                        <option value="ImportList">📥 Import Slips</option>
                             </c:if>
-                            <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_EXPORT'))}">
-                                <option value="ExportMaterial">Export Material</option>
-                            </c:if>
-                            <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_EXPORT_LIST'))}">
-                                <option value="ExportList">Export List</option>
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Tạo nhập kho')}">
+                                        <option value="ImportMaterial">➕ Create Import Slip</option>
                             </c:if>
                         </select>
+                            </c:if>
                     </c:if>
 
-                    <!-- Employee Requests Dropdown - Các đơn yêu cầu cho nhân viên (không có Purchase Order) -->
-                    <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 
-                                  || sessionScope.userPermissions.contains('CREATE_EXPORT_REQUEST')
-                                  || sessionScope.userPermissions.contains('VIEW_EXPORT_REQUEST_LIST')
-                                  || sessionScope.userPermissions.contains('CREATE_PURCHASE_REQUEST')
-                                  || sessionScope.userPermissions.contains('VIEW_PURCHASE_REQUEST_LIST')
-                                  || sessionScope.userPermissions.contains('CREATE_REPAIR_REQUEST')
-                                  || sessionScope.userPermissions.contains('VIEW_REPAIR_REQUEST_LIST'))}">
-                          <select class="filter-categories border-0 mb-0 me-5" onchange="location.href = this.value;">
-                              <option selected disabled>Employee Requests</option>
-                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_EXPORT_REQUEST'))}">
-                                  <option value="CreateExportRequest">Create Export Request</option>
+                        <!-- ============================================ -->
+                        <!-- BÁN HÀNG - Role 7, 8: Báo giá, đơn hàng, xuất kho -->
+                        <!-- ============================================ -->
+                        <c:if test="${sessionScope.user.roleId == 1 || sessionScope.user.roleId == 7 || sessionScope.user.roleId == 8}">
+                            <c:if test="${sessionScope.user.roleId == 1 
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'DS báo giá')
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'DS đơn bán')
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'DS phiếu xuất')}">
+                                <select class="filter-categories border-0 mb-0 me-3" onchange="if(this.value) location.href = this.value;">
+                                    <option value="" selected disabled>💼 Sales</option>
+                                    
+                                    <!-- Quotations -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS báo giá')}">
+                                        <option value="Quotation?action=list">📄 Quotations</option>
+                                    </c:if>
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Tạo báo giá')}">
+                                        <option value="Quotation?action=edit">➕ Create Quotation</option>
                               </c:if>
-                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_EXPORT_REQUEST_LIST'))}">
-                                  <option value="ExportRequestList">Export Requests</option>
+                                    
+                                    <!-- Sales Orders -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS đơn bán')}">
+                                        <option value="SalesOrder?action=list">🛍️ Sales Orders</option>
                               </c:if>
-                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_PURCHASE_REQUEST'))}">
-                                  <option value="CreatePurchaseRequest">Create Purchase Request</option>
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Tạo SO')}">
+                                        <option value="SalesOrder?action=edit">➕ Create Sales Order</option>
                               </c:if>
-                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_PURCHASE_REQUEST_LIST'))}">
-                                  <option value="ListPurchaseRequests">Purchase Requests</option>
+                                    
+                                    <!-- Exports -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS phiếu xuất')}">
+                                        <option value="ExportList">📤 Export Slips</option>
                               </c:if>
-                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_REPAIR_REQUEST'))}">
-                                  <option value="CreateRepairRequest">Create Repair Request</option>
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Tạo xuất kho')}">
+                                        <option value="ExportMaterial">➕ Create Export Slip</option>
                               </c:if>
-                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_REPAIR_REQUEST_LIST'))}">
-                                  <option value="repairrequestlist">Repair Requests</option>
+                                    
+                                    <!-- Customers -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS KH')}">
+                                        <option value="Customer?action=list">👤 Customers</option>
                               </c:if>
                           </select>
+                            </c:if>
                     </c:if>
 
-                    <!-- Purchase Order Dropdown - Dành cho Accounting -->
-                    <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_PURCHASE_ORDER') || sessionScope.userPermissions.contains('VIEW_PURCHASE_ORDER_LIST'))}">
-                          <select class="filter-categories border-0 mb-0 me-5" onchange="location.href = this.value;">
-                              <option selected disabled>Purchase Order</option>
-                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('CREATE_PURCHASE_ORDER'))}">
-                                  <option value="CreatePurchaseOrder">Create Purchase Order</option>
+                        <!-- ============================================ -->
+                        <!-- KHO - Role 9, 10, 11: Nhập/xuất, kiểm kho, sửa chữa -->
+                        <!-- ============================================ -->
+                        <c:if test="${sessionScope.user.roleId == 1 || sessionScope.user.roleId == 9 || sessionScope.user.roleId == 10 || sessionScope.user.roleId == 11}">
+                            <c:if test="${sessionScope.user.roleId == 1 
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'DS phiếu nhập')
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'DS phiếu xuất')
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'Xem báo cáo tồn kho')
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'Xem lịch sử tồn kho')
+                                          || PermissionHelper.hasPermission(sessionScope.user, 'DS yêu cầu sửa')}">
+                                <select class="filter-categories border-0 mb-0 me-3" onchange="if(this.value) location.href = this.value;">
+                                    <option value="" selected disabled>🏭 Warehouse</option>
+                                    
+                                    <!-- Imports -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS phiếu nhập')}">
+                                        <option value="ImportList">📥 Import Slips</option>
+                                    </c:if>
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Tạo nhập kho')}">
+                                        <option value="ImportMaterial">➕ Create Import Slip</option>
+                                    </c:if>
+                                    
+                                    <!-- Exports -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS phiếu xuất')}">
+                                        <option value="ExportList">📤 Export Slips</option>
+                                    </c:if>
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Tạo xuất kho')}">
+                                        <option value="ExportMaterial">➕ Create Export Slip</option>
+                                    </c:if>
+                                    
+                                    <!-- Inventory -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Báo cáo tồn kho')}">
+                                        <option value="InventoryReport">📊 Inventory Report</option>
+                                    </c:if>
+                                    <c:if test="${sessionScope.user.roleId == 1}">
+                                        <option value="InventoryMovement?action=list">📜 Inventory History</option>
+                                    </c:if>
+                                    
+                                    <!-- Warehouse Management -->
+                                    <c:if test="${sessionScope.user.roleId == 1}">
+                                        <option value="WarehouseRackList">🗄️ Warehouse Racks</option>
+                                    </c:if>
+                                    
+                                    <!-- Repair Requests -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS yêu cầu sửa')}">
+                                        <option value="repairrequestlist">🔧 Repair Requests</option>
+                                    </c:if>
+                                    
+                                    <!-- History -->
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS phiếu nhập')}">
+                                        <option value="ImportDetailHistory">📜 Import History</option>
+                                    </c:if>
+                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS phiếu xuất')}">
+                                        <option value="ExportDetailHistory">📜 Export History</option>
+                                    </c:if>
+                          </select>
+                            </c:if>
+                    </c:if>
+
+                        <!-- ============================================ -->
+                        <!-- YÊU CẦU - Cho nhân viên tạo yêu cầu -->
+                        <!-- ============================================ -->
+                        <c:if test="${sessionScope.user.roleId == 1 
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'Tạo yêu cầu xuất')
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'DS yêu cầu xuất')
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'Tạo PR')
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'DS yêu cầu mua')
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'Tạo yêu cầu sửa')
+                                      || PermissionHelper.hasPermission(sessionScope.user, 'DS yêu cầu sửa')}">
+                            <select class="filter-categories border-0 mb-0 me-3" onchange="if(this.value) location.href = this.value;">
+                                <option value="" selected disabled>📝 Requests</option>
+                                
+                                <!-- Export Requests -->
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS yêu cầu xuất')}">
+                                    <option value="ExportRequestList">📤 Export Requests</option>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Tạo yêu cầu xuất')}">
+                                    <option value="CreateExportRequest">➕ Create Export Request</option>
+                                </c:if>
+                                
+                                <!-- Purchase Requests -->
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS yêu cầu mua')}">
+                                    <option value="ListPurchaseRequests">🛒 Purchase Requests</option>
+                                </c:if>
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Tạo PR')}">
+                                    <option value="CreatePurchaseRequest">➕ Create Purchase Request</option>
+                                </c:if>
+                                
+                                <!-- Repair Requests -->
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS yêu cầu sửa')}">
+                                    <option value="repairrequestlist">🔧 Repair Requests</option>
                               </c:if>
-                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_PURCHASE_ORDER_LIST'))}">
-                                  <option value="PurchaseOrderList">Purchase Orders</option>
+                                <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Tạo yêu cầu sửa')}">
+                                    <option value="CreateRepairRequest">➕ Create Repair Request</option>
                               </c:if>
                           </select>
+                        </c:if>
                     </c:if>
-
-                    <!-- History Dropdown -->
-                    <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_IMPORT_LIST') || sessionScope.userPermissions.contains('VIEW_EXPORT_LIST'))}">
-                          <select class="filter-categories border-0 mb-0 me-5" onchange="location.href = this.value;">
-                              <option selected disabled>History</option>
-                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_IMPORT_LIST'))}">
-                                  <option value="ImportDetailHistory">Import Details</option>
-                              </c:if>
-                              <c:if test="${not empty sessionScope.user && (sessionScope.user.roleId == 1 || sessionScope.userPermissions.contains('VIEW_EXPORT_LIST'))}">
-                                  <option value="ExportDetailHistory">Export Details</option>
-                              </c:if>
-                          </select>
-                    </c:if>
-
 
                     <ul class="navbar-nav d-flex flex-row flex-wrap gap-3 mb-3 mb-lg-0 menu-list list-unstyled">
                         <li class="nav-item">
@@ -306,9 +515,7 @@ if (user != null) {
 </header>
 
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"
-        integrity="sha384-7+zCNj/IqJ95wo16oMtfsKbZ9ccEh31eOz1HGyDuCQ6wgnyJNSYdrPa03rtR1zdB"
-crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js"
-        integrity="sha384-QJHtvGhmr9XOIpI6YVutG+2QOK9T+ZnN4kzFN1RtK3zEFEIsxhlmWl5/YESvpZ13"
-crossorigin="anonymous"></script>
+        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+        crossorigin="anonymous"></script>
 <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>

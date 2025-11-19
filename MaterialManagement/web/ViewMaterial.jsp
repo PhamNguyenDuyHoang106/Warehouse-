@@ -1,6 +1,7 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <!DOCTYPE html>
 <html>
   <head>
@@ -145,32 +146,45 @@
         <div class="row">
           <div class="col-md-4">
             <div class="material-image">
-              <img
-                src="images/material/${m.materialsUrl}"
-                alt="${m.materialName}"
-                style="width: 200px; height: 200px; object-fit: cover"
-                onerror="this.onerror=null;this.src='images/material/default.jpg';"
-              />
+              <c:set var="mediaUrl" value="${m.materialsUrl}" />
+              <c:choose>
+                <c:when test="${fn:startsWith(mediaUrl, 'http://') || fn:startsWith(mediaUrl, 'https://') || fn:startsWith(mediaUrl, '/')}">
+                  <img
+                    src="${mediaUrl}"
+                    alt="${m.materialName}"
+                    style="width: 200px; height: 200px; object-fit: cover"
+                    onerror="this.onerror=null;this.src='images/material/default.jpg';"
+                  />
+                </c:when>
+                <c:otherwise>
+                  <img
+                    src="${pageContext.request.contextPath}/${mediaUrl}"
+                    alt="${m.materialName}"
+                    style="width: 200px; height: 200px; object-fit: cover"
+                    onerror="this.onerror=null;this.src='${pageContext.request.contextPath}/images/material/default.jpg';"
+                  />
+                </c:otherwise>
+              </c:choose>
             </div>
           </div>
           <div class="col-md-8">
             <h2 class="mb-4 material-title">
-              ${empty m.materialName ? 'Không có thông tin' : m.materialName}
+              ${empty m.materialName ? 'No Information' : m.materialName}
             </h2>
             <div class="detail-row">
               <div class="detail-label">Material Code</div>
               <div>
-                ${empty m.materialCode ? 'Không có thông tin' : m.materialCode}
+                ${empty m.materialCode ? 'No Information' : m.materialCode}
               </div>
             </div>
             <div class="detail-row">
               <div class="detail-label">Status</div>
               <div>
                 <span
-                  class="badge ${m.materialStatus == 'new' ? 'bg-success' : (m.materialStatus == 'used' ? 'bg-warning' : 'bg-danger')}"
+                  class="badge ${m.materialStatus == 'active' ? 'bg-success' : (m.materialStatus == 'inactive' ? 'bg-warning' : 'bg-secondary')}"
                 >
-                  ${m.materialStatus == 'new' ? 'New' : (m.materialStatus ==
-                  'used' ? 'Used' : 'Damaged')}
+                  ${m.materialStatus == 'active' ? 'Active' : (m.materialStatus ==
+                  'inactive' ? 'Inactive' : 'Discontinued')}
                 </span>
               </div>
             </div>
@@ -202,14 +216,14 @@
               <div class="detail-row">
                 <div class="detail-label">Category Name</div>
                 <div>
-                  ${empty m.category.category_name ? 'Không có thông tin' :
+                  ${empty m.category.category_name ? 'No Information' :
                   m.category.category_name}
                 </div>
               </div>
               <div class="detail-row">
                 <div class="detail-label">Description</div>
                 <div>
-                  ${empty m.category.description ? 'Không có thông tin' :
+                  ${empty m.category.description ? 'No Information' :
                   m.category.description}
                 </div>
               </div>
@@ -224,14 +238,14 @@
               <div class="detail-row">
                 <div class="detail-label">Unit Name</div>
                 <div>
-                  ${empty m.unit.unitName ? 'Không có thông tin' :
+                  ${empty m.unit.unitName ? 'No Information' :
                   m.unit.unitName}
                 </div>
               </div>
               <div class="detail-row">
                 <div class="detail-label">Symbol</div>
                 <div>
-                  ${empty m.unit.symbol ? 'Không có thông tin' : m.unit.symbol}
+                  ${empty m.unit.symbol ? 'No Information' : m.unit.symbol}
                 </div>
               </div>
             </div>
@@ -244,14 +258,14 @@
           <div class="row">
             <div class="col-md-6">
               <div class="detail-row">
-                <div class="detail-label">Thể tích 1 đơn vị</div>
+                <div class="detail-label">Volume per Unit</div>
                 <div>
                   <c:choose>
                     <c:when test="${m.unitVolume != null && m.unitVolume.doubleValue() > 0}">
                       <fmt:formatNumber value="${m.unitVolume}" maxFractionDigits="4"/> m³
                     </c:when>
                     <c:otherwise>
-                      <span class="text-muted">Chưa cập nhật</span>
+                      <span class="text-muted">Not Updated</span>
                     </c:otherwise>
                   </c:choose>
                 </div>
@@ -259,14 +273,14 @@
             </div>
             <div class="col-md-6">
               <div class="detail-row">
-                <div class="detail-label">Khối lượng 1 đơn vị</div>
+                <div class="detail-label">Weight per Unit</div>
                 <div>
                   <c:choose>
                     <c:when test="${m.unitWeight != null && m.unitWeight.doubleValue() > 0}">
                       <fmt:formatNumber value="${m.unitWeight}" maxFractionDigits="4"/> kg
                     </c:when>
                     <c:otherwise>
-                      <span class="text-muted">Chưa cập nhật</span>
+                      <span class="text-muted">Not Updated</span>
                     </c:otherwise>
                   </c:choose>
                 </div>
@@ -277,19 +291,19 @@
             <div class="row mt-3 pt-3 border-top">
               <div class="col-md-6">
                 <div class="detail-row">
-                  <div class="detail-label">Tổng thể tích (tính toán)</div>
+                  <div class="detail-label">Total Volume (Calculated)</div>
                   <div>
                     <fmt:formatNumber value="${m.unitVolume.doubleValue() * m.quantity.doubleValue()}" maxFractionDigits="2"/> m³
-                    <br><small class="text-muted">(Thể tích 1 đơn vị × Tổng số lượng)</small>
+                    <br><small class="text-muted">(Volume per Unit × Total Quantity)</small>
                   </div>
                 </div>
               </div>
               <div class="col-md-6">
                 <div class="detail-row">
-                  <div class="detail-label">Tổng khối lượng (tính toán)</div>
+                  <div class="detail-label">Total Weight (Calculated)</div>
                   <div>
                     <fmt:formatNumber value="${m.unitWeight.doubleValue() * m.quantity.doubleValue()}" maxFractionDigits="2"/> kg
-                    <br><small class="text-muted">(Khối lượng 1 đơn vị × Tổng số lượng)</small>
+                    <br><small class="text-muted">(Weight per Unit × Total Quantity)</small>
                   </div>
                 </div>
               </div>
@@ -346,7 +360,16 @@
                         <td>
                           <c:choose>
                             <c:when test="${not empty inv.lastUpdated}">
-                              ${inv.lastUpdated.toString().replace('T', ' ').substring(0, 16)}
+                              <c:set var="dateStr" value="${inv.lastUpdated.toString()}" />
+                              <c:set var="dateFormatted" value="${fn:replace(dateStr, 'T', ' ')}" />
+                              <c:choose>
+                                <c:when test="${fn:length(dateFormatted) > 16}">
+                                  ${fn:substring(dateFormatted, 0, 16)}
+                                </c:when>
+                                <c:otherwise>
+                                  ${dateFormatted}
+                                </c:otherwise>
+                              </c:choose>
                             </c:when>
                             <c:otherwise>
                               <span class="text-muted">-</span>
@@ -411,7 +434,7 @@
                       <td>
                         <c:choose>
                           <c:when test="${not empty batch.receivedDate}">
-                            ${batch.receivedDate.toString().replace('T', ' ').substring(0, 16)}
+                            <fmt:formatDate value="${batch.receivedDate}" pattern="yyyy-MM-dd HH:mm" />
                           </c:when>
                           <c:otherwise>
                             <span class="text-muted">-</span>

@@ -28,11 +28,6 @@ public class UnitValidator {
             errors.put("symbol", "Unit symbol cannot contain special characters.");
         }
 
-        if (unit.getDescription() != null && !unit.getDescription().trim().isEmpty()) {
-            if (!unit.getDescription().matches("^[a-zA-Z0-9\\sÀ-ỹà-ỹ.,-]+$")) {
-                errors.put("description", "Description cannot contain special characters.");
-            }
-        }
 
         return errors;
     }
@@ -67,16 +62,11 @@ public class UnitValidator {
             errors.put("symbol", "Unit symbol cannot contain special characters.");
         }
 
-        if (unit.getDescription() != null && !unit.getDescription().trim().isEmpty()) {
-            if (!unit.getDescription().matches("^[a-zA-Z0-9\\sÀ-ỹà-ỹ.,-]+$")) {
-                errors.put("description", "Description cannot contain special characters.");
-            }
-        }
 
         return errors;
     }
 
-    public static Map<String, String> validateUnitFormData(String unitName, String symbol, String description) {
+    public static Map<String, String> validateUnitFormData(String unitName, String symbol) {
         Map<String, String> errors = new HashMap<>();
 
         if (unitName == null || unitName.trim().isEmpty()) {
@@ -89,12 +79,6 @@ public class UnitValidator {
             errors.put("symbol", "Unit symbol cannot be empty.");
         } else if (!symbol.matches("^[a-zA-Z0-9\\s\u00c0-\u1ef9\u00e0-\u1ef9.,-]+$")) {
             errors.put("symbol", "Unit symbol cannot contain special characters.");
-        }
-
-        if (description != null && !description.trim().isEmpty()) {
-            if (!description.matches("^[a-zA-Z0-9\\s\u00c0-\u1ef9\u00e0-\u1ef9.,-]+$")) {
-                errors.put("description", "Description cannot contain special characters.");
-            }
         }
 
         return errors;

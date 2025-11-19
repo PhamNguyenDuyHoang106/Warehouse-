@@ -19,7 +19,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.sql.Timestamp;
+import java.sql.Date;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +28,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import utils.EmailUtils;
+import utils.PermissionHelper;
 import utils.PurchaseOrderValidator;
 import jakarta.mail.MessagingException;
 
@@ -58,9 +60,10 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
         SupplierDAO supplierDAO = new SupplierDAO();
         RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
 
-        boolean hasPermission = rolePermissionDAO.hasPermission(currentUser.getRoleId(), "CREATE_PURCHASE_ORDER");
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        boolean hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PO");
         if (!hasPermission) {
-            request.setAttribute("error", "You do not have permission to create purchase orders.");
+            request.setAttribute("error", "Bạn không có quyền tạo đơn đặt hàng.");
             request.getRequestDispatcher("PurchaseOrderList.jsp").forward(request, response);
             return;
         }
@@ -101,9 +104,7 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
                     Material material = materialDAO.getInformation(detail.getMaterialId());
                     if (material != null) {
                         // Get image
-                        String fileName = (material.getMaterialsUrl() != null && !material.getMaterialsUrl().isEmpty())
-                            ? material.getMaterialsUrl()
-                            : "default.jpg";
+                        String fileName = material.getMaterialsUrl();
                         materialImages.put(detail.getMaterialId(), fileName);
                         
                         // Get category name
@@ -149,9 +150,10 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
         RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
         UserDAO userDAO = new UserDAO();
 
-        boolean hasPermission = rolePermissionDAO.hasPermission(currentUser.getRoleId(), "CREATE_PURCHASE_ORDER");
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        boolean hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PO");
         if (!hasPermission) {
-            request.setAttribute("error", "You do not have permission to create purchase orders.");
+            request.setAttribute("error", "Bạn không có quyền tạo đơn đặt hàng.");
             request.getRequestDispatcher("PurchaseOrderList.jsp").forward(request, response);
             return;
         }
@@ -217,9 +219,7 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
                             Material material = materialDAO.getInformation(detail.getMaterialId());
                             if (material != null) {
                                 // Get image
-                                String fileName = (material.getMaterialsUrl() != null && !material.getMaterialsUrl().isEmpty())
-                                    ? material.getMaterialsUrl()
-                                    : "default.jpg";
+                                String fileName = material.getMaterialsUrl();
                                 materialImages.put(detail.getMaterialId(), fileName);
                                 
                                 // Get category name
@@ -255,13 +255,15 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
                 LOGGER.log(Level.WARNING, "Purchase request with ID " + purchaseRequestId + " not found.");
                 throw new Exception("The selected purchase request was not found. Please select a valid one.");
             }
-            if (!"APPROVED".equalsIgnoreCase(purchaseRequest.getStatus())) {
+            if (!"approved".equalsIgnoreCase(purchaseRequest.getStatus())) {
                 LOGGER.log(Level.WARNING, "Attempted to create PO from unapproved PR: " + purchaseRequest.getRequestCode());
                 throw new Exception("Only approved purchase requests can be used to create purchase orders.");
             }
 
-            // Group materials by supplier
-            Map<Integer, List<entity.PurchaseOrderDetail>> supplierGroups = new HashMap<>();
+            // Bỏ chức năng phân tách đơn - tạo 1 PO duy nhất với tất cả materials
+            // Lấy supplier_id từ material đầu tiên (hoặc có thể để null nếu không bắt buộc)
+            List<entity.PurchaseOrderDetail> allDetails = new ArrayList<>();
+            Integer firstSupplierId = null;
             
             for (int i = 0; i < materialIds.length; i++) {
                 int materialId = Integer.parseInt(materialIds[i]);
@@ -269,60 +271,68 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
                 BigDecimal unitPrice = new BigDecimal(unitPrices[i]);
                 int supplierId = Integer.parseInt(suppliers[i]);
                 
+                // Lấy supplier_id từ material đầu tiên
+                if (firstSupplierId == null) {
+                    firstSupplierId = supplierId;
+                }
+
                 Material material = materialDAO.getInformation(materialId);
                 if (material == null) {
                     LOGGER.log(Level.WARNING, "Material with ID " + materialId + " not found during PO creation.");
                     throw new Exception("Material with ID " + materialId + " not found. Please check material details.");
                 }
-                
+
                 entity.PurchaseOrderDetail detail = new entity.PurchaseOrderDetail();
                 detail.setMaterialId(materialId);
                 detail.setMaterialName(material.getMaterialName());
-                detail.setCategoryId(material.getCategory().getCategory_id());
-                detail.setQuantity(quantity);
+                detail.setMaterialCode(material.getMaterialCode());
+                detail.setQuantityOrdered(quantity);
                 detail.setUnitPrice(unitPrice);
+                detail.setTaxRate(BigDecimal.ZERO);
+                detail.setDiscountRate(BigDecimal.ZERO);
                 detail.setSupplierId(supplierId);
-                
-                // Group by supplier
-                supplierGroups.computeIfAbsent(supplierId, k -> new ArrayList<>()).add(detail);
-            }
 
-            // Create all purchase orders individually
-            List<entity.PurchaseOrder> createdOrders = new ArrayList<>();
-            for (Map.Entry<Integer, List<entity.PurchaseOrderDetail>> entry : supplierGroups.entrySet()) {
-                int supplierId = entry.getKey();
-                List<entity.PurchaseOrderDetail> supplierDetails = entry.getValue();
-                
-                // Create purchase order for this supplier
-                entity.PurchaseOrder purchaseOrder = new entity.PurchaseOrder();
-                purchaseOrder.setPoCode(purchaseOrderDAO.generateNextPOCode());
-                purchaseOrder.setPurchaseRequestId(purchaseRequestId);
-                purchaseOrder.setCreatedBy(currentUser.getUserId());
-                purchaseOrder.setNote(note);
-                purchaseOrder.setStatus("pending");
-                
-                boolean success = purchaseOrderDAO.createPurchaseOrder(purchaseOrder, supplierDetails);
-                
-                if (success) {
-                    createdOrders.add(purchaseOrder);
-                    
-                    try {
-                        sendPurchaseOrderNotification(purchaseOrder, supplierDetails, purchaseRequest, currentUser);
-                    } catch (Exception e) {
-                        LOGGER.log(Level.SEVERE, "Error sending purchase order notification for PO " + purchaseOrder.getPoCode() + ": " + e.getMessage(), e);
-                    }
-                } else {
-                    throw new Exception("Failed to create purchase order for supplier ID: " + supplierId);
+                if (material.getDefaultUnit() != null) {
+                    detail.setUnitId(material.getDefaultUnit().getId());
+                    detail.setUnitName(material.getDefaultUnit().getUnitName());
                 }
+
+                allDetails.add(detail);
             }
 
-            if (!createdOrders.isEmpty()) {
-                LOGGER.log(Level.INFO, "Successfully created " + createdOrders.size() + " purchase order(s).");
+            // Tạo 1 PO duy nhất với tất cả materials
+            entity.PurchaseOrder purchaseOrder = new entity.PurchaseOrder();
+            purchaseOrder.setPoCode(purchaseOrderDAO.generateNextPOCode());
+            purchaseOrder.setPurchaseRequestId(purchaseRequestId);
+            purchaseOrder.setSupplierId(firstSupplierId); // Supplier từ material đầu tiên
+            purchaseOrder.setCurrencyId(1); // default currency
+            purchaseOrder.setOrderDate(Date.valueOf(LocalDate.now()));
+            purchaseOrder.setExpectedDeliveryDate(purchaseRequest.getExpectedDate());
+            purchaseOrder.setDeliveryAddress(null);
+            purchaseOrder.setPaymentTermId(null);
+            purchaseOrder.setTotalAmount(BigDecimal.ZERO);
+            purchaseOrder.setTaxAmount(BigDecimal.ZERO);
+            purchaseOrder.setDiscountAmount(BigDecimal.ZERO);
+            purchaseOrder.setGrandTotal(BigDecimal.ZERO);
+            purchaseOrder.setCreatedBy(currentUser.getUserId());
+            // Note: Purchase_Orders table doesn't have 'note' column in V12 schema
+            purchaseOrder.setStatus("draft");
+
+            boolean success = purchaseOrderDAO.createPurchaseOrder(purchaseOrder, allDetails);
+
+            if (success) {
+                try {
+                    sendPurchaseOrderNotification(purchaseOrder, allDetails, purchaseRequest, currentUser);
+                } catch (Exception e) {
+                    LOGGER.log(Level.SEVERE, "Error sending purchase order notification for PO " + purchaseOrder.getPoCode() + ": " + e.getMessage(), e);
+                }
+                
+                LOGGER.log(Level.INFO, "Successfully created purchase order: " + purchaseOrder.getPoCode());
                 response.sendRedirect(request.getContextPath() + "/PurchaseOrderList");
                 return;
             } else {
-                LOGGER.log(Level.SEVERE, "No purchase orders were created, despite no explicit errors.");
-                request.setAttribute("error", "Failed to create purchase orders. No orders were processed.");
+                LOGGER.log(Level.SEVERE, "Failed to create purchase order.");
+                request.setAttribute("error", "Failed to create purchase order. Please try again.");
                 doGet(request, response);
                 return;
             }
@@ -410,7 +420,7 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
             MaterialDAO materialDAO = new MaterialDAO();
             
             for (entity.PurchaseOrderDetail detail : details) {
-                BigDecimal lineTotal = detail.getUnitPrice().multiply(detail.getQuantity());
+                BigDecimal lineTotal = detail.getUnitPrice().multiply(detail.getQuantityOrdered());
                 totalAmount = totalAmount.add(lineTotal);
                 
                 // Get material information for category and unit
@@ -420,7 +430,7 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
                 
                 content.append("<tr style='background-color: #ffffff;'>");
                 content.append("<td style='padding: 12px; border: 1px solid #dee2e6; color: #333333;'>").append(detail.getMaterialName()).append("</td>");
-                content.append("<td style='padding: 12px; text-align: center; border: 1px solid #dee2e6; color: #333333;'>").append(detail.getQuantity()).append("</td>");
+                content.append("<td style='padding: 12px; text-align: center; border: 1px solid #dee2e6; color: #333333;'>").append(detail.getQuantityOrdered()).append("</td>");
                 content.append("<td style='padding: 12px; text-align: center; border: 1px solid #dee2e6; color: #333333;'>").append(categoryName).append("</td>");
                 content.append("<td style='padding: 12px; text-align: center; border: 1px solid #dee2e6; color: #333333;'>").append(unitName).append("</td>");
                 content.append("<td style='padding: 12px; text-align: center; border: 1px solid #dee2e6; color: #333333;'>$").append(detail.getUnitPrice()).append("</td>");

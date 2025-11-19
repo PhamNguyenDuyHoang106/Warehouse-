@@ -1,5 +1,7 @@
 package entity;
 
+import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.List;
 
@@ -7,23 +9,35 @@ public class PurchaseOrder {
     private int poId;
     private String poCode;
     private int purchaseRequestId;
+    private Integer supplierId;
+    private String supplierName;
+    private Integer currencyId;
+    private String currencyCode;
+    private Date orderDate;
+    private Date expectedDeliveryDate;
+    private String deliveryAddress;
+    private Integer paymentTermId;
+    private String paymentTermName;
     private int createdBy;
     private String createdByName;
     private Timestamp createdAt;
     private Timestamp updatedAt;
     private String status;
     private String note;
-    private Integer approvedBy;
-    private String approvedByName;
-    private Timestamp approvedAt;
-    private String rejectionReason;
-    private Timestamp sentToSupplierAt;
-    private boolean disable;
-    
-    // Additional fields for display
+    private Integer confirmedBy;
+    private String confirmedByName;
+    private Timestamp confirmedAt;
+    private BigDecimal totalAmount = BigDecimal.ZERO;
+    private BigDecimal taxAmount = BigDecimal.ZERO;
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+    private BigDecimal grandTotal = BigDecimal.ZERO;
+    private Timestamp deletedAt;
     private String purchaseRequestCode;
-    private double totalAmount;
+    private BigDecimal aggregatedDetailTotal = BigDecimal.ZERO;
     private List<PurchaseOrderDetail> details;
+    
+    // From vw_po_pending_receipt view
+    private BigDecimal pendingQty;
 
     public PurchaseOrder() {
     }
@@ -50,6 +64,78 @@ public class PurchaseOrder {
 
     public void setPurchaseRequestId(int purchaseRequestId) {
         this.purchaseRequestId = purchaseRequestId;
+    }
+
+    public Integer getSupplierId() {
+        return supplierId;
+    }
+
+    public void setSupplierId(Integer supplierId) {
+        this.supplierId = supplierId;
+    }
+
+    public String getSupplierName() {
+        return supplierName;
+    }
+
+    public void setSupplierName(String supplierName) {
+        this.supplierName = supplierName;
+    }
+
+    public Integer getCurrencyId() {
+        return currencyId;
+    }
+
+    public void setCurrencyId(Integer currencyId) {
+        this.currencyId = currencyId;
+    }
+
+    public String getCurrencyCode() {
+        return currencyCode;
+    }
+
+    public void setCurrencyCode(String currencyCode) {
+        this.currencyCode = currencyCode;
+    }
+
+    public Date getOrderDate() {
+        return orderDate;
+    }
+
+    public void setOrderDate(Date orderDate) {
+        this.orderDate = orderDate;
+    }
+
+    public Date getExpectedDeliveryDate() {
+        return expectedDeliveryDate;
+    }
+
+    public void setExpectedDeliveryDate(Date expectedDeliveryDate) {
+        this.expectedDeliveryDate = expectedDeliveryDate;
+    }
+
+    public String getDeliveryAddress() {
+        return deliveryAddress;
+    }
+
+    public void setDeliveryAddress(String deliveryAddress) {
+        this.deliveryAddress = deliveryAddress;
+    }
+
+    public Integer getPaymentTermId() {
+        return paymentTermId;
+    }
+
+    public void setPaymentTermId(Integer paymentTermId) {
+        this.paymentTermId = paymentTermId;
+    }
+
+    public String getPaymentTermName() {
+        return paymentTermName;
+    }
+
+    public void setPaymentTermName(String paymentTermName) {
+        this.paymentTermName = paymentTermName;
     }
 
     public int getCreatedBy() {
@@ -100,52 +186,68 @@ public class PurchaseOrder {
         this.note = note;
     }
 
-    public Integer getApprovedBy() {
-        return approvedBy;
+    public Integer getConfirmedBy() {
+        return confirmedBy;
     }
 
-    public void setApprovedBy(Integer approvedBy) {
-        this.approvedBy = approvedBy;
+    public void setConfirmedBy(Integer confirmedBy) {
+        this.confirmedBy = confirmedBy;
     }
 
-    public String getApprovedByName() {
-        return approvedByName;
+    public String getConfirmedByName() {
+        return confirmedByName;
     }
 
-    public void setApprovedByName(String approvedByName) {
-        this.approvedByName = approvedByName;
+    public void setConfirmedByName(String confirmedByName) {
+        this.confirmedByName = confirmedByName;
     }
 
-    public Timestamp getApprovedAt() {
-        return approvedAt;
+    public Timestamp getConfirmedAt() {
+        return confirmedAt;
     }
 
-    public void setApprovedAt(Timestamp approvedAt) {
-        this.approvedAt = approvedAt;
+    public void setConfirmedAt(Timestamp confirmedAt) {
+        this.confirmedAt = confirmedAt;
     }
 
-    public String getRejectionReason() {
-        return rejectionReason;
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
     }
 
-    public void setRejectionReason(String rejectionReason) {
-        this.rejectionReason = rejectionReason;
+    public void setTotalAmount(BigDecimal totalAmount) {
+        this.totalAmount = totalAmount != null ? totalAmount : BigDecimal.ZERO;
     }
 
-    public Timestamp getSentToSupplierAt() {
-        return sentToSupplierAt;
+    public BigDecimal getTaxAmount() {
+        return taxAmount;
     }
 
-    public void setSentToSupplierAt(Timestamp sentToSupplierAt) {
-        this.sentToSupplierAt = sentToSupplierAt;
+    public void setTaxAmount(BigDecimal taxAmount) {
+        this.taxAmount = taxAmount != null ? taxAmount : BigDecimal.ZERO;
     }
 
-    public boolean isDisable() {
-        return disable;
+    public BigDecimal getDiscountAmount() {
+        return discountAmount;
     }
 
-    public void setDisable(boolean disable) {
-        this.disable = disable;
+    public void setDiscountAmount(BigDecimal discountAmount) {
+        this.discountAmount = discountAmount != null ? discountAmount : BigDecimal.ZERO;
+    }
+
+    public BigDecimal getGrandTotal() {
+        return grandTotal;
+    }
+
+    public void setGrandTotal(BigDecimal grandTotal) {
+        this.grandTotal = grandTotal != null ? grandTotal : BigDecimal.ZERO;
+    }
+
+    public Timestamp getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Timestamp deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
     public String getPurchaseRequestCode() {
@@ -156,12 +258,12 @@ public class PurchaseOrder {
         this.purchaseRequestCode = purchaseRequestCode;
     }
 
-    public double getTotalAmount() {
-        return totalAmount;
+    public BigDecimal getAggregatedDetailTotal() {
+        return aggregatedDetailTotal;
     }
 
-    public void setTotalAmount(double totalAmount) {
-        this.totalAmount = totalAmount;
+    public void setAggregatedDetailTotal(BigDecimal aggregatedDetailTotal) {
+        this.aggregatedDetailTotal = aggregatedDetailTotal != null ? aggregatedDetailTotal : BigDecimal.ZERO;
     }
 
     public List<PurchaseOrderDetail> getDetails() {
@@ -170,5 +272,70 @@ public class PurchaseOrder {
 
     public void setDetails(List<PurchaseOrderDetail> details) {
         this.details = details;
+    }
+
+    // Compatibility helpers --------------------------------------------------
+    public boolean isDisable() {
+        return deletedAt != null;
+    }
+
+    public void setDisable(boolean disable) {
+        if (!disable) {
+            this.deletedAt = null;
+        } else if (this.deletedAt == null) {
+            this.deletedAt = new Timestamp(System.currentTimeMillis());
+        }
+    }
+
+    public Integer getApprovedBy() {
+        return confirmedBy;
+    }
+
+    public void setApprovedBy(Integer approvedBy) {
+        this.confirmedBy = approvedBy;
+    }
+
+    public String getApprovedByName() {
+        return confirmedByName;
+    }
+
+    public void setApprovedByName(String approvedByName) {
+        this.confirmedByName = approvedByName;
+    }
+
+    public Timestamp getApprovedAt() {
+        return confirmedAt;
+    }
+
+    public void setApprovedAt(Timestamp approvedAt) {
+        this.confirmedAt = approvedAt;
+    }
+
+    public String getRejectionReason() {
+        return note;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.note = rejectionReason;
+    }
+
+    public Timestamp getSentToSupplierAt() {
+        return confirmedAt;
+    }
+
+    public void setSentToSupplierAt(Timestamp sentToSupplierAt) {
+        this.confirmedAt = sentToSupplierAt;
+    }
+
+    public double getTotalAmountLegacy() {
+        return totalAmount != null ? totalAmount.doubleValue() : 0.0;
+    }
+
+    public BigDecimal getPendingQty() {
+        return pendingQty;
+    }
+
+    public void setPendingQty(BigDecimal pendingQty) {
+        this.pendingQty = pendingQty;
     }
 } 

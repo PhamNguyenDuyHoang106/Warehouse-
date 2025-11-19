@@ -38,7 +38,8 @@ public class AuthenticationFilter implements Filter {
             path.equals("/sortbymaterialname") || path.equals("/filter") ||
             path.startsWith("/css/") || path.startsWith("/js/") || path.startsWith("/images/") ||
             path.startsWith("/assets/") || path.startsWith("/META-INF/") || 
-            path.startsWith("/WEB-INF/") || path.endsWith(".ico") || path.endsWith(".png") ||
+            path.startsWith("/WEB-INF/") || path.startsWith("/api/") || // API endpoints - handled by RateLimitFilter
+            path.endsWith(".ico") || path.endsWith(".png") ||
             path.endsWith(".jpg") || path.endsWith(".jpeg") || path.endsWith(".gif") ||
             path.endsWith(".svg") || path.endsWith(".woff") || path.endsWith(".woff2") ||
             path.endsWith(".ttf") || path.endsWith(".eot")) {

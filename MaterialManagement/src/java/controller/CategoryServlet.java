@@ -4,14 +4,16 @@ import dal.CategoryDAO;
 import dal.RolePermissionDAO;
 import entity.Category;
 import entity.User;
+import utils.PermissionHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @WebServlet(name = "CategoryServlet", urlPatterns = {"/Category"})
 public class CategoryServlet extends HttpServlet {
@@ -40,8 +42,33 @@ public class CategoryServlet extends HttpServlet {
         boolean isAdmin = roleId == 1;
         try {
             switch (service) {
+                case "viewCategory": {
+                    String categoryIdRaw = request.getParameter("category_id");
+                    if (categoryIdRaw == null || categoryIdRaw.trim().isEmpty()) {
+                        request.setAttribute("error", "Category ID is required.");
+                        request.getRequestDispatcher("/error.jsp").forward(request, response);
+                        return;
+                    }
+                    try {
+                        int categoryId = Integer.parseInt(categoryIdRaw);
+                        Category category = categoryDAO.getCategoryById(categoryId);
+                        if (category != null) {
+                            request.setAttribute("category", category);
+                            request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+                            request.getRequestDispatcher("/CategoryDetail.jsp").forward(request, response);
+                        } else {
+                            request.setAttribute("error", "Category not found with ID: " + categoryId);
+                            request.getRequestDispatcher("/error.jsp").forward(request, response);
+                        }
+                    } catch (NumberFormatException e) {
+                        request.setAttribute("error", "Invalid category ID.");
+                        request.getRequestDispatcher("/error.jsp").forward(request, response);
+                    }
+                    break;
+                }
                 case "updateCategory": {
-                    if (!isAdmin && !rolePermissionDAO.hasPermission(roleId, "UPDATE_CATEGORY")) {
+                    // Admin có toàn quyền - PermissionHelper đã xử lý
+                    if (!PermissionHelper.hasPermission(currentUser, "Sửa danh mục")) {
                         request.setAttribute("error", "You do not have permission to update categories.");
                         request.getRequestDispatcher("/Category.jsp").forward(request, response);
                         return;
@@ -71,75 +98,86 @@ public class CategoryServlet extends HttpServlet {
                     } else {
                         try {
                             int categoryId = Integer.parseInt(request.getParameter("categoryID"));
+                            Category existingCategory = categoryDAO.getCategoryById(categoryId);
+                            if (existingCategory == null) {
+                                request.setAttribute("error", "Category not found.");
+                                request.getRequestDispatcher("/Category.jsp").forward(request, response);
+                                return;
+                            }
+
                             String categoryName = request.getParameter("categoryName");
                             String description = request.getParameter("description");
-                            String status = request.getParameter("status");
-                            int disable = Integer.parseInt(request.getParameter("disable"));
-                            String priority = request.getParameter("priority");
+                            String statusParam = request.getParameter("status");
                             String code = request.getParameter("code");
                             String parentIDRaw = request.getParameter("parentID");
 
+                            List<String> validationErrors = new ArrayList<>();
+
+                            if (categoryName == null || categoryName.trim().isEmpty()) {
+                                validationErrors.add("Category name cannot be empty.");
+                            }
+
                             if (code == null || code.trim().isEmpty()) {
-                                request.setAttribute("error", "Category code cannot be empty.");
-                                request.setAttribute("c", categoryDAO.getCategoryById(categoryId));
-                                request.setAttribute("categories", categoryDAO.getAllCategories());
-                                request.setAttribute("rolePermissionDAO", rolePermissionDAO);
-                                request.getRequestDispatcher("/UpdateCategory.jsp").forward(request, response);
-                                return;
+                                validationErrors.add("Category code cannot be empty.");
                             }
 
-                            if (categoryDAO.isCategoryNameExists(categoryName.trim(), categoryId)) {
-                                request.setAttribute("error", "Category name '" + categoryName + "' already exists. Please choose a different name.");
-                                request.setAttribute("c", categoryDAO.getCategoryById(categoryId));
-                                request.setAttribute("categories", categoryDAO.getAllCategories());
-                                request.setAttribute("rolePermissionDAO", rolePermissionDAO);
-                                request.getRequestDispatcher("/UpdateCategory.jsp").forward(request, response);
-                                return;
+                            String normalizedStatus = normalizeStatus(statusParam);
+                            if (normalizedStatus == null) {
+                                validationErrors.add("Status is invalid. Please choose 'active' or 'inactive'.");
                             }
-
-                            List<Category> existingCategories = categoryDAO.searchCategories(code.trim(), null, null, null, null);
-                            for (Category existing : existingCategories) {
-                                if (existing.getCategory_id() != categoryId && existing.getCode().equalsIgnoreCase(code.trim())) {
-                                    request.setAttribute("error", "Category code '" + code + "' already exists. Please choose a different code.");
-                                    request.setAttribute("c", categoryDAO.getCategoryById(categoryId));
-                                    request.setAttribute("categories", categoryDAO.getAllCategories());
-                                    request.setAttribute("rolePermissionDAO", rolePermissionDAO);
-                                    request.getRequestDispatcher("/UpdateCategory.jsp").forward(request, response);
-                                    return;
-                                }
-                            }
-
-                            Timestamp createdAt = new Timestamp(System.currentTimeMillis());
 
                             Integer parentId = null;
                             if (parentIDRaw != null && !parentIDRaw.trim().isEmpty()) {
-                                parentId = Integer.valueOf(parentIDRaw);
-                                if (categoryDAO.getCategoryById(parentId) == null) {
-                                    request.setAttribute("error", "Parent category does not exist.");
-                                    request.setAttribute("c", categoryDAO.getCategoryById(categoryId));
-                                    request.setAttribute("categories", categoryDAO.getAllCategories());
-                                    request.setAttribute("rolePermissionDAO", rolePermissionDAO);
-                                    request.getRequestDispatcher("/UpdateCategory.jsp").forward(request, response);
-                                    return;
-                                }
-                                if (parentId == categoryId) {
-                                    request.setAttribute("error", "A category cannot be its own parent category.");
-                                    request.setAttribute("c", categoryDAO.getCategoryById(categoryId));
-                                    request.setAttribute("categories", categoryDAO.getAllCategories());
-                                    request.setAttribute("rolePermissionDAO", rolePermissionDAO);
-                                    request.getRequestDispatcher("/UpdateCategory.jsp").forward(request, response);
-                                    return;
+                                try {
+                                    parentId = Integer.valueOf(parentIDRaw.trim());
+                                    if (parentId == categoryId) {
+                                        validationErrors.add("A category cannot be its own parent category.");
+                                    } else if (categoryDAO.getCategoryById(parentId) == null) {
+                                        validationErrors.add("Selected parent category does not exist."); 
+                                    }
+                                } catch (NumberFormatException ex) {
+                                    validationErrors.add("Parent category ID is invalid.");
                                 }
                             }
 
-                            Category category = new Category(categoryId, categoryName, parentId, createdAt, disable, status, description, priority, code);
+                            if (categoryName != null && categoryDAO.isCategoryNameExists(categoryName.trim(), categoryId)) {
+                                validationErrors.add("Category name '" + categoryName.trim() + "' already exists.");
+                            }
+
+                            if (code != null && categoryDAO.isCategoryCodeExists(code.trim(), categoryId)) {
+                                validationErrors.add("Category code '" + code.trim() + "' already exists.");
+                            }
+
+                            if (!validationErrors.isEmpty()) {
+                                existingCategory.setCategoryName(categoryName);
+                                existingCategory.setCategoryCode(code);
+                                existingCategory.setDescription(description);
+                                existingCategory.setStatus(statusParam);
+                                existingCategory.setParentId(parentId);
+
+                                request.setAttribute("error", String.join("<br/>", validationErrors));
+                                request.setAttribute("c", existingCategory);
+                                request.setAttribute("categories", categoryDAO.getAllCategories());
+                                request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+                                request.getRequestDispatcher("/UpdateCategory.jsp").forward(request, response);
+                                return;
+                            }
+
+                            Category category = new Category();
+                            category.setCategoryId(categoryId);
+                            category.setCategoryName(categoryName.trim());
+                            category.setCategoryCode(code.trim());
+                            category.setDescription(description != null ? description.trim() : null);
+                            category.setStatus(normalizedStatus);
+                            category.setParentId(parentId);
+
                             boolean updated = categoryDAO.updateCategory(category);
                             if (updated) {
                                 response.sendRedirect("Category?service=listCategory");
                             } else {
                                 String daoError = categoryDAO.getLastError() != null ? categoryDAO.getLastError() : "No detailed error from CategoryDAO.";
                                 request.setAttribute("error", "Unable to update category. Error details: " + daoError);
-                                request.setAttribute("c", category);
+                                request.setAttribute("c", existingCategory);
                                 request.setAttribute("categories", categoryDAO.getAllCategories());
                                 request.setAttribute("rolePermissionDAO", rolePermissionDAO);
                                 request.getRequestDispatcher("/UpdateCategory.jsp").forward(request, response);
@@ -156,7 +194,8 @@ public class CategoryServlet extends HttpServlet {
                 }
 
                 case "deleteCategory": {
-                    if (!isAdmin && !rolePermissionDAO.hasPermission(roleId, "DELETE_CATEGORY")) {
+                    // Admin có toàn quyền - PermissionHelper đã xử lý
+                    if (!PermissionHelper.hasPermission(currentUser, "Xóa danh mục")) {
                         request.setAttribute("error", "You do not have permission to delete categories.");
                         request.getRequestDispatcher("/Category.jsp").forward(request, response);
                         return;
@@ -176,7 +215,7 @@ public class CategoryServlet extends HttpServlet {
                         }
                         List<Category> childCategories = categoryDAO.getAllCategories().stream()
                                 .filter(c -> c.getParent_id() != null && c.getParent_id() == categoryId)
-                                .toList();
+                                .collect(Collectors.toList());
                         if (!childCategories.isEmpty()) {
                             request.setAttribute("error", "Cannot delete category due to dependent subcategories.");
                             request.getRequestDispatcher("/Category.jsp").forward(request, response);
@@ -199,7 +238,8 @@ public class CategoryServlet extends HttpServlet {
                 }
 
                 case "addCategory": {
-                    if (!isAdmin && !rolePermissionDAO.hasPermission(roleId, "CREATE_CATEGORY")) {
+                    // Admin có toàn quyền - PermissionHelper đã xử lý
+                    if (!PermissionHelper.hasPermission(currentUser, "Tạo danh mục")) {
                         request.setAttribute("error", "You do not have permission to create categories.");
                         request.getRequestDispatcher("/Category.jsp").forward(request, response);
                         return;
@@ -217,57 +257,64 @@ public class CategoryServlet extends HttpServlet {
                             String categoryName = request.getParameter("categoryName");
                             String description = request.getParameter("description");
                             String status = request.getParameter("status");
-                            int disable = Integer.parseInt(request.getParameter("disable"));
-                            String priority = request.getParameter("priority");
                             String code = request.getParameter("code");
                             String parentIDRaw = request.getParameter("parentID");
 
-                            if (categoryName == null || categoryName.trim().isEmpty() || code == null || code.trim().isEmpty()) {
-                                request.setAttribute("error", "Category name and code cannot be empty.");
-                                request.setAttribute("categories", categoryDAO.getAllCategories());
-                                request.setAttribute("rolePermissionDAO", rolePermissionDAO);
-                                request.getRequestDispatcher("/InsertCategory.jsp").forward(request, response);
-                                return;
+                            List<String> validationErrors = new ArrayList<>();
+
+                            if (categoryName == null || categoryName.trim().isEmpty()) {
+                                validationErrors.add("Category name cannot be empty.");
                             }
 
-                            if (categoryDAO.isCategoryNameExists(categoryName.trim(), null)) {
-                                request.setAttribute("error", "Category name '" + categoryName + "' already exists. Please choose a different name.");
+                            if (code == null || code.trim().isEmpty()) {
+                                validationErrors.add("Category code cannot be empty.");
+                            }
+
+                            String normalizedStatus = normalizeStatus(status);
+                            if (normalizedStatus == null) {
+                                validationErrors.add("Status is invalid. Please choose 'active' hoặc 'inactive'.");
+                            }
+
+                            Integer parentId = null;
+                            if (parentIDRaw != null && !parentIDRaw.trim().isEmpty()) {
+                                try {
+                                    parentId = Integer.valueOf(parentIDRaw.trim());
+                                    if (categoryDAO.getCategoryById(parentId) == null) {
+                                        validationErrors.add("Parent category does not exist.");
+                                    }
+                                } catch (NumberFormatException ex) {
+                                    validationErrors.add("Parent category ID is invalid.");
+                                }
+                            }
+
+                            if (categoryName != null && categoryDAO.isCategoryNameExists(categoryName.trim(), null)) {
+                                validationErrors.add("Category name '" + categoryName.trim() + "' already exists.");
+                            }
+
+                            if (code != null && categoryDAO.isCategoryCodeExists(code.trim(), null)) {
+                                validationErrors.add("Category code '" + code.trim() + "' already exists.");
+                            }
+
+                            if (!validationErrors.isEmpty()) {
+                                request.setAttribute("error", String.join("<br/>", validationErrors));
                                 request.setAttribute("categories", categoryDAO.getAllCategories());
                                 request.setAttribute("rolePermissionDAO", rolePermissionDAO);
                                 request.setAttribute("enteredCategoryCode", code);
                                 request.setAttribute("enteredCategoryName", categoryName);
                                 request.setAttribute("enteredDescription", description);
                                 request.setAttribute("enteredStatus", status);
-                                request.setAttribute("enteredPriority", priority);
                                 request.setAttribute("enteredParentID", parentIDRaw);
                                 request.getRequestDispatcher("/InsertCategory.jsp").forward(request, response);
                                 return;
                             }
 
-                            List<Category> existingCategories = categoryDAO.searchCategories(code.trim(), null, null, null, null);
-                            if (!existingCategories.isEmpty()) {
-                                request.setAttribute("error", "Category code '" + code + "' already exists. Please choose a different code.");
-                                request.setAttribute("categories", categoryDAO.getAllCategories());
-                                request.setAttribute("rolePermissionDAO", rolePermissionDAO);
-                                request.getRequestDispatcher("/InsertCategory.jsp").forward(request, response);
-                                return;
-                            }
+                            Category category = new Category();
+                            category.setCategoryName(categoryName.trim());
+                            category.setCategoryCode(code.trim());
+                            category.setDescription(description != null ? description.trim() : null);
+                            category.setStatus(normalizedStatus != null ? normalizedStatus : "active");
+                            category.setParentId(parentId);
 
-                            Timestamp createdAt = new Timestamp(System.currentTimeMillis());
-
-                            Integer parentId = null;
-                            if (parentIDRaw != null && !parentIDRaw.trim().isEmpty()) {
-                                parentId = Integer.valueOf(parentIDRaw);
-                                if (categoryDAO.getCategoryById(parentId) == null) {
-                                    request.setAttribute("error", "Parent category does not exist.");
-                                    request.setAttribute("categories", categoryDAO.getAllCategories());
-                                    request.setAttribute("rolePermissionDAO", rolePermissionDAO);
-                                    request.getRequestDispatcher("/InsertCategory.jsp").forward(request, response);
-                                    return;
-                                }
-                            }
-
-                            Category category = new Category(0, categoryName, parentId, createdAt, disable, status, description, priority, code);
                             boolean inserted = categoryDAO.insertCategory(category);
                             if (inserted) {
                                 response.sendRedirect("Category?service=listCategory");
@@ -289,13 +336,13 @@ public class CategoryServlet extends HttpServlet {
                 }
 
                 case "listCategory": {
-                    if (!isAdmin && !rolePermissionDAO.hasPermission(roleId, "VIEW_LIST_CATEGORY")) {
-                        request.setAttribute("error", "You do not have permission to view the category list.");
+                    // Admin có toàn quyền - PermissionHelper đã xử lý
+                    if (!PermissionHelper.hasPermission(currentUser, "DS danh mục")) {
+                        request.setAttribute("error", "Bạn không có quyền xem danh sách danh mục.");
                         request.getRequestDispatcher("/Category.jsp").forward(request, response);
                         return;
                     }
                     String name = request.getParameter("name");
-                    String priority = request.getParameter("priority");
                     String status = request.getParameter("status");
                     String sortBy = request.getParameter("sortBy");
                     int currentPage = 1;
@@ -321,7 +368,7 @@ public class CategoryServlet extends HttpServlet {
                         }
                     }
 
-                    List<Category> filteredList = categoryDAO.searchCategories(name, priority, status, sortCol, sortOrder);
+                    List<Category> filteredList = categoryDAO.searchCategories(name, status, sortCol, sortOrder);
                     int totalCategories = filteredList.size();
                     int totalPages = (int) Math.ceil((double) totalCategories / PAGE_SIZE);
                     if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
@@ -333,7 +380,6 @@ public class CategoryServlet extends HttpServlet {
                     request.setAttribute("currentPage", currentPage);
                     request.setAttribute("totalPages", totalPages);
                     request.setAttribute("name", name);
-                    request.setAttribute("priority", priority);
                     request.setAttribute("status", status);
                     request.setAttribute("sortBy", sortBy);
                     request.setAttribute("rolePermissionDAO", rolePermissionDAO);
@@ -375,5 +421,19 @@ public class CategoryServlet extends HttpServlet {
     @Override
     public String getServletInfo() {
         return "Category management servlet";
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null) {
+            return null;
+        }
+        String normalized = status.trim().toLowerCase();
+        if ("active".equals(normalized)) {
+            return "active";
+        }
+        if ("inactive".equals(normalized)) {
+            return "inactive";
+        }
+        return null;
     }
 }

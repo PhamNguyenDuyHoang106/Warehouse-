@@ -147,17 +147,17 @@
                                             </c:if>
                                         </div>
                                         <div class="col-md-6">
-                                            <label for="recipientId" class="form-label text-muted">Recipient (Người nhận) <span class="text-danger">*</span></label>
-                                            <select class="form-select" id="recipientId" name="recipientId" required>
-                                                <option value="">-- Select Recipient --</option>
-                                                <c:forEach var="recipient" items="${recipients}">
-                                                    <option value="${recipient.recipientId}" ${submittedRecipientId == recipient.recipientId ? 'selected' : ''}>
-                                                        ${recipient.recipientName} - ${recipient.location}
+                                            <label for="customerId" class="form-label text-muted">Customer (Khách hàng) <span class="text-danger">*</span></label>
+                                            <select class="form-select" id="customerId" name="customerId" required>
+                                                <option value="">-- Select Customer --</option>
+                                                <c:forEach var="customer" items="${customers}">
+                                                    <option value="${customer.customerId}" ${submittedCustomerId == customer.customerId ? 'selected' : ''}>
+                                                        ${customer.customerName} - ${customer.address}
                                                     </option>
                                                 </c:forEach>
                                             </select>
-                                            <c:if test="${not empty errors.recipientId}">
-                                                <div class="text-danger small mt-1">${errors.recipientId}</div>
+                                            <c:if test="${not empty errors.customerId}">
+                                                <div class="text-danger small mt-1">${errors.customerId}</div>
                                             </c:if>
                                         </div>
                                         <div class="col-md-6">
@@ -181,18 +181,31 @@
                                                 </c:if>
                                             </div>
                                             <div class="col-md-2">
-                                                <label class="form-label text-muted">Quantity</label>
-                                                <input type="number" class="form-control" name="quantity[]" min="1" step="1" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Enter quantity">
+                                                <label class="form-label text-muted">Quantity <span class="text-danger">*</span></label>
+                                                <input type="number" class="form-control" name="quantity[]" min="0.01" step="0.01" placeholder="Enter quantity" required>
                                                 <c:if test="${not empty errors['quantity_0']}">
                                                     <div class="text-danger small mt-1">${errors['quantity_0']}</div>
                                                 </c:if>
                                             </div>
                                             <div class="col-md-2">
+                                                <label class="form-label text-muted">Unit Price (Export) <span class="text-danger">*</span></label>
+                                                <input type="number" class="form-control" name="unitPriceExport[]" min="0" step="0.01" placeholder="Selling price" required>
+                                                <small class="text-muted">Required for profit</small>
+                                            </div>
+                                            <div class="col-md-1">
                                                 <label class="form-label text-muted">Notes</label>
                                                 <input type="text" class="form-control" name="note[]">
                                             </div>
                                             <div class="col-md-2">
-                                                <img class="material-image" src="<c:out value='${materials[0].materialsUrl}'/>" alt="Material Image">
+                                                <c:set var="mediaUrl" value="${empty materials ? null : materials[0].materialsUrl}" />
+                                                <c:choose>
+                                                    <c:when test="${fn:startsWith(mediaUrl, 'http://') || fn:startsWith(mediaUrl, 'https://') || fn:startsWith(mediaUrl, '/')}">
+                                                        <img class="material-image" src="${mediaUrl}" alt="Material Image">
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <img class="material-image" src="${pageContext.request.contextPath}/${mediaUrl}" alt="Material Image">
+                                                    </c:otherwise>
+                                                </c:choose>
                                             </div>
                                             <div class="col-md-1 d-flex align-items-center">
                                                 <button type="button" class="btn btn-outline-danger remove-material">Remove</button>
@@ -222,6 +235,18 @@
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const contextPath = '${pageContext.request.contextPath}';
+
+        function resolveMediaUrl(url) {
+            if (!url || url === 'null') {
+                return `${contextPath}/images/material/default.jpg`;
+            }
+            if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')) {
+                return url;
+            }
+            return `${contextPath}/${url}`;
+        }
+
         var materialsData = [
         <c:forEach var="material" items="${materials}" varStatus="status">
             {
@@ -261,14 +286,8 @@
                 select: function(event, ui) {
                     idInput.value = ui.item.id;
                     nameInput.value = ui.item.name;
-                    let imgUrl = ui.item.imageUrl && ui.item.imageUrl !== 'null' ? ui.item.imageUrl : '';
-                    if (imgUrl.startsWith('http') || imgUrl.startsWith('/') || imgUrl.startsWith('images/material/')) {
-                        img.src = imgUrl;
-                    } else if (imgUrl) {
-                        img.src = 'images/material/' + imgUrl;
-                    } else {
-                        img.src = 'images/material/default.jpg';
-                    }
+                    const imgUrl = ui.item.imageUrl && ui.item.imageUrl !== 'null' ? ui.item.imageUrl : null;
+                    img.src = resolveMediaUrl(imgUrl);
                     return false;
                 },
                 focus: function(event, ui) {
@@ -278,10 +297,7 @@
                 minLength: 0 // Cho phép hiển thị danh sách khi click (chưa gõ gì)
             }).autocomplete("instance")._renderItem = function(ul, item) {
                 // Custom render với ảnh thumbnail
-                let imgUrl = item.imageUrl && item.imageUrl !== 'null' ? item.imageUrl : '';
-                if (!imgUrl.startsWith('http') && !imgUrl.startsWith('/') && !imgUrl.startsWith('images/material/')) {
-                    imgUrl = imgUrl ? 'images/material/' + imgUrl : 'images/material/default.jpg';
-                }
+                let imgUrl = resolveMediaUrl(item.imageUrl && item.imageUrl !== 'null' ? item.imageUrl : null);
                 
                 return $("<li>")
                     .append(
@@ -340,15 +356,20 @@
                                     <input type="hidden" name="materialId[]" class="material-id-input">
                                 </div>
                                 <div class="col-md-2">
-                                    <label class="form-label text-muted">Quantity</label>
-                                    <input type="number" class="form-control" name="quantity[]" min="1" step="1" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Enter quantity">
+                                    <label class="form-label text-muted">Quantity <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" name="quantity[]" min="0.01" step="0.01" placeholder="Enter quantity" required>
                                 </div>
                                 <div class="col-md-2">
+                                    <label class="form-label text-muted">Unit Price (Export) <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" name="unitPriceExport[]" min="0" step="0.01" placeholder="Selling price" required>
+                                    <small class="text-muted">Required for profit</small>
+                                </div>
+                                <div class="col-md-1">
                                     <label class="form-label text-muted">Notes</label>
                                     <input type="text" class="form-control" name="note[]">
                                 </div>
                                 <div class="col-md-2">
-                                    <img class="material-image" src="images/material/default.jpg" alt="Material Image">
+                                    <img class="material-image" src="${pageContext.request.contextPath}/images/material/default.jpg" alt="Material Image">
                                 </div>
                                 <div class="col-md-1 d-flex align-items-center">
                                     <button type="button" class="btn btn-outline-danger remove-material">Remove</button>
@@ -396,8 +417,9 @@
             newRow.querySelector('.material-name-input').value = '';
             newRow.querySelector('.material-id-input').value = '';
             newRow.querySelector('input[name="quantity[]"]').value = '';
+            newRow.querySelector('input[name="unitPriceExport[]"]').value = '';
             newRow.querySelector('input[name="note[]"]').value = '';
-            newRow.querySelector('.material-image').src = 'images/material/default.jpg';
+            newRow.querySelector('.material-image').src = resolveMediaUrl(null);
             materialList.appendChild(newRow);
             updateMaterialRowAutocomplete(newRow);
         });

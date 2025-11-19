@@ -128,9 +128,10 @@
                 <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                     <div class="container-main">
                         <c:set var="roleId" value="${sessionScope.user.roleId}" />
-                        <c:set var="hasViewPurchaseRequestListPermission" value="${rolePermissionDAO.hasPermission(roleId, 'VIEW_PURCHASE_REQUEST_LIST')}" scope="request" />
-                        <c:set var="hasCreatePurchaseRequestPermission" value="${rolePermissionDAO.hasPermission(roleId, 'CREATE_PURCHASE_REQUEST')}" scope="request" />
-                        <c:set var="hasDeletePurchaseRequestPermission" value="${rolePermissionDAO.hasPermission(roleId, 'DELETE_PURCHASE_REQUEST')}" scope="request" />
+                        <c:set var="hasViewPurchaseRequestListPermission" value="${rolePermissionDAO.hasPermission(roleId, 'DS yêu cầu mua')}" scope="request" />
+                        <c:set var="hasCreatePurchaseRequestPermission" value="${rolePermissionDAO.hasPermission(roleId, 'Tạo PR')}" scope="request" />
+                        <c:set var="hasDeletePurchaseRequestPermission" value="${rolePermissionDAO.hasPermission(roleId, 'Xóa PR')}" scope="request" />
+                        <c:set var="hasHandleRequestPermission" value="${rolePermissionDAO.hasPermission(roleId, 'Duyệt PR') || roleId == 1}" scope="request" />
 
                         <c:if test="${empty sessionScope.user}">
                             <div class="alert alert-danger">Please log in to view purchase requests.</div>
@@ -146,6 +147,18 @@
                                 </div>
                             </c:if>
                             <c:if test="${hasViewPurchaseRequestListPermission}">
+                                <c:if test="${not empty param.success}">
+                                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                        <i class="fas fa-check-circle me-2"></i>${param.success}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                </c:if>
+                                <c:if test="${not empty param.error}">
+                                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>${param.error}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                </c:if>
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <h2 class="fw-bold display-6 border-bottom pb-2 m-0" style="color: #DEAD6F;"><i class="fas fa-file-invoice-dollar"></i> Purchase Request Management</h2>
                                     <div class="d-flex gap-2">
@@ -156,11 +169,12 @@
                                 </div>
                                 <form class="filter-bar align-items-center" method="GET" action="ListPurchaseRequests" style="gap: 8px; flex-wrap:nowrap;">
                                     <input type="text" class="form-control" name="keyword" value="${keyword}" placeholder="Search by request code" style="width:200px;">
-                                    <select class="form-select" name="status" style="max-width:120px;">
+                                    <select class="form-select" name="status" style="max-width:150px;">
                                         <option value="">All Statuses</option>
+                                        <option value="submitted" ${status == 'submitted' ? 'selected' : ''}>Submitted</option>
                                         <option value="approved" ${status == 'approved' ? 'selected' : ''}>Approved</option>
                                         <option value="rejected" ${status == 'rejected' ? 'selected' : ''}>Rejected</option>
-                                        <option value="pending" ${status == 'pending' ? 'selected' : ''}>Pending</option>
+                                        <option value="cancelled" ${status == 'cancelled' ? 'selected' : ''}>Cancelled</option>
                                     </select>
                                     <select class="form-select" name="sort" style="max-width:150px;">
                                         <option value="" ${sortOption == null || sortOption == '' ? 'selected' : ''}>Newest First</option>
@@ -188,7 +202,7 @@
                                                 <c:forEach items="${purchaseRequests}" var="request">
                                                     <tr>
                                                         <td>${request.requestCode}</td>
-                                                        <td>${userIdToName[request.userId]}</td>
+                                                        <td>${userIdToName[request.requestBy]}</td>
                                                         <td>${request.requestDate}</td>
                                                         <td>${request.reason}</td>
                                                         <td>
@@ -199,22 +213,35 @@
                                                                 <c:when test="${fn:toLowerCase(request.status) == 'rejected'}">
                                                                     <span class="status-badge status-rejected">Rejected</span>
                                                                 </c:when>
+                                                                <c:when test="${fn:toLowerCase(request.status) == 'submitted'}">
+                                                                    <span class="status-badge status-pending">Submitted</span>
+                                                                </c:when>
                                                                 <c:otherwise>
-                                                                    <span class="status-badge status-pending">Pending</span>
+                                                                    <span class="status-badge status-pending">${fn:toUpperCase(request.status)}</span>
                                                                 </c:otherwise>
                                                             </c:choose>
                                                         </td>
                                                         <td>
-                                                            <c:if test="${hasViewPurchaseRequestListPermission}">
-                                                                <a href="PurchaseRequestDetail?id=${request.purchaseRequestId}" class="btn-detail">
-                                                                    <i class="fas fa-eye"></i> Detail
-                                                                </a>
-                                                            </c:if>
-                                                            <c:if test="${request.status == 'PENDING' && request.userId == sessionScope.user.userId && hasDeletePurchaseRequestPermission}">
-                                                                <button onclick="deleteRequest(${request.purchaseRequestId})" class="btn btn-danger btn-sm">
-                                                                    <i class="fas fa-trash"></i>
-                                                                </button>
-                                                            </c:if>
+                                                            <div class="d-flex gap-1">
+                                                                <c:if test="${hasViewPurchaseRequestListPermission}">
+                                                                    <a href="PurchaseRequestDetail?id=${request.purchaseRequestId}" class="btn-detail">
+                                                                        <i class="fas fa-eye"></i> Detail
+                                                                    </a>
+                                                                </c:if>
+                                                                <c:if test="${fn:toLowerCase(request.status) == 'submitted' && hasHandleRequestPermission}">
+                                                                    <button type="button" class="btn btn-success btn-sm" onclick="setModalAction('approved', '${request.purchaseRequestId}')" title="Approve">
+                                                                        <i class="fas fa-check"></i>
+                                                                    </button>
+                                                                    <button type="button" class="btn btn-danger btn-sm" onclick="setModalAction('rejected', '${request.purchaseRequestId}')" title="Reject">
+                                                                        <i class="fas fa-times"></i>
+                                                                    </button>
+                                                                </c:if>
+                                                                <c:if test="${fn:toLowerCase(request.status) == 'submitted' && request.requestBy == sessionScope.user.userId && hasDeletePurchaseRequestPermission}">
+                                                                    <button onclick="deleteRequest(${request.purchaseRequestId})" class="btn btn-danger btn-sm" title="Delete">
+                                                                        <i class="fas fa-trash"></i>
+                                                                    </button>
+                                                                </c:if>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 </c:forEach>
@@ -248,6 +275,33 @@
                 </main>
             </div>
         </div>
+        
+        <!-- Status Update Modal -->
+        <div class="modal fade" id="updateStatusModal" tabindex="-1" aria-labelledby="updateStatusModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form action="PurchaseRequestDetail" method="post" id="updateStatusForm">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="updateStatusModalLabel">Update Purchase Request Status</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" name="id" id="modalRequestId" value="" />
+                            <input type="hidden" id="modalStatus" name="modalStatus" value="" />
+                            <div class="mb-3">
+                                <label for="modalReason" class="form-label" id="reasonLabel">Decision Note <span style="color:#DEAD6F">*</span></label>
+                                <textarea class="form-control" id="modalReason" name="reason" rows="3" placeholder="Enter reason..." required></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn" style="background-color:#DEAD6F; color:#fff;" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" id="updateStatusBtn" class="btn" style="background-color:#DEAD6F; color:#fff;">Confirm</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
         <jsp:include page="Footer.jsp" />
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
         <script>
@@ -256,6 +310,25 @@
                     window.location.href = 'DeletePurchaseRequest?id=' + id;
                 }
             }
+            
+            function setModalAction(status, requestId) {
+                document.getElementById('modalRequestId').value = requestId;
+                document.getElementById('modalStatus').value = status;
+                document.getElementById('reasonLabel').innerText = status === 'approved' ? 'Approval Note *' : 'Rejection Note *';
+                document.getElementById('modalReason').value = '';
+                
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('updateStatusModal'));
+                modal.show();
+            }
+            
+            document.getElementById('updateStatusForm').addEventListener('submit', function(e) {
+                if (!document.getElementById('modalReason').value.trim()) {
+                    e.preventDefault();
+                    alert('Please enter a reason');
+                    document.getElementById('modalReason').focus();
+                }
+            });
         </script>
     </body>
 </html>

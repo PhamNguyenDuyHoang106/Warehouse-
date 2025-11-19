@@ -16,9 +16,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
@@ -28,7 +25,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-@WebServlet(name = "ImportDetailHistoryServlet", urlPatterns = {"/ImportDetail"})
+@WebServlet(name = "ImportDetailHistoryServlet", urlPatterns = {"/ImportDetailHistory", "/ImportDetail"})
 public class ImportDetailHistoryServlet extends HttpServlet {
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
@@ -50,7 +47,7 @@ public class ImportDetailHistoryServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        // 1. Lấy tham số id (từ ImportList.jsp) hoặc importId (backward compatibility)
+        // 1. Get id parameter (from ImportList.jsp) or importId (backward compatibility)
         String importIdStr = request.getParameter("id");
         if (importIdStr == null) {
             importIdStr = request.getParameter("importId"); // Fallback for backward compatibility
@@ -67,7 +64,7 @@ public class ImportDetailHistoryServlet extends HttpServlet {
             return;
         }
 
-        // 2. Khởi tạo DAO
+        // 2. Initialize DAOs
         ImportDAO importDAO = null;
         SupplierDAO supplierDAO = null;
         UserDAO userDAO = null;
@@ -79,22 +76,19 @@ public class ImportDetailHistoryServlet extends HttpServlet {
             userDAO = new UserDAO();
             warehouseDAO = new WarehouseDAO();
 
-            // 3. Lấy dữ liệu chi tiết
+            // 3. Get detail data
             Import importData = importDAO.getImportById(importId);
             if (importData == null) {
                 response.sendRedirect("ImportList");
                 return;
             }
             
-            List<ImportDetail> importDetails = null;
-            try {
-                importDetails = importDAO.getImportDetailsByImportId(importId);
-            } catch (SQLException ex) {
-                Logger.getLogger(ImportDetailHistoryServlet.class.getName()).log(Level.SEVERE, "Error getting import details", ex);
+            List<ImportDetail> importDetails = importDAO.getImportDetailsByImportId(importId);
+            if (importDetails == null) {
                 importDetails = new ArrayList<>();
             }
 
-            // 4. Lấy thông tin bổ sung
+            // 4. Get additional information
             // Supplier information
             Supplier supplier = null;
             if (importData.getSupplierId() != null) {
@@ -105,83 +99,93 @@ public class ImportDetailHistoryServlet extends HttpServlet {
                 }
             }
             
-            // User information (người import)
-            User importedByUser = null;
-            try {
-                importedByUser = userDAO.getUserById(importData.getImportedBy());
-            } catch (Exception e) {
-                Logger.getLogger(ImportDetailHistoryServlet.class.getName()).log(Level.WARNING, "Error getting user", e);
-            }
-            
-            // Calculate total value and get unique warehouses from details
-            BigDecimal totalValue = BigDecimal.ZERO;
-            Map<Integer, Warehouse> warehousesMap = new HashMap<>();
-            Map<Integer, String> rackToWarehouseMap = new HashMap<>(); // rackId -> warehouseName
-            List<String> warehouseNames = new ArrayList<>();
-            
-            if (importDetails != null && !importDetails.isEmpty()) {
-                for (ImportDetail detail : importDetails) {
-                    // Calculate total value
-                    if (detail.getQuantity() != null && detail.getUnitPrice() != null) {
-                        totalValue = totalValue.add(detail.getQuantity().multiply(detail.getUnitPrice()));
-                    }
-                    
-                    // Get warehouse from rack if available
-                    if (detail.getRackId() != null) {
-                        dal.WarehouseRackDAO rackDAO = null;
-                        try {
-                            // Get warehouse_id from rack using WarehouseRackDAO
-                            rackDAO = new dal.WarehouseRackDAO();
-                            entity.WarehouseRack rack = rackDAO.getRackById(detail.getRackId());
-                            if (rack != null && rack.getWarehouseId() != null) {
-                                Integer warehouseId = rack.getWarehouseId();
-                                if (!warehousesMap.containsKey(warehouseId)) {
-                                    Warehouse warehouse = warehouseDAO.getWarehouseById(warehouseId);
-                                    if (warehouse != null) {
-                                        warehousesMap.put(warehouseId, warehouse);
-                                        warehouseNames.add(warehouse.getWarehouseName());
-                                    }
-                                }
-                                // Map rack to warehouse name
-                                if (warehousesMap.containsKey(warehouseId)) {
-                                    rackToWarehouseMap.put(detail.getRackId(), warehousesMap.get(warehouseId).getWarehouseName());
-                                }
-                            }
-                        } catch (Exception e) {
-                            Logger.getLogger(ImportDetailHistoryServlet.class.getName()).log(Level.WARNING, "Error getting warehouse for rack: " + detail.getRackId(), e);
-                        } finally {
-                            // WarehouseRackDAO doesn't have close method
-                        }
-                    }
+            // User information
+            User createdByUser = null;
+            if (importData.getCreatedBy() > 0) {
+                try {
+                    createdByUser = userDAO.getUserById(importData.getCreatedBy());
+                } catch (Exception e) {
+                    Logger.getLogger(ImportDetailHistoryServlet.class.getName()).log(Level.WARNING, "Error getting creator", e);
                 }
             }
 
-            // 5. Convert LocalDateTime to Date for JSP formatting
-            if (importData.getImportDate() != null) {
-                Date importDate = Date.from(importData.getImportDate().atZone(ZoneId.systemDefault()).toInstant());
-                request.setAttribute("importDate", importDate);
-            }
-            if (importData.getActualArrival() != null) {
-                Date actualArrival = Date.from(importData.getActualArrival().atZone(ZoneId.systemDefault()).toInstant());
-                request.setAttribute("actualArrival", actualArrival);
+            User receivedByUser = null;
+            if (importData.getReceivedBy() != null) {
+                try {
+                    receivedByUser = userDAO.getUserById(importData.getReceivedBy());
+                } catch (Exception e) {
+                    Logger.getLogger(ImportDetailHistoryServlet.class.getName()).log(Level.WARNING, "Error getting receiver", e);
+                }
             }
             
-            // 6. Đẩy dữ liệu lên request
+            // Warehouse information
+            Warehouse warehouse = null;
+            if (importData.getWarehouseId() != null) {
+                try {
+                    warehouse = warehouseDAO.getWarehouseById(importData.getWarehouseId());
+                } catch (Exception e) {
+                    Logger.getLogger(ImportDetailHistoryServlet.class.getName()).log(Level.WARNING, "Error getting warehouse", e);
+                }
+            }
+            
+            // Calculate total value
+            BigDecimal totalValue = BigDecimal.ZERO;
+            if (importDetails != null && !importDetails.isEmpty()) {
+                for (ImportDetail detail : importDetails) {
+                    if (detail.getQuantity() != null && detail.getUnitCost() != null) {
+                        totalValue = totalValue.add(detail.getQuantity().multiply(detail.getUnitCost()));
+                    }
+                }
+            }
+            if (totalValue.compareTo(BigDecimal.ZERO) == 0 && importData.getTotalAmount() != null) {
+                totalValue = importData.getTotalAmount();
+            }
+
+            // 5. Convert LocalDate to Date for JSP formatting
+            if (importData.getImportDate() != null) {
+                Date importDate = Date.from(importData.getImportDate().atStartOfDay(ZoneId.systemDefault()).toInstant());
+                request.setAttribute("importDate", importDate);
+            }
+            
+            List<Warehouse> warehouses = new ArrayList<>();
+            if (warehouse != null) {
+                warehouses.add(warehouse);
+            }
+            Map<Integer, String> rackToWarehouseMap = new HashMap<>();
+            if (importDetails != null) {
+                for (ImportDetail detail : importDetails) {
+                    if (detail.getRackId() != null) {
+                        String name = warehouse != null ? warehouse.getWarehouseName() : importData.getWarehouseName();
+                        rackToWarehouseMap.put(detail.getRackId(), name);
+                    }
+                }
+            }
+            String warehouseNames = warehouse != null ? warehouse.getWarehouseName() : importData.getWarehouseName();
+
+            // 6. Set data to request
             request.setAttribute("importData", importData);
             request.setAttribute("importDetails", importDetails != null ? importDetails : new ArrayList<>());
             request.setAttribute("supplier", supplier);
-            request.setAttribute("importedByUser", importedByUser);
-            request.setAttribute("warehouses", new ArrayList<>(warehousesMap.values()));
-            request.setAttribute("warehouseNames", warehouseNames.isEmpty() ? "" : String.join(", ", warehouseNames));
+            request.setAttribute("createdByUser", createdByUser);
+            request.setAttribute("importedByUser", createdByUser);
+            request.setAttribute("receivedByUser", receivedByUser);
+            request.setAttribute("warehouse", warehouse);
+            request.setAttribute("warehouses", warehouses);
+            request.setAttribute("warehouseNames", warehouseNames);
             request.setAttribute("rackToWarehouseMap", rackToWarehouseMap);
             request.setAttribute("totalValue", totalValue);
 
-            // 6. Forward về JSP
+            // 7. Forward to JSP
             request.getRequestDispatcher("ImportDetail.jsp").forward(request, response);
         } catch (Exception e) {
             Logger.getLogger(ImportDetailHistoryServlet.class.getName()).log(Level.SEVERE, "Error in ImportDetailHistoryServlet", e);
             e.printStackTrace();
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error loading import details: " + e.getMessage());
+        } finally {
+            if (warehouseDAO != null) warehouseDAO.close();
+            if (userDAO != null) userDAO.close();
+            if (supplierDAO != null) supplierDAO.close();
+            if (importDAO != null) importDAO.close();
         }
     }
 

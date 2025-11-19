@@ -61,7 +61,59 @@
         <servlet-name>updateServlet</servlet-name>
         <url-pattern>/edit</url-pattern>
     </servlet-mapping>
-    
+
+    <!-- Currency Management Servlets -->
+    <servlet>
+        <servlet-name>CurrencyServlet</servlet-name>
+        <servlet-class>controller.CurrencyServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>CurrencyServlet</servlet-name>
+        <url-pattern>/CurrencyList</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>CurrencyServlet</servlet-name>
+        <url-pattern>/AddCurrency</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>CurrencyServlet</servlet-name>
+        <url-pattern>/EditCurrency</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>CurrencyServlet</servlet-name>
+        <url-pattern>/DeleteCurrency</url-pattern>
+    </servlet-mapping>
+
+    <!-- Tax Invoice Management Servlets -->
+    <servlet>
+        <servlet-name>TaxInvoiceServlet</servlet-name>
+        <servlet-class>controller.TaxInvoiceServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>TaxInvoiceServlet</servlet-name>
+        <url-pattern>/TaxInvoiceList</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>TaxInvoiceServlet</servlet-name>
+        <url-pattern>/AddTaxInvoice</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>TaxInvoiceServlet</servlet-name>
+        <url-pattern>/EditTaxInvoice</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>TaxInvoiceServlet</servlet-name>
+        <url-pattern>/DeleteTaxInvoice</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>TaxInvoiceServlet</servlet-name>
+        <url-pattern>/ViewTaxInvoice</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>TaxInvoiceServlet</servlet-name>
+        <url-pattern>/GenerateTaxInvoice</url-pattern>
+    </servlet-mapping>
+
     <!-- Welcome file configuration -->
     <welcome-file-list>
         <welcome-file>Login.jsp</welcome-file>

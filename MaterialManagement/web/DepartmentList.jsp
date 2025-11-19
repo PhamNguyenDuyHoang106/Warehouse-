@@ -75,13 +75,13 @@
                     <c:if test="${empty sessionScope.user}">
                         <div class="alert alert-danger" role="alert">You do not have permission to view the department list.</div>
                     </c:if>
-                    <c:if test="${not empty sessionScope.user and sessionScope.user.roleId != 1 and !rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'VIEW_LIST_DEPARTMENT')}">
+                    <c:if test="${not empty sessionScope.user and sessionScope.user.roleId != 1 and !rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DS phòng ban')}">
                         <div class="alert alert-danger" role="alert">You do not have permission to view the department list.</div>
                     </c:if>
-                    <c:if test="${not empty sessionScope.user and (sessionScope.user.roleId == 1 or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'VIEW_LIST_DEPARTMENT'))}">
+                    <c:if test="${not empty sessionScope.user and (sessionScope.user.roleId == 1 or rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DS phòng ban'))}">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h2 class="dashboard-title mb-0">Department Management</h2>
-                            <c:if test="${sessionScope.user.roleId == 1 || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'CREATE_DEPARTMENT')}">
+                            <c:if test="${sessionScope.user.roleId == 1 || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Tạo phòng ban')}">
                                 <a href="adddepartment" class="btn flex-shrink-0" style="background-color: #e2b77a; color: #fff; height: 60px; min-width: 260px; font-size: 1.25rem; font-weight: 500; border-radius: 6px; padding: 0 32px; display: inline-flex; align-items: center; justify-content: center;">
                                     <i class="fas fa-plus me-2"></i> Add Department
                                 </a>
@@ -126,9 +126,7 @@
                                         <th>Email</th>
                                         <th>Location</th>
                                         <th>Status</th>
-                                        <c:if test="${sessionScope.user.roleId == 1 || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_DEPARTMENT') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_DEPARTMENT')}">
-                                            <th>Actions</th>
-                                        </c:if>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -143,26 +141,27 @@
                                                     <td>${d.email}</td>
                                                     <td>${d.location}</td>
                                                     <td>${d.status}</td>
-                                                    <c:if test="${sessionScope.user.roleId == 1 || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_DEPARTMENT') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_DEPARTMENT')}">
-                                                        <td>
-                                                            <c:if test="${sessionScope.user.roleId == 1 || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_DEPARTMENT')}">
-                                                                <a href="editdepartment?id=${d.departmentId}" class="btn btn-warning btn-sm me-1" title="Edit" style="width: 45px"><i class="fas fa-edit"></i></a>
-                                                            </c:if>
-                                                            <c:if test="${sessionScope.user.roleId == 1 || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_DEPARTMENT')}">
-                                                                <form action="deletedepartment" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa phòng ban này không?');">
-                                                                    <input type="hidden" name="id" value="${d.departmentId}" />
-                                                                    <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="width: 45px"><i class="fas fa-trash"></i></button>
-                                                                </form>
-                                                            </c:if>
-                                                        </td>
-                                                    </c:if>
+                                                    <td>
+                                                        <a href="depairmentlist?action=view&id=${d.departmentId}" class="btn btn-info btn-sm me-1" title="View Details" style="width: 45px">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        <c:if test="${sessionScope.user.roleId == 1 || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Sửa phòng ban')}">
+                                                            <a href="editdepartment?id=${d.departmentId}" class="btn btn-warning btn-sm me-1" title="Edit" style="width: 45px"><i class="fas fa-edit"></i></a>
+                                                        </c:if>
+                                                        <c:if test="${sessionScope.user.roleId == 1 || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xóa phòng ban')}">
+                                                            <form action="deletedepartment" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this department?');">
+                                                                <input type="hidden" name="id" value="${d.departmentId}" />
+                                                                <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="width: 45px"><i class="fas fa-trash"></i></button>
+                                                            </form>
+                                                        </c:if>
+                                                    </td>
                                                 </tr>
                                             </c:forEach>
                                         </c:when>
                                         <c:otherwise>
                                             <tr>
                                                 <td colspan="7" class="text-center text-muted">No department.</td>
-                                                <c:if test="${sessionScope.user.roleId == 1 || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'UPDATE_DEPARTMENT') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'DELETE_DEPARTMENT')}">
+                                                <c:if test="${sessionScope.user.roleId == 1 || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Sửa phòng ban') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xóa phòng ban')}">
                                                     <td></td>
                                                 </c:if>
                                             </tr>

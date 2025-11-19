@@ -6,6 +6,7 @@ import dal.RolePermissionDAO;
 import entity.Department;
 import entity.User;
 import entity.Role;
+import utils.PermissionHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -25,9 +26,14 @@ public class UserListServlet extends HttpServlet {
             throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
         User currentUser = (User) request.getSession().getAttribute("user");
-        if (currentUser == null || !rolePermissionDAO.hasPermission(currentUser.getRoleId(), "VIEW_LIST_USER")) {
-            request.setAttribute("error", "You do not have permission to access the user list.");
-            request.getRequestDispatcher("UserList.jsp").forward(request, response);
+        if (currentUser == null) {
+            response.sendRedirect("Login.jsp");
+            return;
+        }
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(currentUser, "Danh sách người dùng")) {
+            request.setAttribute("error", "You do not have permission to access user list.");
+            request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }
 
@@ -95,9 +101,14 @@ public class UserListServlet extends HttpServlet {
             throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
         User currentUser = (User) request.getSession().getAttribute("user");
-        if (currentUser == null || !rolePermissionDAO.hasPermission(currentUser.getRoleId(), "VIEW_LIST_USER")) {
-            request.setAttribute("error", "You do not have permission to access the user list.");
-            request.getRequestDispatcher("UserList.jsp").forward(request, response);
+        if (currentUser == null) {
+            response.sendRedirect("Login.jsp");
+            return;
+        }
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (!PermissionHelper.hasPermission(currentUser, "Danh sách người dùng")) {
+            request.setAttribute("error", "You do not have permission to access user list.");
+            request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }
 
@@ -137,8 +148,9 @@ public class UserListServlet extends HttpServlet {
         try {
             int userId = Integer.parseInt(userIdStr);
             if ("delete".equals(action)) {
-                if (!rolePermissionDAO.hasPermission(currentUser.getRoleId(), "DELETE_USER")) {
-                    request.getSession().setAttribute("error", "You do not have permission to delete users.");
+                // Admin có toàn quyền - PermissionHelper đã xử lý
+                if (!PermissionHelper.hasPermission(currentUser, "Xóa người dùng")) {
+                    request.getSession().setAttribute("error", "Bạn không có quyền xóa người dùng.");
                     response.sendRedirect(queryString.toString());
                     return;
                 }
@@ -149,8 +161,9 @@ public class UserListServlet extends HttpServlet {
                     request.getSession().setAttribute("error", "Failed to delete user.");
                 }
             } else if ("updateDepartment".equals(action)) {
-                if (!rolePermissionDAO.hasPermission(currentUser.getRoleId(), "UPDATE_USER")) {
-                    request.getSession().setAttribute("error", "You do not have permission to update user information.");
+                // Admin có toàn quyền - PermissionHelper đã xử lý
+                if (!PermissionHelper.hasPermission(currentUser, "Sửa người dùng")) {
+                    request.getSession().setAttribute("error", "Bạn không có quyền cập nhật thông tin người dùng.");
                     response.sendRedirect(queryString.toString());
                     return;
                 }
@@ -175,8 +188,9 @@ public class UserListServlet extends HttpServlet {
                     request.getSession().setAttribute("error", "Failed to update department.");
                 }
             } else if ("updateStatus".equals(action)) {
-                if (!rolePermissionDAO.hasPermission(currentUser.getRoleId(), "UPDATE_USER")) {
-                    request.getSession().setAttribute("error", "You do not have permission to update user information.");
+                // Admin có toàn quyền - PermissionHelper đã xử lý
+                if (!PermissionHelper.hasPermission(currentUser, "Sửa người dùng")) {
+                    request.getSession().setAttribute("error", "Bạn không có quyền cập nhật thông tin người dùng.");
                     response.sendRedirect(queryString.toString());
                     return;
                 }
@@ -194,8 +208,9 @@ public class UserListServlet extends HttpServlet {
                     request.getSession().setAttribute("error", "Failed to update status.");
                 }
             } else if ("updateRole".equals(action)) {
-                if (!rolePermissionDAO.hasPermission(currentUser.getRoleId(), "UPDATE_USER")) {
-                    request.getSession().setAttribute("error", "You do not have permission to update user information.");
+                // Admin có toàn quyền - PermissionHelper đã xử lý
+                if (!PermissionHelper.hasPermission(currentUser, "Sửa người dùng")) {
+                    request.getSession().setAttribute("error", "Bạn không có quyền cập nhật thông tin người dùng.");
                     response.sendRedirect(queryString.toString());
                     return;
                 }

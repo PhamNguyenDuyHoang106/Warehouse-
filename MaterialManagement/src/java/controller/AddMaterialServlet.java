@@ -9,6 +9,7 @@ import entity.Category;
 import entity.Unit;
 import entity.User;
 import utils.MaterialValidator;
+import utils.PermissionHelper;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
@@ -16,8 +17,8 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.*;
-import java.sql.Timestamp;
 import java.util.Map;
 
 @WebServlet(name = "AddMaterialServlet", urlPatterns = {"/addmaterial"})
@@ -54,7 +55,7 @@ public class AddMaterialServlet extends HttpServlet {
 
         User user = (User) session.getAttribute("user");
         int roleId = user.getRoleId();
-        if (roleId != 1 && !rolePermissionDAO.hasPermission(roleId, "CREATE_MATERIAL")) {
+        if (!PermissionHelper.hasPermission(user, "Tạo NVL")) {
             request.setAttribute("error", "Bạn không có quyền thêm mới vật tư.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
@@ -84,7 +85,7 @@ public class AddMaterialServlet extends HttpServlet {
 
         User user = (User) session.getAttribute("user");
         int roleId = user.getRoleId();
-        if (roleId != 1 && !rolePermissionDAO.hasPermission(roleId, "CREATE_MATERIAL")) {
+        if (!PermissionHelper.hasPermission(user, "Tạo NVL")) {
             request.setAttribute("error", "Bạn không có quyền thêm mới vật tư.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
@@ -103,21 +104,30 @@ public class AddMaterialServlet extends HttpServlet {
             categoryIdStr = categoryIdStr != null ? categoryIdStr.trim() : "";
             String unitIdStr = request.getParameter("unitId");
             unitIdStr = unitIdStr != null ? unitIdStr.trim() : "";
+            String barcode = request.getParameter("barcode");
             String urlInput = request.getParameter("materialsUrl");
             urlInput = urlInput != null ? urlInput.trim() : "";
-
-            
-    
-
+            String minStockStr = request.getParameter("minStock");
+            String maxStockStr = request.getParameter("maxStock");
+            String weightPerUnitStr = request.getParameter("weightPerUnit");
+            String volumePerUnitStr = request.getParameter("volumePerUnit");
+            String shelfLifeDaysStr = request.getParameter("shelfLifeDays");
+            boolean isSerialized = "on".equalsIgnoreCase(request.getParameter("isSerialized"));
+            boolean isBatchControlled = !"off".equalsIgnoreCase(request.getParameter("isBatchControlled"));
 
             Map<String, String> errors = MaterialValidator.validateMaterialFormData(
-                materialCode, materialName, materialStatus, categoryIdStr, unitIdStr);
+                    materialCode, materialName, materialStatus, categoryIdStr, unitIdStr, minStockStr, maxStockStr);
+
+            if (!urlInput.isEmpty() && urlInput.length() > 500) {
+                errors.put("materialsUrl", "Độ dài URL không được vượt quá 500 ký tự.");
+            }
 
             if (!errors.isEmpty()) {
                 Material m = new Material();
                 m.setMaterialCode(materialCode);
                 m.setMaterialName(materialName);
                 m.setMaterialStatus(materialStatus);
+                m.setBarcode(barcode);
                 m.setCategory(new Category());
                 m.setUnit(new Unit());
 
@@ -126,95 +136,69 @@ public class AddMaterialServlet extends HttpServlet {
                 request.setAttribute("categories", new CategoryDAO().getAllCategories());
                 request.setAttribute("units", new UnitDAO().getAllUnits());
                 request.setAttribute("materialCode", materialCode);
-                
-                // Trả lại giá trị từ request parameters để giữ lại dữ liệu đã nhập
-                request.setAttribute("categoryName", request.getParameter("categoryName"));
-                request.setAttribute("categoryId", request.getParameter("categoryId"));
-                request.setAttribute("unitName", request.getParameter("unitName"));
-                request.setAttribute("unitId", request.getParameter("unitId"));
+                request.setAttribute("barcode", barcode);
                 request.setAttribute("materialsUrl", urlInput);
-                
+                request.setAttribute("minStock", minStockStr);
+                request.setAttribute("maxStock", maxStockStr);
+                request.setAttribute("weightPerUnit", weightPerUnitStr);
+                request.setAttribute("volumePerUnit", volumePerUnitStr);
+                request.setAttribute("shelfLifeDays", shelfLifeDaysStr);
                 request.getRequestDispatcher("AddMaterial.jsp").forward(request, response);
                 return;
             }
 
-            Part filePart = request.getPart("imageFile");
-            String relativeFilePath;
+            String relativeFilePath = handleImageUpload(request.getPart("imageFile"));
+            String finalUrl = relativeFilePath != null ? relativeFilePath : (urlInput.isEmpty() ? null : urlInput);
 
-            if (filePart != null && filePart.getSize() > 0) {
-                String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
-                fileName = fileName.replaceAll("[^a-zA-Z0-9.-]", "_");
-
-                String buildUploadPath = getServletContext().getRealPath("/") + UPLOAD_DIRECTORY + "/";
-                Files.createDirectories(Paths.get(buildUploadPath));
-                filePart.write(buildUploadPath + fileName);
-    
-
-                Path projectRoot = Paths.get(buildUploadPath).getParent().getParent().getParent().getParent();
-                Path sourceDir = projectRoot.resolve("web").resolve("images").resolve("material");
-                Files.createDirectories(sourceDir);
-                try {
-                    Files.copy(
-                            Paths.get(buildUploadPath + fileName),
-                            sourceDir.resolve(fileName),
-                            StandardCopyOption.REPLACE_EXISTING
-                    );
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
-                relativeFilePath = fileName;
-            } else if (urlInput != null && !urlInput.trim().isEmpty()) {
-                relativeFilePath = urlInput.trim();
-
-            } else {
-                relativeFilePath = "default.jpg";
-            }
-
-            // Validate categoryIdStr và unitIdStr trước khi parseInt
-            if (categoryIdStr == null || categoryIdStr.isEmpty()) {
-                request.setAttribute("error", "Bạn phải chọn Category từ danh sách gợi ý.");
+            if (finalUrl != null && finalUrl.length() > 500) {
                 Material m = new Material();
                 m.setMaterialCode(materialCode);
                 m.setMaterialName(materialName);
                 m.setMaterialStatus(materialStatus);
-                m.setCategory(new Category());
-                m.setUnit(new Unit());
+                m.setBarcode(barcode != null ? barcode.trim() : null);
+                if (categoryIdStr != null && !categoryIdStr.isEmpty()) {
+                    try {
+                        Category cat = new Category();
+                        cat.setCategory_id(Integer.parseInt(categoryIdStr));
+                        m.setCategory(cat);
+                    } catch (NumberFormatException ignored) {}
+                }
+                if (unitIdStr != null && !unitIdStr.isEmpty()) {
+                    try {
+                        Unit u = new Unit();
+                        u.setId(Integer.parseInt(unitIdStr));
+                        m.setUnit(u);
+                    } catch (NumberFormatException ignored) {}
+                }
+                m.setUrl(finalUrl);
+
+                request.setAttribute("error", "Đường dẫn URL không được vượt quá 500 ký tự.");
                 request.setAttribute("m", m);
                 request.setAttribute("categories", new CategoryDAO().getAllCategories());
                 request.setAttribute("units", new UnitDAO().getAllUnits());
                 request.setAttribute("materialCode", materialCode);
-                
-                // Trả lại giá trị từ request parameters để giữ lại dữ liệu đã nhập
-                request.setAttribute("categoryName", request.getParameter("categoryName"));
-                request.setAttribute("categoryId", request.getParameter("categoryId"));
-                request.setAttribute("unitName", request.getParameter("unitName"));
-                request.setAttribute("unitId", request.getParameter("unitId"));
+                request.setAttribute("barcode", barcode);
                 request.setAttribute("materialsUrl", urlInput);
-                
+                request.setAttribute("minStock", minStockStr);
+                request.setAttribute("maxStock", maxStockStr);
+                request.setAttribute("weightPerUnit", weightPerUnitStr);
+                request.setAttribute("volumePerUnit", volumePerUnitStr);
+                request.setAttribute("shelfLifeDays", shelfLifeDaysStr);
+                request.getRequestDispatcher("AddMaterial.jsp").forward(request, response);
+                return;
+            }
+
+            if (categoryIdStr == null || categoryIdStr.isEmpty()) {
+                request.setAttribute("error", "Bạn phải chọn Category từ danh sách gợi ý.");
+                request.setAttribute("categories", new CategoryDAO().getAllCategories());
+                request.setAttribute("units", new UnitDAO().getAllUnits());
                 request.getRequestDispatcher("AddMaterial.jsp").forward(request, response);
                 return;
             }
             if (unitIdStr == null || unitIdStr.isEmpty()) {
                 request.setAttribute("error", "Bạn phải chọn Unit từ danh sách gợi ý.");
-                Material m = new Material();
-                m.setMaterialCode(materialCode);
-                m.setMaterialName(materialName);
-                m.setMaterialStatus(materialStatus);
-                m.setCategory(new Category());
-                m.setUnit(new Unit());
-                request.setAttribute("m", m);
                 request.setAttribute("categories", new CategoryDAO().getAllCategories());
                 request.setAttribute("units", new UnitDAO().getAllUnits());
-                request.setAttribute("materialCode", materialCode);
-                
-                // Trả lại giá trị từ request parameters để giữ lại dữ liệu đã nhập
-                request.setAttribute("categoryName", request.getParameter("categoryName"));
-                request.setAttribute("categoryId", request.getParameter("categoryId"));
-                request.setAttribute("unitName", request.getParameter("unitName"));
-                request.setAttribute("unitId", request.getParameter("unitId"));
-                request.setAttribute("materialsUrl", urlInput);
-                
                 request.getRequestDispatcher("AddMaterial.jsp").forward(request, response);
                 return;
             }
@@ -222,50 +206,53 @@ public class AddMaterialServlet extends HttpServlet {
             int categoryId = Integer.parseInt(categoryIdStr);
             int unitId = Integer.parseInt(unitIdStr);
 
-            Material m = new Material();
-            m.setMaterialCode(materialCode);
-            m.setMaterialName(materialName);
-            m.setMaterialsUrl(relativeFilePath);
-            m.setMaterialStatus(materialStatus);
+            Material material = new Material();
+            material.setMaterialCode(materialCode);
+            material.setMaterialName(materialName);
+            material.setUrl(finalUrl);
+            material.setMaterialStatus(materialStatus);
+            material.setBarcode(barcode != null ? barcode.trim() : null);
+            material.setMinStock(parseDecimal(minStockStr));
+            material.setMaxStock(parseDecimal(maxStockStr));
+            material.setWeightPerUnit(parseDecimal(weightPerUnitStr));
+            material.setVolumePerUnit(parseDecimal(volumePerUnitStr));
+            material.setShelfLifeDays(parseInteger(shelfLifeDaysStr));
+            material.setSerialized(isSerialized);
+            material.setBatchControlled(isBatchControlled);
 
             Category category = new Category();
             category.setCategory_id(categoryId);
-            m.setCategory(category);
+            material.setCategory(category);
 
             Unit unit = new Unit();
             unit.setId(unitId);
-            m.setUnit(unit);
+            material.setUnit(unit);
+            material.setCreatedBy(user.getUserId());
+            material.setUpdatedBy(user.getUserId());
 
-            m.setDisable(false);
-            m.setCreatedAt(new Timestamp(System.currentTimeMillis()));
-            m.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
-
-    
-
-            MaterialDAO md = new MaterialDAO();
-            if (md.isMaterialCodeExists(materialCode)) {
+            MaterialDAO materialDAO = new MaterialDAO();
+            if (materialDAO.isMaterialCodeExists(materialCode)) {
                 request.setAttribute("categories", new CategoryDAO().getAllCategories());
                 request.setAttribute("units", new UnitDAO().getAllUnits());
                 request.setAttribute("error", "Mã vật tư đã tồn tại.");
-                request.setAttribute("m", m);
+                request.setAttribute("m", material);
                 request.setAttribute("materialCode", materialCode);
                 request.getRequestDispatcher("AddMaterial.jsp").forward(request, response);
                 return;
             }
 
-    
-            if (md.isMaterialNameAndStatusExists(materialName, materialStatus)) {
+            if (materialDAO.isMaterialNameAndStatusExists(materialName, materialStatus)) {
                 request.setAttribute("categories", new CategoryDAO().getAllCategories());
                 request.setAttribute("units", new UnitDAO().getAllUnits());
-                request.setAttribute("error", "This material name already exists with the selected status. Please choose a different name or status.");
-                request.setAttribute("m", m);
+                request.setAttribute("error", "Tên vật tư đã tồn tại với trạng thái này.");
+                request.setAttribute("m", material);
                 request.setAttribute("materialCode", materialCode);
+                request.setAttribute("materialsUrl", urlInput);
                 request.getRequestDispatcher("AddMaterial.jsp").forward(request, response);
                 return;
             }
 
-    
-            md.addMaterial(m);
+            materialDAO.addMaterial(material);
             response.sendRedirect("dashboardmaterial?success=Material added successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -273,6 +260,50 @@ public class AddMaterialServlet extends HttpServlet {
             request.setAttribute("categories", new CategoryDAO().getAllCategories());
             request.setAttribute("units", new UnitDAO().getAllUnits());
             request.getRequestDispatcher("AddMaterial.jsp").forward(request, response);
+        }
+    }
+
+    private String handleImageUpload(Part filePart) throws IOException {
+        if (filePart == null || filePart.getSize() == 0) {
+            return null;
+        }
+        String fileName = Paths.get(filePart.getSubmittedFileName()).getFileName().toString();
+        fileName = fileName.replaceAll("[^a-zA-Z0-9.-]", "_");
+
+        String buildUploadPath = getServletContext().getRealPath("/") + UPLOAD_DIRECTORY + "/";
+        Files.createDirectories(Paths.get(buildUploadPath));
+        filePart.write(buildUploadPath + fileName);
+
+        Path projectRoot = Paths.get(buildUploadPath).getParent().getParent().getParent().getParent();
+        Path sourceDir = projectRoot.resolve("web").resolve("images").resolve("material");
+        Files.createDirectories(sourceDir);
+        Files.copy(
+                Paths.get(buildUploadPath + fileName),
+                sourceDir.resolve(fileName),
+                StandardCopyOption.REPLACE_EXISTING
+        );
+        return fileName;
+    }
+
+    private BigDecimal parseDecimal(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        try {
+            return new BigDecimal(value.trim());
+        } catch (NumberFormatException ex) {
+            return BigDecimal.ZERO;
+        }
+    }
+
+    private Integer parseInteger(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException ex) {
+            return null;
         }
     }
 }

@@ -162,22 +162,22 @@ uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 
                         <div class="mb-3">
                           <label
-                            for="contact_info"
+                            for="contact_person"
                             class="form-label text-muted required-field"
-                            >Contact Info</label
+                            >Contact Person</label
                           >
                           <input
                             type="text"
                             class="form-control"
-                            id="contact_info"
-                            name="contact_info"
-                            value="${supplier != null ? supplier.contactInfo : ''}"
-                            maxlength="100"
+                            id="contact_person"
+                            name="contact_person"
+                            value="${supplier != null ? supplier.contactPerson : ''}"
+                            maxlength="150"
                             required
-                            minlength="3"
+                            minlength="5"
                           />
                           <div class="invalid-feedback">
-                            Please enter contact information (at least 3
+                            Please enter contact person (at least 5
                             characters).
                           </div>
                         </div>
@@ -185,47 +185,39 @@ uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
                         <div class="mb-3">
                           <label
                             for="address"
-                            class="form-label text-muted required-field"
+                            class="form-label text-muted"
                             >Address</label
                           >
-                          <input
-                            type="text"
+                          <textarea
                             class="form-control"
                             id="address"
                             name="address"
-                            value="${supplier != null ? supplier.address : ''}"
-                            maxlength="200"
-                            required
-                            minlength="5"
-                          />
-                          <div class="invalid-feedback">
-                            Please enter supplier address (at least 5
-                            characters).
-                          </div>
+                            rows="3"
+                            maxlength="500"
+                          >${supplier != null ? supplier.address : ''}</textarea>
                         </div>
                       </div>
 
                       <div class="col-md-6">
                         <div class="mb-3">
                           <label
-                            for="phone_number"
-                            class="form-label text-muted"
-                            >Phone Number</label
+                            for="phone"
+                            class="form-label text-muted required-field"
+                            >Phone</label
                           >
                           <input
                             type="tel"
                             class="form-control"
-                            id="phone_number"
-                            name="phone_number"
-                            value="${supplier != null ? supplier.phoneNumber : ''}"
-                            pattern="[0-9\-\s]{10,15}"
-                            maxlength="15"
+                            id="phone"
+                            name="phone"
+                            value="${supplier != null ? supplier.phone : ''}"
+                            pattern="\\+?[0-9\\-\\s]{7,20}"
+                            maxlength="20"
                             inputmode="numeric"
                             required
                           />
                           <div class="invalid-feedback">
-                            Please enter a valid phone number (10-15 digits,
-                            numbers, dash or space allowed).
+                            Please enter a valid phone number.
                           </div>
                         </div>
 
@@ -250,23 +242,22 @@ uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 
                         <div class="mb-3">
                           <label
-                            for="tax_id"
+                            for="tax_code"
                             class="form-label text-muted required-field"
-                            >Tax ID</label
+                            >Tax Code</label
                           >
                           <input
                             type="text"
                             class="form-control"
-                            id="tax_id"
-                            name="tax_id"
-                            value="${supplier != null ? supplier.taxId : ''}"
-                            pattern="[A-Za-z0-9]{1,20}"
+                            id="tax_code"
+                            name="tax_code"
+                            value="${supplier != null ? supplier.taxCode : ''}"
+                            pattern="[A-Za-z0-9]{5,20}"
                             maxlength="20"
-                            minlength="5"
                             required
                           />
                           <div class="invalid-feedback">
-                            Please enter a valid Tax ID (letters and numbers
+                            Please enter a valid tax code (letters and numbers
                             only, 5-20 characters).
                           </div>
                           <div class="form-text">
@@ -275,18 +266,47 @@ uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
                         </div>
 
                         <div class="mb-3">
-                          <label for="description" class="form-label text-muted"
-                            >Description</label
+                          <label for="payment_term_id" class="form-label text-muted"
+                            >Payment Term ID</label
                           >
-                          <textarea
+                          <input
+                            type="number"
                             class="form-control"
-                            id="description"
-                            name="description"
-                            rows="3"
-                            maxlength="200"
+                            id="payment_term_id"
+                            name="payment_term_id"
+                            value="${supplier != null && supplier.paymentTermId != null ? supplier.paymentTermId : ''}"
+                            min="1"
+                          />
+                        </div>
+
+                        <div class="mb-3">
+                          <label for="credit_limit" class="form-label text-muted"
+                            >Credit Limit (USD)</label
                           >
-${supplier != null ? supplier.description : ''}</textarea
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            class="form-control"
+                            id="credit_limit"
+                            name="credit_limit"
+                            value="${supplier != null ? supplier.creditLimit : ''}"
+                          />
+                        </div>
+
+                        <div class="mb-3">
+                          <label for="status" class="form-label text-muted required-field"
+                            >Status</label
                           >
+                          <select
+                            class="form-select"
+                            id="status"
+                            name="status"
+                            required
+                          >
+                            <option value="active" ${supplier == null || supplier.status == 'active' ? 'selected' : ''}>Active</option>
+                            <option value="inactive" ${supplier != null && supplier.status == 'inactive' ? 'selected' : ''}>Inactive</option>
+                          </select>
                         </div>
                       </div>
                     </div>

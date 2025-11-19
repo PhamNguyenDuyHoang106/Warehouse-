@@ -1,6 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -143,6 +144,18 @@
                     </div>
                 </div>
                 
+                <c:if test="${not empty param.success}">
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-check-circle me-2"></i>${param.success}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                </c:if>
+                <c:if test="${not empty param.error}">
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>${param.error}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                </c:if>
                 <c:if test="${not empty error}">
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">
                         <i class="fas fa-exclamation-triangle me-2"></i>${error}
@@ -159,10 +172,12 @@
                         <input type="text" class="form-control" name="poCode" value="${poCode}" placeholder="Search by PO code" style="width:230px;">
                         <select class="form-select" name="status" style="max-width:150px;" onchange="this.form.submit()">
                             <option value="">All Statuses</option>
-                            <option value="pending" ${status == 'pending' ? 'selected' : ''}>Pending</option>
-                            <option value="approved" ${status == 'approved' ? 'selected' : ''}>Approved</option>
-                            <option value="rejected" ${status == 'rejected' ? 'selected' : ''}>Rejected</option>
-                            <option value="sent_to_supplier" ${status == 'sent_to_supplier' ? 'selected' : ''}>Sent to Supplier</option>
+                            <option value="draft" ${status == 'draft' ? 'selected' : ''}>Draft</option>
+                            <option value="confirmed" ${status == 'confirmed' ? 'selected' : ''}>Confirmed</option>
+                            <option value="sent" ${status == 'sent' ? 'selected' : ''}>Sent</option>
+                            <option value="partially_received" ${status == 'partially_received' ? 'selected' : ''}>Partially Received</option>
+                            <option value="received" ${status == 'received' ? 'selected' : ''}>Received</option>
+                            <option value="pending_receipt" ${status == 'pending_receipt' ? 'selected' : ''}>Pending Receipt</option>
                             <option value="cancelled" ${status == 'cancelled' ? 'selected' : ''}>Cancelled</option>
                         </select>
                         <select class="form-select" name="sortBy" style="max-width:150px;" onchange="this.form.submit()">
@@ -186,6 +201,7 @@
                                     <th>Status</th>
                                     <th>Created By</th>
                                     <th>Total Amount</th>
+                                    <th class="text-center">Pending Qty</th>
                                     <th>Action</th>
                                 </tr>
                                 </thead>
@@ -197,20 +213,26 @@
                                         <td>${po.createdAt}</td>
                                         <td>
                                             <c:choose>
-                                                <c:when test="${po.status == 'approved'}">
-                                                    <span class="status-badge status-approved">Approved</span>
+                                                <c:when test="${po.status == 'draft'}">
+                                                    <span class="status-badge status-draft">Draft</span>
                                                 </c:when>
-                                                <c:when test="${po.status == 'rejected'}">
-                                                    <span class="status-badge status-rejected">Rejected</span>
+                                                <c:when test="${po.status == 'confirmed'}">
+                                                    <span class="status-badge status-approved">Confirmed</span>
                                                 </c:when>
-                                                <c:when test="${po.status == 'sent_to_supplier'}">
-                                                    <span class="status-badge status-sent_to_supplier">Sent to Supplier</span>
+                                                <c:when test="${po.status == 'sent'}">
+                                                    <span class="status-badge status-sent_to_supplier">Sent</span>
                                                 </c:when>
-                                                <c:when test="${po.status == 'cancel' || po.status == 'cancelled'}">
-                                                    <span class="status-badge status-cancel">Cancelled</span>
+                                                <c:when test="${po.status == 'partially_received'}">
+                                                    <span class="status-badge status-pending">Partially Received</span>
+                                                </c:when>
+                                                <c:when test="${po.status == 'received'}">
+                                                    <span class="status-badge status-approved">Received</span>
+                                                </c:when>
+                                                <c:when test="${po.status == 'cancelled'}">
+                                                    <span class="status-badge status-cancelled">Cancelled</span>
                                                 </c:when>
                                                 <c:otherwise>
-                                                    <span class="status-badge status-pending">Pending</span>
+                                                    <span class="status-badge status-pending">${po.status}</span>
                                                 </c:otherwise>
                                             </c:choose>
                                         </td>
@@ -227,13 +249,34 @@
                                         <td>
                                             <strong>$<fmt:formatNumber value="${po.totalAmount}" type="number" minFractionDigits="2"/></strong>
                                         </td>
+                                        <td class="text-center">
+                                            <c:choose>
+                                                <c:when test="${po.pendingQty != null && po.pendingQty.doubleValue() > 0}">
+                                                    <span class="badge bg-warning text-dark">
+                                                        <fmt:formatNumber value="${po.pendingQty}" maxFractionDigits="2"/>
+                                                    </span>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <span class="text-muted">0</span>
+                                                </c:otherwise>
+                                            </c:choose>
+                                        </td>
                                         <td>
                                             <div class="d-flex gap-1">
                                                 <a href="PurchaseOrderDetail?id=${po.poId}" class="btn-detail" title="View Details" style="pointer-events:auto;z-index:9999;position:relative;">
                                                     <i class="fas fa-eye"></i> Detail
                                                 </a>
-                                                <c:if test="${hasSendToSupplierPermission && po.status == 'approved'}">
-                                                    <button type="button" class="btn btn-detail btn-sm" style="background-color: #0d6efd; color: #fff; border: none;" title="Send to Supplier" onclick="updateStatus('${po.poId}', 'sent_to_supplier')">
+                                                <c:set var="statusLower" value="${fn:toLowerCase(po.status)}" />
+                                                <c:if test="${statusLower == 'draft' && hasHandleRequestPermission}">
+                                                    <button type="button" class="btn btn-success btn-sm" onclick="setModalAction('confirmed', '${po.poId}')" title="Approve">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-danger btn-sm" onclick="setModalAction('cancelled', '${po.poId}')" title="Reject">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </c:if>
+                                                <c:if test="${hasSendToSupplierPermission && po.status == 'confirmed'}">
+                                                    <button type="button" class="btn btn-detail btn-sm" style="background-color: #0d6efd; color: #fff; border: none;" title="Send to Supplier" onclick="updateStatus('${po.poId}', 'sent')">
                                                         <i class="fas fa-paper-plane"></i>
                                                     </button>
                                                 </c:if>
@@ -292,16 +335,7 @@
                 <div class="modal-body">
                     <input type="hidden" name="action" value="updateStatus">
                     <input type="hidden" name="poId" id="poId">
-                    
-                    <div class="mb-3">
-                        <label for="status" class="form-label">New Status</label>
-                        <select class="form-select" name="status" id="status" required>
-                            <option value="">Select Status</option>
-                            <option value="approved">Approved</option>
-                            <option value="rejected">Rejected</option>
-                            <option value="sent_to_supplier">Sent to Supplier</option>
-                        </select>
-                    </div>
+                    <input type="hidden" name="status" id="statusHidden">
                     
                     <div class="mb-3" id="approvalReasonDiv" style="display: none;">
                         <label for="approvalReason" class="form-label">Approval Reason</label>
@@ -309,7 +343,7 @@
                     </div>
                     
                     <div class="mb-3" id="rejectionReasonDiv" style="display: none;">
-                        <label for="rejectionReason" class="form-label">Rejection Reason</label>
+                        <label for="rejectionReason" class="form-label">Rejection Reason <span style="color:red">*</span></label>
                         <textarea class="form-control" name="rejectionReason" id="rejectionReason" rows="3" placeholder="Enter rejection reason..." required></textarea>
                     </div>
                 </div>
@@ -325,41 +359,52 @@
 <form id="sendToSupplierForm" method="POST" action="PurchaseOrderList" style="display:none;">
     <input type="hidden" name="action" value="updateStatus">
     <input type="hidden" name="poId" id="sendToSupplierPoId">
-    <input type="hidden" name="status" value="sent_to_supplier">
+    <input type="hidden" name="status" value="sent">
 </form>
  <jsp:include page="Footer.jsp" />
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    function setModalAction(status, poId) {
+        document.getElementById('poId').value = poId;
+        document.getElementById('statusHidden').value = status;
+        
+        const approvalReasonDiv = document.getElementById('approvalReasonDiv');
+        const rejectionReasonDiv = document.getElementById('rejectionReasonDiv');
+        const approvalReason = document.getElementById('approvalReason');
+        const rejectionReason = document.getElementById('rejectionReason');
+        
+        // Clear previous values
+        if (approvalReason) approvalReason.value = '';
+        if (rejectionReason) rejectionReason.value = '';
+        
+        if (status === 'confirmed') {
+            approvalReasonDiv.style.display = 'block';
+            rejectionReasonDiv.style.display = 'none';
+            if (rejectionReason) rejectionReason.removeAttribute('required');
+            if (approvalReason) approvalReason.removeAttribute('required');
+        } else if (status === 'cancelled') {
+            approvalReasonDiv.style.display = 'none';
+            rejectionReasonDiv.style.display = 'block';
+            if (rejectionReason) rejectionReason.setAttribute('required', 'required');
+            if (approvalReason) approvalReason.removeAttribute('required');
+        } else {
+            approvalReasonDiv.style.display = 'none';
+            rejectionReasonDiv.style.display = 'none';
+        }
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('statusModal'));
+        modal.show();
+    }
+    
     function updateStatus(poId, status) {
-        if (status === 'sent_to_supplier') {
+        if (status === 'sent') {
             if (confirm('Are you sure you want to send this purchase order to the supplier?')) {
                 document.getElementById('sendToSupplierPoId').value = poId;
                 document.getElementById('sendToSupplierForm').submit();
             }
             return;
         }
-        document.getElementById('poId').value = poId;
-        document.getElementById('status').value = status;
-        
-        const approvalReasonDiv = document.getElementById('approvalReasonDiv');
-        const rejectionReasonDiv = document.getElementById('rejectionReasonDiv');
-        const rejectionReason = document.getElementById('rejectionReason');
-        
-        if (status === 'approved') {
-            approvalReasonDiv.style.display = 'block';
-            rejectionReasonDiv.style.display = 'none';
-            rejectionReason.removeAttribute('required');
-        } else if (status === 'rejected') {
-            approvalReasonDiv.style.display = 'none';
-            rejectionReasonDiv.style.display = 'block';
-            rejectionReason.setAttribute('required', 'required');
-        } else {
-            approvalReasonDiv.style.display = 'none';
-            rejectionReasonDiv.style.display = 'none';
-            rejectionReason.removeAttribute('required');
-        }
-        
-        new bootstrap.Modal(document.getElementById('statusModal')).show();
     }
 </script>
 </body>

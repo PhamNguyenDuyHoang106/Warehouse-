@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 import utils.UserValidator;
+import utils.PasswordHasher;
 import utils.EmailUtils;
 import utils.PermissionHelper;
 
@@ -19,13 +20,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.Random;
 
 @WebServlet(name = "CreateUserServlet", value = "/CreateUser")
@@ -46,9 +44,9 @@ public class CreateUserServlet extends HttpServlet {
         }
 
         User admin = (User) session.getAttribute("user");
-        // Admin has full access, other roles need CREATE_USER permission
-        if (admin == null || (!PermissionHelper.isAdmin(admin) && !PermissionHelper.hasPermission(admin, "CREATE_USER"))) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (admin == null || !PermissionHelper.hasPermission(admin, "Tạo người dùng")) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Bạn không có quyền tạo người dùng.");
             return;
         }
 
@@ -68,9 +66,9 @@ public class CreateUserServlet extends HttpServlet {
         }
 
         User admin = (User) session.getAttribute("user");
-        // Admin has full access, other roles need CREATE_USER permission
-        if (admin == null || (!PermissionHelper.isAdmin(admin) && !PermissionHelper.hasPermission(admin, "CREATE_USER"))) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
+        // Admin có toàn quyền - PermissionHelper đã xử lý
+        if (admin == null || !PermissionHelper.hasPermission(admin, "Tạo người dùng")) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Bạn không có quyền tạo người dùng.");
             return;
         }
 
@@ -79,7 +77,6 @@ public class CreateUserServlet extends HttpServlet {
             String fullName = request.getParameter("fullName");
             String email = request.getParameter("email");
             String phoneNumber = request.getParameter("phoneNumber");
-            String address = request.getParameter("address");
             String dateOfBirthStr = request.getParameter("dateOfBirth");
             String gender = request.getParameter("gender");
             String roleIdStr = request.getParameter("roleId");
@@ -113,15 +110,14 @@ public class CreateUserServlet extends HttpServlet {
 
             User newUser = new User();
             newUser.setUsername(modifiedUsername);
-            newUser.setPassword(hashPasswordWithMD5(randomPassword));
+            newUser.setPasswordHash(PasswordHasher.hashPassword(randomPassword));
             newUser.setEmail(email);
-            newUser.setPhoneNumber(phoneNumber);
+            newUser.setPhone(phoneNumber);
             newUser.setRoleId(roleId);
             newUser.setDepartmentId(departmentId);
-            newUser.setVerificationToken(UUID.randomUUID().toString());
-            newUser.setVerificationStatus("pending");
-            newUser.setVerificationExpiry(LocalDateTime.now().plusHours(24));
-            newUser.setStatus(User.Status.inactive);
+            newUser.setStatus(User.Status.active);
+            newUser.setCreatedBy(admin.getUserId());
+            newUser.setUpdatedBy(admin.getUserId());
 
             Map<String, String> errors = new HashMap<>();
 
@@ -149,14 +145,14 @@ public class CreateUserServlet extends HttpServlet {
                         }
                         Path savePath = uploadDir.resolve(fileName);
                         filePart.write(savePath.toString());
-                        newUser.setUserPicture(fileName);
+                        newUser.setAvatar(fileName);
                     } catch (IOException e) {
                         errors.put("userPicture", "Error saving image file: " + e.getMessage());
                     }
                 }
             }
 
-            errors.putAll(UserValidator.validateForCreateUser(newUser, userDAO, fullName, address, dateOfBirthStr, gender, departmentIdStr, userPicture));
+            errors.putAll(UserValidator.validateForCreateUser(newUser, userDAO, fullName, dateOfBirthStr, gender, departmentIdStr, userPicture));
 
             if (roleId != 2) {
                 if (departmentId == null || departmentIdStr == null || departmentIdStr.isEmpty()) {
@@ -209,7 +205,11 @@ public class CreateUserServlet extends HttpServlet {
             }
 
             newUser.setFullName(fullName);
-            newUser.setAddress(address);
+
+            // ensure MFA defaults
+            newUser.setMfaEnabled(false);
+            newUser.setMfaSecret(null);
+            newUser.setMfaRecoveryCodes(null);
 
             boolean created = userDAO.createUser(newUser);
             if (created) {
@@ -219,21 +219,18 @@ public class CreateUserServlet extends HttpServlet {
                             + request.getServerPort()
                             + request.getContextPath();
 
-                    String verificationLink = baseUrl + "/VerifyUser?token=" + newUser.getVerificationToken();
-
                     String subject = "Verify Your Account";
                     String content = "<html><body>"
                             + "<p>Hello " + newUser.getFullName() + ",</p>"
-                            + "<p>Your account has been successfully created. Please verify your email by clicking the link below:</p>"
-                            + "<p><a href=\"" + verificationLink + "\">Verify Your Account</a></p>"
+                            + "<p>Your account has been successfully created.</p>"
                             + "<p><strong>Username:</strong> " + newUser.getUsername() + "</p>"
                             + "<p><strong>Password:</strong> " + randomPassword + "</p>"
-                            + "<p>This link will expire in 24 hours.</p>"
+                            + "<p>Please change your password after logging in.</p>"
                             + "<p>Best regards,<br>The Support Team</p>"
                             + "</body></html>";
 
                     EmailUtils.sendEmail(newUser.getEmail(), subject, content);
-                    session.setAttribute("successMessage", "Account created successfully! Verification email sent.");
+                    session.setAttribute("successMessage", "Account created successfully. Login details sent to user email.");
                     response.sendRedirect(request.getContextPath() + "/UserList");
                 } catch (Exception e) {
                     request.setAttribute("error", "Account created, but email failed: " + e.getMessage());
@@ -254,20 +251,6 @@ public class CreateUserServlet extends HttpServlet {
             List<Department> departments = userDAO.getActiveDepartments();
             request.setAttribute("departments", departments);
             request.getRequestDispatcher("/CreateUser.jsp").forward(request, response);
-        }
-    }
-
-    private String hashPasswordWithMD5(String password) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] hash = md.digest(password.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            throw new RuntimeException("Error hashing password", e);
         }
     }
 

@@ -6,6 +6,8 @@ public class Role {
     private int roleId;
     private String roleName;
     private String description;
+    private boolean isSystem;
+    private String status;
     private LocalDateTime createdAt;
     private boolean disable;
 
@@ -33,6 +35,22 @@ public class Role {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public boolean isIsSystem() {
+        return isSystem;
+    }
+
+    public void setIsSystem(boolean isSystem) {
+        this.isSystem = isSystem;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public LocalDateTime getCreatedAt() {

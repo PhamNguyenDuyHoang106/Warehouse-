@@ -5,6 +5,7 @@ import dal.RolePermissionDAO;
 import entity.Supplier;
 import entity.User;
 import utils.SupplierValidator;
+import utils.PermissionHelper;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Comparator;
@@ -40,33 +41,35 @@ public class SupplierServlet extends HttpServlet {
         String action = request.getParameter("action");
         if (action == null) action = "list";
 
-        if (roleId != 1) {
-            if ("list".equals(action) && !rolePermissionDAO.hasPermission(roleId, "VIEW_LIST_SUPPLIER")) {
-                request.setAttribute("error", "You do not have permission to view the supplier list.");
-                request.getRequestDispatcher("/error.jsp").forward(request, response);
-                return;
-            }
-            if ("edit".equals(action) && !rolePermissionDAO.hasPermission(roleId, "UPDATE_SUPPLIER") && !rolePermissionDAO.hasPermission(roleId, "VIEW_DETAIL_SUPPLIER")) {
-                request.setAttribute("error", "You do not have permission to edit or view supplier details.");
-                request.getRequestDispatcher("/error.jsp").forward(request, response);
-                return;
-            }
-            if ("delete".equals(action) && !rolePermissionDAO.hasPermission(roleId, "DELETE_SUPPLIER")) {
-                request.setAttribute("error", "You do not have permission to delete suppliers.");
-                request.getRequestDispatcher("/error.jsp").forward(request, response);
-                return;
-            }
+        if (!PermissionHelper.hasPermission(currentUser, "DS NCC") && "list".equals(action)) {
+            request.setAttribute("error", "You do not have permission to view the supplier list.");
+            request.getRequestDispatcher("/error.jsp").forward(request, response);
+            return;
+        }
+        // Check permissions based on action
+        if ("edit".equals(action) && !PermissionHelper.hasPermission(currentUser, "Sửa NCC")) {
+            request.setAttribute("error", "You do not have permission to edit or view supplier details.");
+            request.getRequestDispatcher("/error.jsp").forward(request, response);
+            return;
+        }
+        if ("delete".equals(action) && !PermissionHelper.hasPermission(currentUser, "Xóa NCC")) {
+            request.setAttribute("error", "You do not have permission to delete suppliers.");
+            request.getRequestDispatcher("/error.jsp").forward(request, response);
+            return;
         }
 
         switch (action) {
             case "list":
                 listSuppliers(request, response);
                 break;
+            case "view":
+                viewSupplier(request, response);
+                break;
             case "edit":
                 showEditForm(request, response);
                 break;
             case "delete":
-                deleteSupplier(request, response);
+                deleteSupplier(request, response, currentUser);
                 break;
             default:
                 listSuppliers(request, response);
@@ -125,6 +128,31 @@ public class SupplierServlet extends HttpServlet {
         request.getRequestDispatcher("/SupplierList.jsp").forward(request, response);
     }
 
+    private void viewSupplier(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        String idStr = request.getParameter("id");
+        if (idStr != null && !idStr.isEmpty()) {
+            try {
+                int id = Integer.parseInt(idStr);
+                Supplier supplier = supplierDAO.getSupplierByID(id);
+                if (supplier != null) {
+                    request.setAttribute("supplier", supplier);
+                    request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+                    request.getRequestDispatcher("/SupplierDetail.jsp").forward(request, response);
+                } else {
+                    request.setAttribute("error", "Supplier not found with ID: " + id);
+                    request.getRequestDispatcher("/error.jsp").forward(request, response);
+                }
+            } catch (NumberFormatException e) {
+                request.setAttribute("error", "Invalid supplier ID.");
+                request.getRequestDispatcher("/error.jsp").forward(request, response);
+            }
+        } else {
+            request.setAttribute("error", "Supplier ID is required.");
+            request.getRequestDispatcher("/error.jsp").forward(request, response);
+        }
+    }
+
     private void showEditForm(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         String idStr = request.getParameter("id");
@@ -144,13 +172,13 @@ public class SupplierServlet extends HttpServlet {
         request.getRequestDispatcher("/SupplierEdit.jsp").forward(request, response);
     }
 
-    private void deleteSupplier(HttpServletRequest request, HttpServletResponse response)
+    private void deleteSupplier(HttpServletRequest request, HttpServletResponse response, User currentUser)
             throws IOException, ServletException {
         String idStr = request.getParameter("id");
         if (idStr != null && !idStr.isEmpty()) {
             try {
                 int id = Integer.parseInt(idStr);
-                supplierDAO.deleteSupplier(id);
+                supplierDAO.deleteSupplier(id, currentUser.getUserId());
             } catch (NumberFormatException e) {
                 request.setAttribute("error", "Invalid supplier ID.");
                 try {
@@ -177,59 +205,70 @@ public class SupplierServlet extends HttpServlet {
         int roleId = currentUser.getRoleId();
         String idStr = request.getParameter("supplier_id");
 
-        if (roleId != 1) {
-            if ((idStr == null || idStr.isEmpty()) && !rolePermissionDAO.hasPermission(roleId, "CREATE_SUPPLIER")) {
-                request.setAttribute("error", "You do not have permission to create suppliers.");
-                request.getRequestDispatcher("/error.jsp").forward(request, response);
-                return;
-            }
-            if (idStr != null && !idStr.isEmpty() && !rolePermissionDAO.hasPermission(roleId, "UPDATE_SUPPLIER")) {
-                request.setAttribute("error", "You do not have permission to update suppliers.");
-                request.getRequestDispatcher("/error.jsp").forward(request, response);
-                return;
-            }
+        if ((idStr == null || idStr.isEmpty()) && !PermissionHelper.hasPermission(currentUser, "Tạo NCC")) {
+            request.setAttribute("error", "You do not have permission to create suppliers.");
+            request.getRequestDispatcher("/error.jsp").forward(request, response);
+            return;
+        }
+        if (idStr != null && !idStr.isEmpty() && !PermissionHelper.hasPermission(currentUser, "Sửa NCC")) {
+            request.setAttribute("error", "You do not have permission to update suppliers.");
+            request.getRequestDispatcher("/error.jsp").forward(request, response);
+            return;
         }
 
         String code = request.getParameter("supplier_code");
         String name = request.getParameter("supplier_name");
-        String contactInfo = request.getParameter("contact_info");
+        String contactPerson = request.getParameter("contact_person");
         String address = request.getParameter("address");
-        String phone = request.getParameter("phone_number");
+        String phone = request.getParameter("phone");
         String email = request.getParameter("email");
-        String desc = request.getParameter("description");
-        String taxId = request.getParameter("tax_id");
+        String taxCode = request.getParameter("tax_code");
+        String paymentTermIdStr = request.getParameter("payment_term_id");
+        String creditLimitStr = request.getParameter("credit_limit");
+        String status = request.getParameter("status");
 
         Map<String, String> errors = SupplierValidator.validateSupplierFormData(
-            code, name, contactInfo, address, phone, email, taxId, desc
+            code, name, contactPerson, address, phone, email, taxCode, creditLimitStr, status
         );
 
         if (!errors.isEmpty()) {
             Supplier supplier = new Supplier();
             supplier.setSupplierCode(code != null ? code : "");
             supplier.setSupplierName(name != null ? name : "");
-            supplier.setContactInfo(contactInfo != null ? contactInfo : "");
+            supplier.setContactPerson(contactPerson != null ? contactPerson : "");
             supplier.setAddress(address != null ? address : "");
-            supplier.setPhoneNumber(phone != null ? phone : "");
+            supplier.setPhone(phone != null ? phone : "");
             supplier.setEmail(email != null ? email : "");
-            supplier.setDescription(desc != null ? desc : "");
-            supplier.setTaxId(taxId != null ? taxId : "");
-            
+            supplier.setTaxCode(taxCode != null ? taxCode : "");
+            supplier.setStatus(status);
+            if (creditLimitStr != null && !creditLimitStr.trim().isEmpty()) {
+                try {
+                    supplier.setCreditLimit(new java.math.BigDecimal(creditLimitStr.trim()));
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            if (paymentTermIdStr != null && !paymentTermIdStr.trim().isEmpty()) {
+                try {
+                    supplier.setPaymentTermId(Integer.parseInt(paymentTermIdStr.trim()));
+                } catch (NumberFormatException ignored) {
+                }
+            }
+
             if (idStr != null && !idStr.isEmpty()) {
                 try {
                     supplier.setSupplierId(Integer.parseInt(idStr));
-                            } catch (NumberFormatException e) {
-                // Ignore parsing error
+                } catch (NumberFormatException ignored) {
+                }
             }
-            }
-            
+
             StringBuilder errorMessage = new StringBuilder();
             for (String error : errors.values()) {
                 errorMessage.append(error).append(" ");
             }
-            
+
             request.setAttribute("supplier", supplier);
             request.setAttribute("error", errorMessage.toString().trim());
-            request.setAttribute("rolePermissionDAO", rolePermissionDAO); 
+            request.setAttribute("rolePermissionDAO", rolePermissionDAO);
             try {
                 request.getRequestDispatcher("/SupplierEdit.jsp").forward(request, response);
             } catch (ServletException | IOException e) {
@@ -241,12 +280,28 @@ public class SupplierServlet extends HttpServlet {
         Supplier supplier = new Supplier();
         supplier.setSupplierCode(code);
         supplier.setSupplierName(name);
-        supplier.setContactInfo(contactInfo);
+        supplier.setContactPerson(contactPerson);
         supplier.setAddress(address);
-        supplier.setPhoneNumber(phone);
+        supplier.setPhone(phone);
         supplier.setEmail(email);
-        supplier.setDescription(desc);
-        supplier.setTaxId(taxId);
+        supplier.setTaxCode(taxCode);
+        supplier.setStatus(status != null && !status.trim().isEmpty() ? status.trim().toLowerCase() : "active");
+        if (paymentTermIdStr != null && !paymentTermIdStr.trim().isEmpty()) {
+            try {
+                supplier.setPaymentTermId(Integer.parseInt(paymentTermIdStr.trim()));
+            } catch (NumberFormatException ignored) {
+                supplier.setPaymentTermId(null);
+            }
+        }
+        if (creditLimitStr != null && !creditLimitStr.trim().isEmpty()) {
+            try {
+                supplier.setCreditLimit(new java.math.BigDecimal(creditLimitStr.trim()));
+            } catch (NumberFormatException ignored) {
+                supplier.setCreditLimit(java.math.BigDecimal.ZERO);
+            }
+        } else {
+            supplier.setCreditLimit(java.math.BigDecimal.ZERO);
+        }
 
         if (idStr == null || idStr.isEmpty()) {
             supplierDAO.addSupplier(supplier);

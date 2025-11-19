@@ -36,7 +36,6 @@
                 placeholder="Enter Your Password" autocomplete="current-password" required>
             </div>
             <div class="mb-3 d-flex justify-content-between align-items-center">
-              <a href="ForgotPassword.jsp" class="text-primary text-decoration-none">Forgot Password?</a>
             </div>
             <p style="color:red;">
               ${error}
