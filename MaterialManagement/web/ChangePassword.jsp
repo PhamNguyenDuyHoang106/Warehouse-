@@ -19,6 +19,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
     <link rel="stylesheet" type="text/css" href="css/vendor.css">
     <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" type="text/css" href="css/override-style.css">
     <style>
         section.py-5 { background: url('images/background-img.png') no-repeat center center fixed; background-size: contain; }
         .change-password-section .form-control { height: 48px; font-size: 16px; }

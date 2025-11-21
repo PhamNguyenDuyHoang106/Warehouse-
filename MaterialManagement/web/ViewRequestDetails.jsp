@@ -12,6 +12,7 @@
               integrity="sha384-KK94CHFLLe+nY2dmCWGMq91rCGa5gtU4mk92HdvYe+M/SXH301p5ILy+dN9+nJOZ" crossorigin="anonymous">
         <link rel="stylesheet" type="text/css" href="css/vendor.css">
         <link rel="stylesheet" type="text/css" href="style.css">
+        <link rel="stylesheet" type="text/css" href="css/override-style.css">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Chilanka&family=Montserrat:wght@300;400;500&display=swap"
@@ -144,8 +145,6 @@
         <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px;">
           <div class="row">
             <div class="col-12">
-        <jsp:include page="Header.jsp" />
-
         <section id="request-details">
                   <div class="detail-container">
                 <h2 class="display-4 fw-normal text-center mb-4">Request <span class="text-primary">Details</span></h2>

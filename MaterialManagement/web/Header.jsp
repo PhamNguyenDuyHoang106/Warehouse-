@@ -39,10 +39,11 @@ if (user != null) {
 }
 %>
 
-<head>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-          crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <style>
+<!-- Header Styles - Không dùng thẻ <head> để tránh xung đột khi include -->
+<!-- Lưu ý: Font Awesome cần được thêm vào phần <head> của từng trang -->
+<!-- CSS này được load sau cùng để override tất cả CSS khác (style.css, vendor.css, etc.) -->
+<!-- IMPORTANT: CSS này phải được load sau tất cả CSS khác để đảm bảo override -->
+<style id="header-custom-styles">
         /* Modern Header Styles */
         * {
             box-sizing: border-box;
@@ -56,18 +57,29 @@ if (user != null) {
             max-width: 100vw;
         }
         
+        /* Override tất cả CSS từ style.css, vendor.css, và các file khác với specificity cao nhất */
+        html body header,
+        body header,
         header {
-            width: 100%;
-            max-width: 100%;
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0 30px;
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-            position: sticky;
-            top: 0;
-            z-index: 999;
-            transition: none;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08) !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 999 !important;
+            transition: none !important;
+            /* Override CSS từ Sidebar.jsp và các file khác */
+            clear: none !important;
+            /* Đảm bảo header có độ cao cố định - override tất cả CSS khác */
+            min-height: auto !important;
+            height: auto !important;
+            /* Override biến CSS từ style.css nếu có sử dụng */
+            --header-height: auto !important;
+            --header-height-min: auto !important;
         }
         
         /* Ẩn các dropdown menu trong header vì đã có trong sidebar */
@@ -76,14 +88,163 @@ if (user != null) {
             display: none !important;
         }
         
-        header .container-fluid {
-            width: 100%;
-            max-width: 100%;
-            padding-left: 30px;
-            padding-right: 30px;
-            margin-left: 0;
-            margin-right: 0;
+        /* Override với specificity cao nhất - Đảm bảo container-fluid có chiều cao và màu cố định */
+        html body header .container-fluid,
+        body header .container-fluid,
+        header .container-fluid,
+        html body header .container-fluid.py-2,
+        body header .container-fluid.py-2,
+        header .container-fluid.py-2,
+        html body header div.container-fluid.py-2,
+        body header div.container-fluid.py-2,
+        header div.container-fluid.py-2 {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding-left: 30px !important;
+            padding-right: 30px !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            box-sizing: border-box !important;
+            /* Đảm bảo padding nhất quán - override Bootstrap py-2 và tất cả CSS khác */
+            padding-top: 12px !important;
+            padding-bottom: 12px !important;
+            /* Đảm bảo chiều cao cố định - override tất cả CSS từ style.css, vendor.css */
+            /* Không set height cố định, để nó tự động dựa trên nội dung, nhưng đảm bảo không bị CSS khác override */
+            min-height: auto !important;
+            height: auto !important;
+            max-height: none !important;
+            /* Override màu sắc từ các file CSS khác (style.css có thể set màu #41403E hoặc #212529) */
+            background: transparent !important;
+            background-color: transparent !important;
+            color: inherit !important;
+            /* Override tất cả CSS variables có thể ảnh hưởng từ style.css */
+            --bs-body-color: inherit !important;
+            --bs-body-line-height: normal !important;
+            /* Đảm bảo không có CSS từ style.css ảnh hưởng đến line-height */
+            line-height: normal !important;
+        }
+        
+        /* Đảm bảo row và các element bên trong container-fluid không ảnh hưởng đến chiều cao */
+        html body header .container-fluid.py-2 .row,
+        body header .container-fluid.py-2 .row,
+        header .container-fluid.py-2 .row {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            /* Đảm bảo row không có height cố định */
+            min-height: auto !important;
+            height: auto !important;
+        }
+        
+        /* Đảm bảo các col bên trong không ảnh hưởng đến chiều cao */
+        html body header .container-fluid.py-2 .row > [class*="col-"],
+        body header .container-fluid.py-2 .row > [class*="col-"],
+        header .container-fluid.py-2 .row > [class*="col-"] {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+        
+        /* Đảm bảo các element p, a, button trong container-fluid không ảnh hưởng đến chiều cao */
+        html body header .container-fluid.py-2 p,
+        body header .container-fluid.py-2 p,
+        header .container-fluid.py-2 p,
+        html body header .container-fluid.py-2 a,
+        body header .container-fluid.py-2 a,
+        header .container-fluid.py-2 a,
+        html body header .container-fluid.py-2 button,
+        body header .container-fluid.py-2 button,
+        header .container-fluid.py-2 button {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            /* Override line-height từ style.css (--bs-body-line-height: 2) */
+            line-height: normal !important;
+        }
+        
+        /* Đảm bảo user-name và user-email không ảnh hưởng đến chiều cao */
+        html body header .container-fluid.py-2 .user-name,
+        body header .container-fluid.py-2 .user-name,
+        header .container-fluid.py-2 .user-name,
+        html body header .container-fluid.py-2 .user-email,
+        body header .container-fluid.py-2 .user-email,
+        header .container-fluid.py-2 .user-email {
+            margin: 0 !important;
+            padding: 0 !important;
+            line-height: normal !important;
+        }
+        
+        /* Đảm bảo phần navigation có padding và height nhất quán - override với specificity cao */
+        html body header nav.main-menu,
+        body header nav.main-menu,
+        header nav.main-menu {
+            padding-top: 10px !important;
+            padding-bottom: 10px !important;
+            min-height: 60px !important;
+            height: auto !important;
+            margin: 0 !important;
+            /* Đảm bảo navigation luôn có cùng độ cao dù có hay không có menu items */
+            display: flex !important;
+            visibility: visible !important;
+            align-items: center !important;
+        }
+        
+        /* Đảm bảo offcanvas-body có padding nhất quán */
+        html body header .offcanvas-body,
+        body header .offcanvas-body,
+        header .offcanvas-body {
+            padding-top: 10px !important;
+            padding-bottom: 10px !important;
+            min-height: 40px !important;
+        }
+        
+        /* Nếu không có menu items, vẫn giữ độ cao */
+        header nav.main-menu:empty {
+            min-height: 60px !important;
+        }
+        
+        /* Đảm bảo container-fluid chứa nav có padding nhất quán */
+        /* Sử dụng selector tương thích thay vì :has() */
+        html body header .container-fluid:not(.py-2),
+        body header .container-fluid:not(.py-2),
+        header .container-fluid:not(.py-2),
+        header > .container-fluid:last-child {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        
+        /* Đảm bảo tất cả select trong nav có cùng style */
+        html body header nav.main-menu select,
+        body header nav.main-menu select,
+        header nav.main-menu select {
+            margin: 0 !important;
+            vertical-align: middle !important;
+        }
+        
+        /* Override tất cả CSS có thể ảnh hưởng đến header height */
+        header * {
             box-sizing: border-box;
+        }
+        
+        /* Đảm bảo hr trong header không ảnh hưởng đến height - override Bootstrap my-2 */
+        html body header hr,
+        body header hr,
+        header hr {
+            margin-top: 8px !important;
+            margin-bottom: 8px !important;
+            border: none !important;
+            border-top: 1px solid #e9ecef !important;
+            padding: 0 !important;
+            height: 1px !important;
+        }
+        
+        /* Override Bootstrap margin classes trong header */
+        header .mb-3,
+        header .mb-sm-0 {
+            margin-bottom: 0 !important;
         }
         
         /* User Info Section */
@@ -300,9 +461,18 @@ if (user != null) {
             }
         }
         
+        /* Đảm bảo row trong header có margin/padding nhất quán */
+        html body header .row,
+        body header .row,
         header .row {
-            margin-left: calc(-0.5 * var(--bs-gutter-x, 0.75rem));
-            margin-right: calc(-0.5 * var(--bs-gutter-x, 0.75rem));
+            margin-left: calc(-0.5 * var(--bs-gutter-x, 0.75rem)) !important;
+            margin-right: calc(-0.5 * var(--bs-gutter-x, 0.75rem)) !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            padding: 0 !important;
+            /* Đảm bảo row không ảnh hưởng đến chiều cao của container-fluid */
+            min-height: auto !important;
+            height: auto !important;
         }
         
         /* Logo Animation */
@@ -314,7 +484,6 @@ if (user != null) {
             transform: scale(1.05);
         }
     </style>
-</head>
 
 <header>
     <div class="container-fluid py-2">

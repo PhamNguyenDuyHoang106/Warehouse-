@@ -12,6 +12,7 @@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
     />
     <link rel="stylesheet" type="text/css" href="css/vendor.css" />
     <link rel="stylesheet" type="text/css" href="style.css" />
+    <link rel="stylesheet" type="text/css" href="css/override-style.css">
     <style>
       body {
         background-color: #f8f9fa;
