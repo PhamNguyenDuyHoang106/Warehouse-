@@ -212,7 +212,22 @@
     </style>
 </head>
 <body>
-    <div style="padding: 60px 30px">
+    <!-- Header -->
+    <jsp:include page="Header.jsp" />
+
+    <!-- Main Content Wrapper - Bao sidebar và body content -->
+    <div class="main-content-wrapper">
+      <!-- Sidebar - Nằm trong wrapper -->
+      <div class="sidebar-wrapper-inner">
+        <jsp:include page="Sidebar.jsp" />
+      </div>
+      
+      <!-- Main Content Body - Nằm trong wrapper, bên cạnh sidebar -->
+      <div class="main-content-body">
+        <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px;">
+          <div class="row">
+            <div class="col-12">
+    <div style="padding: 20px">
     <!-- 🔍 Search Form -->
     <div class="search-container">
         <div class="row mb-4 justify-content-center">
@@ -308,6 +323,10 @@
         <a href="home" class="btn btn-outline-dark"
            style="padding: 10px 18px; font-size: 1rem;">⬅ Back to Home</a>
     </div>
-</div>
+            </div>
+          </div>
+        </div>
+      </div> <!-- End main-content-body -->
+    </div> <!-- End main-content-wrapper -->
 </body>
 </html>

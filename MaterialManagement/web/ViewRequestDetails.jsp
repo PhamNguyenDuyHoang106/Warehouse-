@@ -129,10 +129,25 @@
         </style>
     </head>
     <body>
+    <!-- Header -->
+    <jsp:include page="Header.jsp" />
+
+    <!-- Main Content Wrapper - Bao sidebar và body content -->
+    <div class="main-content-wrapper">
+      <!-- Sidebar - Nằm trong wrapper -->
+      <div class="sidebar-wrapper-inner">
+        <jsp:include page="Sidebar.jsp" />
+      </div>
+      
+      <!-- Main Content Body - Nằm trong wrapper, bên cạnh sidebar -->
+      <div class="main-content-body">
+        <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px;">
+          <div class="row">
+            <div class="col-12">
         <jsp:include page="Header.jsp" />
 
         <section id="request-details">
-            <div class="detail-container">
+                  <div class="detail-container">
                 <h2 class="display-4 fw-normal text-center mb-4">Request <span class="text-primary">Details</span></h2>
 
                 <c:if test="${not empty message}">
@@ -400,6 +415,11 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"
                 integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe" crossorigin="anonymous"></script>
         <script src="js/plugins.js"></script>
+            </div>
+          </div>
+        </div>
+      </div> <!-- End main-content-body -->
+    </div> <!-- End main-content-wrapper -->
         <script src="js/script.js"></script>
         <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
     </body>

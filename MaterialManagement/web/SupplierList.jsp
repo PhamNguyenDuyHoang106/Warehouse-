@@ -72,14 +72,18 @@
     <!-- Header -->
     <jsp:include page="Header.jsp" />
 
-    <!-- Main content -->
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-3 col-lg-2 bg-light p-0">
-                <jsp:include page="Sidebar.jsp" />
-            </div>
-
-            <div class="col-md-9 col-lg-10 content px-md-4">
+    <!-- Main Content Wrapper - Bao sidebar và body content -->
+    <div class="main-content-wrapper">
+      <!-- Sidebar - Nằm trong wrapper -->
+      <div class="sidebar-wrapper-inner">
+        <jsp:include page="Sidebar.jsp" />
+      </div>
+      
+      <!-- Main Content Body - Nằm trong wrapper, bên cạnh sidebar -->
+      <div class="main-content-body">
+        <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px;">
+          <div class="row">
+            <div class="col-12 content px-md-4">
                 <c:set var="roleId" value="${sessionScope.user.roleId}" />
                 <c:set var="hasViewListPermission" value="${rolePermissionDAO.hasPermission(roleId, 'DS NCC')}" scope="request" />
 
@@ -198,12 +202,11 @@
                         </ul>
                     </nav>
                 </c:if>
-            </div> 
-        </div> 
-    </div> 
-
-    <!-- Footer -->
-    <jsp:include page="Footer.jsp" />
+            </div>
+          </div>
+        </div>
+      </div> <!-- End main-content-body -->
+    </div> <!-- End main-content-wrapper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
 </body>

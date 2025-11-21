@@ -93,6 +93,10 @@ public class ListPurchaseRequestsServlet extends HttpServlet {
             request.setAttribute("rolePermissionDAO", rolePermissionDAO);
             // Admin có toàn quyền - PermissionHelper đã xử lý
             request.setAttribute("canApprove", PermissionHelper.hasPermission(currentUser, "Duyệt PR"));
+            
+            // Check permission for creating purchase request
+            boolean hasCreatePurchaseRequestPermission = PermissionHelper.hasPermission(currentUser, "Tạo PR");
+            request.setAttribute("hasCreatePurchaseRequestPermission", hasCreatePurchaseRequestPermission);
 
             request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
 

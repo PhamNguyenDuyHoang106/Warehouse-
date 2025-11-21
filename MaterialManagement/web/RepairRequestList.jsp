@@ -2,202 +2,369 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>Repair Request Management</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-        <link rel="stylesheet" type="text/css" href="css/vendor.css">
-        <link rel="stylesheet" type="text/css" href="style.css">
-        <style>
-            body {
-                font-family: 'Segoe UI', Arial, sans-serif;
-                background-color: #faf4ee;
-            }
-            .container-main {
-                max-width: 1200px;
-                margin: 30px auto;
-                background: #fff;
-                padding: 32px;
-                border-radius: 12px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            }
-            h2 {
-                font-size: 1.75rem;
-                font-weight: bold;
-                margin-bottom: 0.5rem;
-                color: #DEAD6F;
-            }
-            .filter-bar {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 12px;
-                margin: 20px 0;
-                align-items: center;
-            }
-            .filter-bar .form-control,
-            .filter-bar .form-select,
-            .filter-bar .btn {
-                height: 48px;
-                min-width: 120px;
-            }
-            .btn-filter:hover {
-                background-color: #cfa856;
-                color: #fff;
-            }
-            .custom-table thead th {
-                background-color: #f9f5f0;
-                color: #5c4434;
-                font-weight: 600;
-            }
-            .custom-table tbody tr:hover {
-                background-color: #f1f1f1;
-            }
-            .custom-table th,
-            .custom-table td {
-                vertical-align: middle;
-                min-height: 48px;
-            }
-            .status-badge {
-                padding: 2px 10px;
-                border-radius: 10px;
-                font-size: 13px;
-                font-weight: 500;
-                display: inline-block;
-                min-width: 90px;
-                text-align: center;
-            }
-            .status-pending {
-                background-color: #6c757d;
-                color: #fff;
-            }
-            .status-approved {
-                background-color: #d4edda;
-                color: #155724;
-            }
-            .status-rejected {
-                background-color: #f8d7da;
-                color: #721c24;
-            }
-            .btn-detail {
-                background-color: #fff7e6;
-                color: #b8860b;
-                border: 1px solid #ffe58f;
-                border-radius: 6px;
-                padding: 6px auto;
-                font-weight: 300;
-                width: 100px;
-            }
-            .error {
-                color: red;
-                font-weight: bold;
-                text-align: center;
-                margin-top: 10px;
-            }
-            .pagination {
-                margin-top: 20px;
-                justify-content: center;
-            }
-            .pagination .page-link {
-                color: #DEAD6F;
-                border: 1px solid #DEAD6F;
-                margin: 0 4px;
-                border-radius: 6px;
-            }
-            .pagination .page-link:hover {
-                background-color: #DEAD6F;
-                color: #fff;
-            }
-            .pagination .page-item.active .page-link {
-                background-color: #DEAD6F;
-                border-color: #DEAD6F;
-                color: #fff;
-            }
-            .pagination .page-item.disabled .page-link {
-                color: #6c757d;
-                border-color: #dee2e6;
-                background-color: #f8f9fa;
-            }
-        </style>
-    </head>
-    <body>
-        <jsp:include page="Header.jsp" />
-        <div class="container-fluid">
-            <div class="row">
-                <jsp:include page="SidebarDirector.jsp" />
-                <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-                    <div class="container-main">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h2 class="fw-bold display-6 border-bottom pb-2 m-0" style="color: #DEAD6F;">
-                                <i class="fas fa-tools"></i> Repair Request Management
-                            </h2>
-                            <a href="${pageContext.request.contextPath}/CreateRepairRequest" class="btn btn-add ms-auto">
-                                <i class="fas fa-plus"></i> Add Repair Request
+<head>
+    <meta charset="UTF-8">
+    <title>Repair Request Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="css/vendor.css">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+        }
+        
+        /* Filter Card - Card trắng ở trên */
+        .filter-card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        
+        .filter-card .form-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .filter-card .form-control,
+        .filter-card .form-select {
+            height: 42px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .filter-card .form-control:focus,
+        .filter-card .form-select:focus {
+            border-color: #0056b3;
+            box-shadow: 0 0 0 0.2rem rgba(0, 86, 179, 0.15);
+        }
+        
+        .btn-search {
+            background: linear-gradient(135deg, #0056b3 0%, #007bff 100%);
+            color: white;
+            border: none;
+            height: 42px;
+            padding: 0 24px;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-search:hover {
+            background: linear-gradient(135deg, #004085 0%, #0056b3 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 86, 179, 0.3);
+        }
+        
+        /* Create Button - Nút lớn màu xanh */
+        .btn-create {
+            background: linear-gradient(135deg, #0056b3 0%, #007bff 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 86, 179, 0.25);
+        }
+        
+        .btn-create:hover {
+            background: linear-gradient(135deg, #004085 0%, #0056b3 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 86, 179, 0.35);
+            color: white;
+        }
+        
+        .btn-create i {
+            font-size: 18px;
+        }
+        
+        /* Table Card */
+        .table-card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+        
+        .table-card table {
+            margin-bottom: 0;
+        }
+        
+        .table-card thead th {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+            color: white;
+            font-weight: 600;
+            padding: 16px;
+            border: none;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .table-card tbody td {
+            padding: 16px;
+            vertical-align: middle;
+            border-bottom: 1px solid #e9ecef;
+            font-size: 14px;
+        }
+        
+        .table-card tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .table-card tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* Status Badges */
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+            text-align: center;
+            min-width: 90px;
+        }
+        
+        .status-pending {
+            background-color: #ffc107;
+            color: #000;
+        }
+        
+        .status-approved {
+            background-color: #28a745;
+            color: #fff;
+        }
+        
+        .status-rejected {
+            background-color: #dc3545;
+            color: #fff;
+        }
+        
+        /* Action Buttons */
+        .btn-action {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-detail {
+            background-color: #fff7e6;
+            color: #b8860b;
+            border: 1px solid #ffe58f;
+        }
+        
+        .btn-detail:hover {
+            background-color: #ffe58f;
+            color: #856404;
+        }
+        
+        /* Pagination */
+        .pagination .page-item.active .page-link {
+            background: linear-gradient(135deg, #0056b3 0%, #007bff 100%);
+            border-color: #0056b3;
+            color: #fff;
+        }
+        
+        .pagination .page-link {
+            color: #0056b3;
+            border-color: #dee2e6;
+        }
+        
+        .pagination .page-link:hover {
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+        }
+        
+        /* Alert Messages */
+        .alert {
+            border-radius: 8px;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+        
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <jsp:include page="Header.jsp" />
+
+    <!-- Main Content Wrapper - Bao sidebar và body content -->
+    <div class="main-content-wrapper">
+      <!-- Sidebar - Nằm trong wrapper -->
+      <div class="sidebar-wrapper-inner">
+        <jsp:include page="Sidebar.jsp" />
+      </div>
+      
+      <!-- Main Content Body - Nằm trong wrapper, bên cạnh sidebar -->
+      <div class="main-content-body">
+        <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px;">
+          <div class="row">
+            <div class="col-12 px-md-4">
+                <!-- Success/Error Messages -->
+                <c:if test="${not empty param.success}">
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-check-circle me-2"></i>${param.success}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                </c:if>
+                <c:if test="${not empty param.error}">
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>${param.error}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                </c:if>
+                <c:if test="${not empty error}">
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>${error}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                </c:if>
+                
+                <!-- Filter Card -->
+                <div class="filter-card">
+                    <form method="get" action="repairrequestlist" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">
+                                <i class="fas fa-search me-1"></i>Tìm kiếm (Search Reason)
+                            </label>
+                            <input type="text" name="search" class="form-control" 
+                                   placeholder="Nhập lý do..." 
+                                   value="${searchKeyword != null ? searchKeyword : ''}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">
+                                <i class="fas fa-info-circle me-1"></i>Tình trạng (Status)
+                            </label>
+                            <select name="status" class="form-select">
+                                <option value="all" ${selectedStatus == null || selectedStatus == 'all' ? 'selected' : ''}>Tất cả</option>
+                                <option value="pending" ${selectedStatus == 'pending' ? 'selected' : ''}>Chờ duyệt</option>
+                                <option value="approved" ${selectedStatus == 'approved' ? 'selected' : ''}>Đã duyệt</option>
+                                <option value="rejected" ${selectedStatus == 'rejected' ? 'selected' : ''}>Từ chối</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">
+                                <i class="fas fa-sort me-1"></i>Sắp xếp (Sort)
+                            </label>
+                            <select name="sortByName" class="form-select">
+                                <option value="newest" ${sortByName == 'newest' || sortByName == null || sortByName == '' ? 'selected' : ''}>Mới nhất</option>
+                                <option value="oldest" ${sortByName == 'oldest' ? 'selected' : ''}>Cũ nhất</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">
+                                <i class="fas fa-calendar me-1"></i>Từ ngày (From Date)
+                            </label>
+                            <input type="date" name="requestDateFrom" class="form-control" 
+                                   value="${requestDateFrom != null ? requestDateFrom : ''}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">
+                                <i class="fas fa-calendar me-1"></i>Đến ngày (To Date)
+                            </label>
+                            <input type="date" name="requestDateTo" class="form-control" 
+                                   value="${requestDateTo != null ? requestDateTo : ''}">
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end gap-2">
+                            <button type="submit" class="btn btn-search flex-grow-1">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <a href="${pageContext.request.contextPath}/repairrequestlist" class="btn btn-outline-secondary" style="height: 42px; padding: 0 16px; display: flex; align-items: center;" title="Reset">
+                                <i class="fas fa-redo"></i>
                             </a>
                         </div>
-                        <form method="get" action="repairrequestlist" class="filter-bar align-items-center" style="gap: 8px; flex-wrap: nowrap;">
-                            <input type="text" name="search" class="form-control" placeholder="Search Reason"
-                                   value="${searchKeyword != null ? searchKeyword : ''}" style="width: 230px;">
-                            <select name="status" class="form-select" style="max-width: 150px;" onchange="this.form.submit()">
-                                <option value="all" ${selectedStatus == null || selectedStatus == 'all' ? 'selected' : ''}>All Status</option>
-                                <option value="pending" ${selectedStatus == 'pending' ? 'selected' : ''}>Pending</option>
-                                <option value="approved" ${selectedStatus == 'approved' ? 'selected' : ''}>Approved</option>
-                                <option value="rejected" ${selectedStatus == 'rejected' ? 'selected' : ''}>Rejected</option>
-                            </select>
-                            <select name="sortByName" class="form-select" style="max-width: 150px;" onchange="this.form.submit()">
-                                <option value="newest" ${sortByName == 'newest' || sortByName == null || sortByName == '' ? 'selected' : ''}>Newest First</option>
-                                <option value="oldest" ${sortByName == 'oldest' ? 'selected' : ''}>Oldest First</option>
-                            </select>
-                            <input type="hidden" name="page" value="${currentPage != null ? currentPage : 1}">
-                            <input type="date" name="requestDateFrom" class="form-control" placeholder="From Date"
-                                   value="${requestDateFrom != null ? requestDateFrom : ''}" style="width: 230px;">
-                            <input type="date" name="requestDateTo" class="form-control" placeholder="To Date"
-                                   value="${requestDateTo != null ? requestDateTo : ''}" style="width: 230px;">
-                            <button type="submit" class="btn btn-filter" style="background-color: #DEAD6F; border-color: #DEAD6F; color:white;">Filter</button>
-                            <a href="${pageContext.request.contextPath}/repairrequestlist" class="btn btn-secondary" style="width: 75px; height: 50px; display: flex; justify-content: center; align-items: center">Clear</a>
-                        </form>
-                        <c:if test="${not empty error}">
-                            <p class="error">${error}</p>
-                        </c:if>
+                    </form>
+                </div>
+                
+                <!-- Create Button -->
+                <c:if test="${hasCreateRepairRequestPermission}">
+                    <div class="d-flex justify-content-end">
+                        <a href="CreateRepairRequest" class="btn-create">
+                            <i class="fas fa-plus"></i>
+                            Tạo yêu cầu sửa chữa
+                        </a>
+                    </div>
+                </c:if>
+                
+                <!-- Table Card -->
+                <c:if test="${not empty repairRequests}">
+                    <div class="table-card">
                         <div class="table-responsive">
-                            <table class="table custom-table">
+                            <table class="table mb-0">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
-                                        <th>Request Code</th>
-                                        <th>Full Name</th>
-                                        <th>Request Date</th>
-                                        <th>Status</th>
-                                        <th>Reason</th>
-                                        <th>Action</th>
+                                        <th>STT</th>
+                                        <th>Mã phiếu</th>
+                                        <th>Họ tên</th>
+                                        <th>Ngày yêu cầu</th>
+                                        <th>Tình trạng</th>
+                                        <th>Lý do</th>
+                                        <th>Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <c:forEach var="r" items="${repairRequests}">
+                                    <c:forEach var="r" items="${repairRequests}" varStatus="loop">
                                         <c:if test="${r.status ne 'cancel'}">
                                             <tr>
-                                                <td>${r.repairRequestId}</td>
-                                                <td>${r.requestCode}</td>
+                                                <td>${(currentPage - 1) * 10 + loop.index + 1}</td>
+                                                <td><strong>${r.requestCode}</strong></td>
                                                 <td>${r.fullName != null ? r.fullName : 'Unknown'}</td>
                                                 <td>${r.requestDate}</td>
                                                 <td>
-                                                    <span class="status-badge
-                                                          <c:choose>
-                                                              <c:when test="${r.status == 'pending'}">status-pending</c:when>
-                                                              <c:when test="${r.status == 'approved'}">status-approved</c:when>
-                                                              <c:when test="${r.status == 'rejected'}">status-rejected</c:when>
-                                                          </c:choose>">
-                                                        ${r.status}
-                                                    </span>
+                                                    <c:choose>
+                                                        <c:when test="${r.status == 'pending'}">
+                                                            <span class="status-badge status-pending">Chờ duyệt</span>
+                                                        </c:when>
+                                                        <c:when test="${r.status == 'approved'}">
+                                                            <span class="status-badge status-approved">Đã duyệt</span>
+                                                        </c:when>
+                                                        <c:when test="${r.status == 'rejected'}">
+                                                            <span class="status-badge status-rejected">Từ chối</span>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <span class="status-badge status-pending">${r.status}</span>
+                                                        </c:otherwise>
+                                                    </c:choose>
                                                 </td>
                                                 <td>${r.reason}</td>
                                                 <td>
-                                                    <form action="repairrequestdetailbyID" method="get">
-                                                        <input type="hidden" name="requestId" value="${r.repairRequestId}" />
-                                                        <button type="submit" class="btn-detail">
-                                                            <i class="fas fa-eye"></i> Detail
-                                                        </button>
-                                                    </form>
+                                                    <a href="repairrequestdetailbyID?requestId=${r.repairRequestId}" 
+                                                       class="btn-action btn-detail" title="Xem chi tiết">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
                                                 </td>
                                             </tr>
                                         </c:if>
@@ -205,32 +372,52 @@
                                 </tbody>
                             </table>
                         </div>
-                        <c:if test="${totalPages > 0}">
-                            <nav aria-label="Page navigation">
-                                <ul class="pagination">
-                                    <li class="page-item ${currentPage == 1 ? 'disabled' : ''}">
-                                        <a class="page-link" href="repairrequestlist?page=${currentPage - 1}&search=${searchKeyword}&status=${selectedStatus}&sortByName=${sortByName}&requestDateFrom=${requestDateFrom}&requestDateTo=${requestDateTo}" aria-label="Previous">
-                                            <span aria-hidden="true">« Previous</span>
-                                        </a>
-                                    </li>
-                                    <c:forEach begin="1" end="${totalPages}" var="i">
-                                        <li class="page-item ${currentPage == i ? 'active' : ''}">
-                                            <a class="page-link" href="repairrequestlist?page=${i}&search=${searchKeyword}&status=${selectedStatus}&sortByName=${sortByName}&requestDateFrom=${requestDateFrom}&requestDateTo=${requestDateTo}">${i}</a>
-                                        </li>
-                                    </c:forEach>
-                                    <li class="page-item ${currentPage == totalPages ? 'disabled' : ''}">
-                                        <a class="page-link" href="repairrequestlist?page=${currentPage + 1}&search=${searchKeyword}&status=${selectedStatus}&sortByName=${sortByName}&requestDateFrom=${requestDateFrom}&requestDateTo=${requestDateTo}" aria-label="Next">
-                                            <span aria-hidden="true">Next »</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </nav>
-                        </c:if>
                     </div>
-                </main>
+                    
+                    <!-- Pagination -->
+                    <c:if test="${totalPages > 0}">
+                        <nav aria-label="Page navigation" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item ${currentPage == 1 ? 'disabled' : ''}">
+                                    <a class="page-link" 
+                                       href="repairrequestlist?page=${currentPage - 1}&search=${searchKeyword}&status=${selectedStatus}&sortByName=${sortByName}&requestDateFrom=${requestDateFrom}&requestDateTo=${requestDateTo}" 
+                                       aria-label="Previous">
+                                        <span aria-hidden="true">« Previous</span>
+                                    </a>
+                                </li>
+                                <c:forEach begin="1" end="${totalPages}" var="i">
+                                    <li class="page-item ${currentPage == i ? 'active' : ''}">
+                                        <a class="page-link" 
+                                           href="repairrequestlist?page=${i}&search=${searchKeyword}&status=${selectedStatus}&sortByName=${sortByName}&requestDateFrom=${requestDateFrom}&requestDateTo=${requestDateTo}">${i}</a>
+                                    </li>
+                                </c:forEach>
+                                <li class="page-item ${currentPage == totalPages ? 'disabled' : ''}">
+                                    <a class="page-link" 
+                                       href="repairrequestlist?page=${currentPage + 1}&search=${searchKeyword}&status=${selectedStatus}&sortByName=${sortByName}&requestDateFrom=${requestDateFrom}&requestDateTo=${requestDateTo}" 
+                                       aria-label="Next">
+                                        <span aria-hidden="true">Next »</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </c:if>
+                </c:if>
+                
+                <c:if test="${empty repairRequests}">
+                    <div class="table-card">
+                        <div class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <h5>Không có dữ liệu</h5>
+                            <p>Không tìm thấy yêu cầu sửa chữa nào.</p>
+                        </div>
+                    </div>
+                </c:if>
             </div>
+          </div>
         </div>
-        <jsp:include page="Footer.jsp" />
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    </body>
+      </div> <!-- End main-content-body -->
+    </div> <!-- End main-content-wrapper -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
 </html>

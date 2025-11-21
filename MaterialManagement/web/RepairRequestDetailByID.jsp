@@ -141,7 +141,22 @@
         </style>
     </head>
     <body>
-        <div class="container">
+    <!-- Header -->
+    <jsp:include page="Header.jsp" />
+
+    <!-- Main Content Wrapper - Bao sidebar và body content -->
+    <div class="main-content-wrapper">
+      <!-- Sidebar - Nằm trong wrapper -->
+      <div class="sidebar-wrapper-inner">
+        <jsp:include page="Sidebar.jsp" />
+      </div>
+      
+      <!-- Main Content Body - Nằm trong wrapper, bên cạnh sidebar -->
+      <div class="main-content-body">
+        <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px;">
+          <div class="row">
+            <div class="col-12">
+                  <div class="container">
             <h2>Repair Request Details - Request ID: ${requestId}
                 <span class="status-tag
                       <c:choose>
@@ -310,5 +325,10 @@
             </c:choose>
             <a href="repairrequestlist" class="btn btn-cancel">Cancel</a>
         </div>
+            </div>
+          </div>
+        </div>
+      </div> <!-- End main-content-body -->
+    </div> <!-- End main-content-wrapper -->
     </body>
 </html>

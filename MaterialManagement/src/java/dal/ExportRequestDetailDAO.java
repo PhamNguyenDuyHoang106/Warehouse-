@@ -15,33 +15,39 @@ public class ExportRequestDetailDAO extends DBContext {
     public List<ExportRequestDetail> getByRequestId(int requestId) {
         connection = getConnection();
         List<ExportRequestDetail> details = new ArrayList<>();
-        String sql = "SELECT erd.detail_id, erd.export_request_id, erd.material_id, erd.rack_id, "
-                + "erd.quantity, erd.unit_price_export, erd.created_at, erd.updated_at, "
-                + "m.material_code, m.material_name, m.url, du.unit_name as material_unit, "
-                + "wr.rack_name, wr.rack_code "
+        // Schema thực tế sử dụng erd_id (primary key), er_id (foreign key)
+        // Query cơ bản với các cột chắc chắn có, các cột optional sẽ được xử lý an toàn
+        String sql = "SELECT erd.erd_id, erd.er_id, erd.material_id, erd.unit_id, "
+                + "erd.quantity, erd.note, erd.created_at, "
+                + "m.material_code, m.material_name, m.url, "
+                + "COALESCE(u.unit_name, du.unit_name) as material_unit "
                 + "FROM Export_Request_Details erd "
                 + "JOIN Materials m ON erd.material_id = m.material_id "
+                + "LEFT JOIN Units u ON erd.unit_id = u.unit_id "
                 + "LEFT JOIN Units du ON m.default_unit_id = du.unit_id "
-                + "LEFT JOIN Warehouse_Racks wr ON erd.rack_id = wr.rack_id "
-                + "WHERE erd.export_request_id = ?";
+                + "WHERE erd.er_id = ?";
                 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, requestId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     ExportRequestDetail detail = new ExportRequestDetail();
-                    detail.setDetailId(rs.getInt("detail_id"));
-                    detail.setExportRequestId(rs.getInt("export_request_id"));
+                    detail.setDetailId(rs.getInt("erd_id")); // Sử dụng erd_id thay vì detail_id
+                    detail.setExportRequestId(rs.getInt("er_id"));
                     detail.setMaterialId(rs.getInt("material_id"));
-                    detail.setRackId(rs.getInt("rack_id"));
                     detail.setMaterialCode(rs.getString("material_code"));
                     detail.setMaterialName(rs.getString("material_name"));
                     detail.setMaterialUnit(rs.getString("material_unit"));
                     detail.setQuantity(rs.getBigDecimal("quantity"));
-                    detail.setUnitPriceExport(rs.getBigDecimal("unit_price_export"));
                     detail.setMaterialImageUrl(rs.getString("url"));
                     detail.setCreatedAt(rs.getTimestamp("created_at"));
-                    detail.setUpdatedAt(rs.getTimestamp("updated_at"));
+                    
+                    // Xử lý các cột optional - không có trong schema cơ bản
+                    detail.setRackId(null);
+                    detail.setUnitPriceExport(null);
+                    detail.setStatus(null);
+                    detail.setUpdatedAt(null);
+                    
                     details.add(detail);
                 }
             }
@@ -57,7 +63,8 @@ public class ExportRequestDetailDAO extends DBContext {
             return true;
         }
         
-        String sql = "INSERT INTO Export_Request_Details (export_request_id, material_id, rack_id, quantity, unit_price_export) VALUES (?, ?, ?, ?, ?)";
+        // Sử dụng đúng tên cột như trong ExportRequestDAO.java: er_id (foreign key)
+        String sql = "INSERT INTO Export_Request_Details (er_id, material_id, rack_id, quantity, unit_price_export) VALUES (?, ?, ?, ?, ?)";
         
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             for (ExportRequestDetail detail : details) {

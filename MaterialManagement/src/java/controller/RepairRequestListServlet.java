@@ -3,6 +3,7 @@
 import dal.RepairRequestDAO;
 import entity.RepairRequest;
 import entity.User;
+import utils.PermissionHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -69,6 +70,10 @@ public class RepairRequestListServlet extends HttpServlet {
             request.setAttribute("requestDateTo", requestDateTo);
             request.setAttribute("currentPage", page);
             request.setAttribute("totalPages", totalPages);
+            
+            // Check permission for creating repair request
+            boolean hasCreateRepairRequestPermission = PermissionHelper.hasPermission(user, "Tạo yêu cầu sửa");
+            request.setAttribute("hasCreateRepairRequestPermission", hasCreateRepairRequestPermission);
         } catch (Exception e) {
             e.printStackTrace();
             request.setAttribute("error", "Error retrieving request list!");

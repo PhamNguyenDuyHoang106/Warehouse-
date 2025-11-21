@@ -138,6 +138,21 @@
     </style>
   </head>
   <body class="bg-light">
+    <!-- Header -->
+    <jsp:include page="Header.jsp" />
+
+    <!-- Main Content Wrapper - Bao sidebar và body content -->
+    <div class="main-content-wrapper">
+      <!-- Sidebar - Nằm trong wrapper -->
+      <div class="sidebar-wrapper-inner">
+        <jsp:include page="Sidebar.jsp" />
+      </div>
+      
+      <!-- Main Content Body - Nằm trong wrapper, bên cạnh sidebar -->
+      <div class="main-content-body">
+        <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px;">
+          <div class="row">
+            <div class="col-12">
     <div class="container py-4">
       <div class="material-header">
         <div class="material-title-box">Material Detail</div>
@@ -484,7 +499,11 @@
           </a>
         </div>
       </div>
-    </div>
+            </div>
+          </div>
+        </div>
+      </div> <!-- End main-content-body -->
+    </div> <!-- End main-content-wrapper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>

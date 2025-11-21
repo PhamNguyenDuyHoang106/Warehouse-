@@ -64,18 +64,21 @@
         </style>
     </head>
     <body>
+        <!-- Header -->
         <%@ include file="Header.jsp" %>
 
-        <!-- Main content -->
-        <div class="container-fluid">
-            <div class="row">
-                <!-- Sidebar -->
-                <div class="col-md-3 col-lg-2 bg-light p-0">
-                    <jsp:include page="Sidebar.jsp" />
-                </div>
-
-                <!-- Page Content -->
-                <div class="col-md-9 col-lg-10 px-md-4">
+        <!-- Main Content Wrapper - Bao sidebar và body content -->
+        <div class="main-content-wrapper">
+          <!-- Sidebar - Nằm trong wrapper -->
+          <div class="sidebar-wrapper-inner">
+            <jsp:include page="Sidebar.jsp" />
+          </div>
+          
+          <!-- Main Content Body - Nằm trong wrapper, bên cạnh sidebar -->
+          <div class="main-content-body">
+            <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px;">
+              <div class="row">
+                <div class="col-12 px-md-4">
                     <c:set var="roleId" value="${sessionScope.user.roleId}" />
                     <c:set var="isAdmin" value="${sessionScope.user.roleId == 1}" />
                     <c:set var="hasViewListPermission" value="${isAdmin || rolePermissionDAO.hasPermission(roleId, 'Danh sách người dùng')}" scope="request" />
@@ -313,10 +316,10 @@
                         </nav>
                     </c:if>
                 </div>
+              </div>
             </div>
-        </div>
-
-        <jsp:include page="Footer.jsp" />
+          </div> <!-- End main-content-body -->
+        </div> <!-- End main-content-wrapper -->
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js" integrity="sha512-yFjZbTYRCJodnuyGlsKamNE/LlEaEAxSUDe5+u61mV8zzqJVFOH7TnULE2/PP/l5vKWpUNnF4VGVkXh3MjgLsg==" crossorigin="anonymous"></script>

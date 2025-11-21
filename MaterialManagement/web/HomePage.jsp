@@ -17,116 +17,338 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
+      * {
+        box-sizing: border-box;
+      }
+      
       body {
-        background-color: #f8f9fa;
-        font-family: "Roboto", sans-serif;
+        background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+        font-family: 'Inter', 'Roboto', sans-serif;
+        min-height: 100vh;
+        padding: 0;
+        margin: 0;
       }
 
       .section-card {
         background: white;
-        border: 2px solid #dead6f;
-        border-radius: 15px;
+        border: none;
+        border-radius: 20px;
         margin-bottom: 30px;
-        box-shadow: 0 4px 12px rgba(222, 173, 111, 0.15);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        transition: all 0.3s ease;
+        animation: fadeInUp 0.6s ease-out;
+      }
+      
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .section-card:hover {
+        box-shadow: 0 15px 40px rgba(222, 173, 111, 0.2);
+        transform: translateY(-5px);
       }
 
       .section-header {
-        background: linear-gradient(135deg, #dead6f 0%, #cfa856 100%);
+        background: linear-gradient(135deg, #DEAD6F 0%, #cfa856 100%);
         color: white;
-        border-radius: 13px 13px 0 0;
-        padding: 20px;
+        padding: 25px 30px;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .section-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: shimmer 3s infinite;
+      }
+      
+      @keyframes shimmer {
+        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+        50% { transform: translate(-20px, -20px) rotate(180deg); }
+      }
+
+      .section-header h4 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 20px;
+        position: relative;
+        z-index: 1;
+      }
+      
+      .section-header i {
+        margin-right: 10px;
       }
 
       .section-body {
-        padding: 30px;
+        padding: 35px;
         background: white;
-        border-radius: 0 0 13px 13px;
       }
 
       .alert-custom {
         border: none;
-        border-radius: 12px;
-        padding: 20px;
+        border-radius: 15px;
+        padding: 25px;
         margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .alert-custom::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 5px;
+        background: currentColor;
+      }
+
+      .alert-custom:hover {
+        transform: translateX(5px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
       }
 
       .alert-warning-custom {
         background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-        border-left: 4px solid #ffc107;
+        border-left: 5px solid #ffc107;
+        color: #856404;
       }
 
       .alert-danger-custom {
         background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-        border-left: 4px solid #dc3545;
+        border-left: 5px solid #dc3545;
+        color: #721c24;
       }
 
       .alert-info-custom {
         background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-        border-left: 4px solid #17a2b8;
+        border-left: 5px solid #17a2b8;
+        color: #0c5460;
       }
 
       .alert-primary-custom {
         background: linear-gradient(135deg, #cce7ff 0%, #b3d9ff 100%);
-        border-left: 4px solid #007bff;
+        border-left: 5px solid #007bff;
+        color: #004085;
+      }
+      
+      .alert-success-custom {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border-left: 5px solid #28a745;
+        color: #155724;
       }
 
       .quick-action-btn {
-        background: white;
-        border: 2px solid #dead6f;
-        border-radius: 12px;
-        padding: 20px;
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border: 2px solid #e9ecef;
+        border-radius: 15px;
+        padding: 25px 20px;
         text-align: center;
         transition: all 0.3s ease;
         text-decoration: none;
         color: #333;
-        min-height: 120px;
+        min-height: 140px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .quick-action-btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(222, 173, 111, 0.1);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
       }
 
       .quick-action-btn:hover {
-        background: #dead6f;
+        background: linear-gradient(135deg, #DEAD6F 0%, #cfa856 100%);
         color: white;
-        transform: translateY(-3px);
+        transform: translateY(-5px) scale(1.02);
         text-decoration: none;
+        border-color: #DEAD6F;
+        box-shadow: 0 10px 25px rgba(222, 173, 111, 0.4);
+      }
+      
+      .quick-action-btn:hover::before {
+        width: 300px;
+        height: 300px;
       }
 
       .quick-action-btn i {
-        font-size: 2.5rem;
-        margin-bottom: 10px;
+        font-size: 3rem;
+        margin-bottom: 15px;
+        transition: transform 0.3s ease;
+      }
+      
+      .quick-action-btn:hover i {
+        transform: scale(1.1) rotate(5deg);
+      }
+      
+      .quick-action-btn h6 {
+        font-weight: 600;
+        margin-bottom: 5px;
+        font-size: 16px;
+      }
+      
+      .quick-action-btn small {
+        font-size: 12px;
+        opacity: 0.8;
       }
 
       .activity-card {
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 20px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        border-radius: 15px;
+        padding: 30px 20px;
         text-align: center;
-        border: 1px solid #dee2e6;
+        border: 2px solid #e9ecef;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .activity-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #DEAD6F 0%, #cfa856 100%);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
+      }
+      
+      .activity-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        border-color: #DEAD6F;
+      }
+      
+      .activity-card:hover::before {
+        transform: scaleX(1);
       }
 
       .activity-card i {
-        font-size: 2rem;
-        margin-bottom: 10px;
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+        padding: 15px;
+        border-radius: 50%;
+        background: rgba(222, 173, 111, 0.1);
+        transition: all 0.3s ease;
+      }
+      
+      .activity-card:hover i {
+        background: rgba(222, 173, 111, 0.2);
+        transform: scale(1.1);
       }
 
       .activity-card h4 {
         font-weight: 700;
-        margin-bottom: 5px;
+        margin-bottom: 8px;
+        font-size: 2rem;
+        color: #333;
       }
 
       .activity-card small {
         color: #6c757d;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      
+      /* Chart Cards */
+      .chart-card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+      }
+      
+      .chart-card:hover {
+        box-shadow: 0 8px 25px rgba(222, 173, 111, 0.15);
+      }
+      
+      .chart-card .card-header {
+        background: transparent;
+        border: none;
+        padding: 0 0 15px 0;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #e9ecef;
+      }
+      
+      .chart-card .card-header h6 {
+        color: #DEAD6F;
+        font-weight: 600;
+        margin: 0;
+      }
+      
+      /* Toggle Button */
+      #toggleReportsBtn {
+        border-radius: 20px;
+        padding: 8px 20px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+      }
+      
+      #toggleReportsBtn:hover {
+        transform: scale(1.05);
+      }
+      
+      /* Responsive */
+      @media (max-width: 768px) {
+        .section-body {
+          padding: 20px;
+        }
+        
+        .activity-card {
+          margin-bottom: 15px;
+        }
+        
+        .quick-action-btn {
+          min-height: 120px;
+          padding: 20px 15px;
+        }
       }
     </style>
   </head>
   <body>
-    <!-- Header -->
+    <!-- Header - Full width, ngoài wrapper -->
     <jsp:include page="Header.jsp" />
 
-    <!-- Main Content -->
-    <div class="container-fluid my-4">
+    <!-- Main Content Wrapper - Bao sidebar và body content -->
+    <div class="main-content-wrapper">
+      <!-- Sidebar - Nằm trong wrapper -->
+      <div class="sidebar-wrapper-inner">
+        <jsp:include page="Sidebar.jsp" />
+      </div>
+      
+      <!-- Main Content Body - Nằm trong wrapper, bên cạnh sidebar -->
+      <div class="main-content-body" style="display: block !important; visibility: visible !important;">
+        <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px; display: block !important;">
       <div class="row">
         <!-- Main Content Area -->
         <div class="col-12">
@@ -178,7 +400,7 @@
                 <h4 class="mb-0">
                   <i class="fas fa-chart-bar me-2"></i>Analytics & Reports
                 </h4>
-                <button id="toggleReportsBtn" class="btn btn-outline-light btn-sm" style="border-radius: 20px">
+                <button id="toggleReportsBtn" class="btn btn-outline-light btn-sm" style="border-radius: 20px; border: 2px solid rgba(255,255,255,0.3);">
                   <i class="fas fa-eye-slash me-1"></i> Hide Reports
                 </button>
               </div>
@@ -362,7 +584,7 @@
                           <div>
                             <h5 class="alert-heading mb-1">My Approved Requests</h5>
                             <p class="mb-2">${myApprovedRequestCount} of your requests have been approved</p>
-                            <a href="ViewRequests" class="btn btn-success btn-sm">
+                            <a href="ViewRequests" class="btn btn-success btn-sm" style="border-radius: 8px;">
                               <i class="fas fa-eye me-1"></i>View Details
                             </a>
                           </div>
@@ -541,10 +763,8 @@
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- Footer -->
-    <jsp:include page="Footer.jsp" />
+      </div> <!-- End main-content-body -->
+    </div> <!-- End main-content-wrapper -->
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

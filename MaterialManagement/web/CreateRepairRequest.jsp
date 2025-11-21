@@ -113,16 +113,21 @@
         </style>
     </head>
     <body>
+        <!-- Header -->
         <jsp:include page="Header.jsp"/>
 
-        <div class="container-fluid">
-            <div class="row">
-                <!-- Sidebar -->
-                <div class="col-md-3 col-lg-2 bg-light p-0">
-                    <jsp:include page="SidebarEmployee.jsp" />
-                </div>
-                <!-- Page Content -->
-                <div class="col-md-9 col-lg-10">
+        <!-- Main Content Wrapper - Bao sidebar và body content -->
+        <div class="main-content-wrapper">
+          <!-- Sidebar - Nằm trong wrapper -->
+          <div class="sidebar-wrapper-inner">
+            <jsp:include page="Sidebar.jsp" />
+          </div>
+          
+          <!-- Main Content Body - Nằm trong wrapper, bên cạnh sidebar -->
+          <div class="main-content-body">
+            <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px;">
+              <div class="row">
+                <div class="col-12">
                     <section id="create-request" style="background: url('images/background-img.png') no-repeat; background-size: cover;">
                         <div class="container">
                             <div class="row my-5 py-5">
@@ -218,8 +223,10 @@
                         </div>
                     </section>
                 </div>
+              </div>
             </div>
-        </div>
+          </div> <!-- End main-content-body -->
+        </div> <!-- End main-content-wrapper -->
 
         <script src="js/jquery-1.11.0.min.js"></script>
         <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>

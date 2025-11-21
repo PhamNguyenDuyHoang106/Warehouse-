@@ -48,6 +48,10 @@ public class ExportRequestListServlet extends HttpServlet {
         boolean hasHandleRequestPermission = PermissionHelper.hasPermission(user, "Duyệt yêu cầu xuất") || user.getRoleId() == 1;
         request.setAttribute("hasHandleRequestPermission", hasHandleRequestPermission);
         
+        // Check permission for creating export request
+        boolean hasCreateExportRequestPermission = PermissionHelper.hasPermission(user, "Tạo yêu cầu xuất");
+        request.setAttribute("hasCreateExportRequestPermission", hasCreateExportRequestPermission);
+        
         // Filter parameters
         String searchKeyword = request.getParameter("search");
         String selectedStatus = request.getParameter("status");

@@ -118,83 +118,36 @@
     </style>
 </head>
 <body>
-    <%@ include file="Header.jsp" %>
+    <!-- Header -->
+    <jsp:include page="Header.jsp" />
 
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse p-0" id="sidebarMenu">
-                <div class="position-sticky pt-4">
-                    <ul class="nav flex-column menu-list list-unstyled">
-                        <form id="searchForm" action="RolePermission" method="get" class="search-box px-3 pt-3">
-                            <div class="input-group custom-search">
-                                <input type="text" name="search" class="form-control" placeholder="Search permissions or modules..." value="${searchKeyword}">
-                                <input type="hidden" id="selectedModule" name="selectedModule" value="${selectedModule}">
-                                <button type="submit" class="btn btn-primary">Search</button>
-                            </div>
-                        </form>
-                        <li class="nav-item mb-2">
-                            <a href="RolePermission" class="nav-link text-uppercase secondary-font d-flex align-items-center ${selectedModule == '' ? 'active' : ''}" id="sidebar_all">
-                                <i class="fas fa-list fs-4 me-3"></i>All Permissions
-                            </a>
-                        </li>
-                        <c:forEach var="module" items="${modules}">
-                            <li class="nav-item mb-2">
-                                <a href="javascript:void(0)" class="nav-link text-uppercase secondary-font d-flex align-items-center ${selectedModule == module.moduleId ? 'active' : ''}" id="sidebar_${module.moduleId}" onclick="submitForm('${module.moduleId}')">
-                                    <c:choose>
-                                        <c:when test="${module.moduleName == 'User Management'}">
-                                            <i class="fas fa-users fs-4 me-3"></i>
-                                        </c:when>
-                                        <c:when test="${module.moduleName == 'Department Management'}">
-                                            <i class="fas fa-building fs-4 me-3"></i>
-                                        </c:when>
-                                        <c:when test="${module.moduleName == 'Unit Management'}">
-                                            <i class="fas fa-cubes fs-4 me-3"></i>
-                                        </c:when>
-                                        <c:when test="${module.moduleName == 'Inventory Management'}">
-                                            <i class="fas fa-tachometer-alt fs-4 me-3"></i>
-                                        </c:when>
-                                        <c:when test="${module.moduleName == 'Material Management'}">
-                                            <i class="fas fa-shopping-cart fs-4 me-3"></i>
-                                        </c:when>
-                                        <c:when test="${module.moduleName == 'Category Management'}">
-                                            <i class="fas fa-list fs-4 me-3"></i>
-                                        </c:when>
-                                        <c:when test="${module.moduleName == 'Supplier Management'}">
-                                            <i class="fas fa-truck fs-4 me-3"></i>
-                                        </c:when>
-                                        <c:when test="${module.moduleName == 'System Management'}">
-                                            <i class="fas fa-cog fs-4 me-3"></i>
-                                        </c:when>
-                                        <c:when test="${module.moduleName == 'Request Management'}">
-                                            <i class="fas fa-file-alt fs-4 me-3"></i>
-                                        </c:when>
-                                        <c:when test="${module.moduleName == 'Purchase Order Management'}">
-                                            <i class="fas fa-shopping-bag fs-4 me-3"></i>
-                                        </c:when>
-                                        <c:otherwise>
-                                            <i class="fas fa-folder fs-4 me-3"></i>
-                                        </c:otherwise>
-                                    </c:choose>
-                                    ${module.moduleName}
-                                </a>
-                            </li>
-                        </c:forEach>
-                        <c:if test="${not empty permissionsByModule[0]}">
-                            <li class="nav-item mb-2">
-                                <a href="javascript:void(0)" class="nav-link text-uppercase secondary-font d-flex align-items-center ${selectedModule == '0' ? 'active' : ''}" id="sidebar_0" onclick="submitForm('0')">
-                                    <i class="fas fa-tools fs-4 me-3"></i>Other
-                                </a>
-                            </li>
-                        </c:if>
-                    </ul>
+    <!-- Main Content Wrapper - Bao sidebar và body content -->
+    <div class="main-content-wrapper">
+      <!-- Sidebar - Nằm trong wrapper -->
+      <div class="sidebar-wrapper-inner">
+        <jsp:include page="Sidebar.jsp" />
+      </div>
+      
+      <!-- Main Content Body - Nằm trong wrapper, bên cạnh sidebar -->
+      <div class="main-content-body">
+        <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px;">
+          <div class="row">
+            <div class="col-12 content px-md-4">
+                <div class="back-button-container mb-3">
+                    <a href="UserList" class="btn btn-secondary btn-lg rounded-1">
+                        <i class="fas fa-arrow-left me-2"></i>Back to User List
+                    </a>
                 </div>
-            </div>
-
-            <div class="col-md-9 col-lg-10 px-md-4 content position-relative">
-                <div class="back-button-container">
-                    <a href="UserList" class="btn btn-back btn-lg rounded-1">Back to User List</a>
-                </div>
-                <h2 class="text-primary fw-bold display-6 border-bottom pb-2">🔐 Role Permission Management</h2>
+                <h2 class="text-primary fw-bold display-6 border-bottom pb-2 mb-4">🔐 Role Permission Management</h2>
+                
+                <!-- Search Form -->
+                <form id="searchForm" action="RolePermission" method="get" class="search-box mb-4">
+                    <div class="input-group custom-search">
+                        <input type="text" name="search" class="form-control" placeholder="Search permissions or modules..." value="${searchKeyword}">
+                        <input type="hidden" id="selectedModule" name="selectedModule" value="${selectedModule}">
+                        <button type="submit" class="btn btn-primary">Search</button>
+                    </div>
+                </form>
 
                 <c:if test="${not empty errorMessage}">
                     <div class="alert alert-danger">${errorMessage}</div>
@@ -358,14 +311,10 @@
                     </div>
                 </form>
             </div>
+          </div>
         </div>
-    </div>
-
-    <footer class="footer py-4 bg-light mt-auto">
-        <div class="container text-center">
-            <span class="text-muted">© 2025 Computer Accessories - All Rights Reserved.</span>
-        </div>
-    </footer>
+      </div> <!-- End main-content-body -->
+    </div> <!-- End main-content-wrapper -->
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js" integrity="sha512-yFjZbTYRCJodnuyGlsKamNE/LlEaEAxSUDe5+u61mV8zzqJVFOH7TnULE2/PP/l5vKWpUNnF4VGVkXh3MjgLsg==" crossorigin="anonymous"></script>

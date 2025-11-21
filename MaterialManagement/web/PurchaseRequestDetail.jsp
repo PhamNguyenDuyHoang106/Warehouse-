@@ -105,11 +105,26 @@
     </style>
 </head>
 <body>
+    <!-- Header -->
+    <jsp:include page="Header.jsp" />
+
+    <!-- Main Content Wrapper - Bao sidebar và body content -->
+    <div class="main-content-wrapper">
+      <!-- Sidebar - Nằm trong wrapper -->
+      <div class="sidebar-wrapper-inner">
+        <jsp:include page="Sidebar.jsp" />
+      </div>
+      
+      <!-- Main Content Body - Nằm trong wrapper, bên cạnh sidebar -->
+      <div class="main-content-body">
+        <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px;">
+          <div class="row">
+            <div class="col-12">
     <c:set var="statusLower" value="${fn:toLowerCase(purchaseRequest.status)}"/>
     <c:set var="statusClass"
            value="${statusLower == 'approved' ? 'status-approved' :
                    statusLower == 'rejected' ? 'status-rejected' : 'status-pending'}"/>
-    <div class="container">
+                  <div class="container">
         <h2>${purchaseRequest.requestCode} <span class="status-tag ${statusClass}">${fn:toUpperCase(purchaseRequest.status)}</span></h2>
         <p>Request date: ${purchaseRequest.requestDate}</p>
         <p>Expected date: ${purchaseRequest.expectedDate != null ? purchaseRequest.expectedDate : 'N/A'}</p>
@@ -225,8 +240,12 @@
                 <a href="ListPurchaseRequests" class="btn btn-cancel">Back to List</a>
             </div>
         </div>
-    </div>
-    
+                  </div>
+            </div>
+          </div>
+        </div>
+      </div> <!-- End main-content-body -->
+    </div> <!-- End main-content-wrapper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
 </body>

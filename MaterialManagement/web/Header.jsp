@@ -40,10 +40,10 @@ if (user != null) {
 %>
 
 <head>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
           crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
-        /* Ensure header, body and footer are consistent when zooming - all full width */
+        /* Modern Header Styles */
         * {
             box-sizing: border-box;
         }
@@ -56,60 +56,262 @@ if (user != null) {
             max-width: 100vw;
         }
         
-        header, footer {
+        header {
             width: 100%;
+            max-width: 100%;
             box-sizing: border-box;
             margin: 0;
-            padding: 0;
+            padding: 0 30px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            position: sticky;
+            top: 0;
+            z-index: 999;
+            transition: none;
         }
         
-        /* Ensure container-fluid for header and footer matches body content */
-        header .container-fluid, footer .container-fluid {
+        /* Ẩn các dropdown menu trong header vì đã có trong sidebar */
+        header .filter-categories,
+        header select.filter-categories {
+            display: none !important;
+        }
+        
+        header .container-fluid {
             width: 100%;
-            padding-left: calc(var(--bs-gutter-x, 0.75rem) * 1);
-            padding-right: calc(var(--bs-gutter-x, 0.75rem) * 1);
-            margin-left: auto;
-            margin-right: auto;
+            max-width: 100%;
+            padding-left: 30px;
+            padding-right: 30px;
+            margin-left: 0;
+            margin-right: 0;
             box-sizing: border-box;
         }
         
-        /* Ensure header menu doesn't overflow */
+        /* User Info Section */
+        header .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 0;
+        }
+        
+        header .user-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #DEAD6F 0%, #cfa856 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+            box-shadow: 0 2px 8px rgba(222, 173, 111, 0.3);
+        }
+        
+        header .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header .user-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 15px;
+            margin: 0;
+        }
+        
+        header .user-email {
+            font-size: 13px;
+            color: #6c757d;
+            margin: 0;
+        }
+        
+        /* Modern Navigation */
         header nav.main-menu {
             overflow-x: auto;
             overflow-y: hidden;
             -webkit-overflow-scrolling: touch;
             width: 100%;
+            background: #ffffff;
+            border-top: 1px solid #e9ecef;
         }
         
-        /* Ensure dropdown doesn't overflow */
+        /* Modern Dropdown Select */
         header .filter-categories {
             max-width: 100%;
             white-space: nowrap;
             box-sizing: border-box;
-            min-width: 180px;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background-color: white;
+            min-width: 200px;
+            padding: 10px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
             font-size: 14px;
+            font-weight: 500;
+            color: #495057;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
         
-        /* Responsive for mobile */
+        header .filter-categories:hover {
+            border-color: #DEAD6F;
+            background: linear-gradient(135deg, #ffffff 0%, #fff9f0 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(222, 173, 111, 0.15);
+        }
+        
+        header .filter-categories:focus {
+            outline: none;
+            border-color: #DEAD6F;
+            box-shadow: 0 0 0 3px rgba(222, 173, 111, 0.1);
+        }
+        
+        /* Navbar Toggler */
+        header .navbar-toggler {
+            border: 2px solid #DEAD6F;
+            border-radius: 8px;
+            padding: 8px 12px;
+            transition: all 0.3s ease;
+        }
+        
+        header .navbar-toggler:hover {
+            background: #DEAD6F;
+            color: white;
+        }
+        
+        /* Offcanvas Modern Style */
+        header .offcanvas {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        }
+        
+        header .offcanvas-header {
+            border-bottom: 2px solid #e9ecef;
+            padding: 20px;
+        }
+        
+        header .btn-close {
+            background: #DEAD6F;
+            opacity: 1;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            transition: all 0.3s ease;
+        }
+        
+        header .btn-close:hover {
+            background: #cfa856;
+            transform: rotate(90deg);
+        }
+        
+        /* Nav Links */
+        header .nav-link {
+            color: #495057;
+            font-weight: 500;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        header .nav-link:hover {
+            color: #DEAD6F;
+            background: rgba(222, 173, 111, 0.1);
+        }
+        
+        header .nav-link.active {
+            color: #DEAD6F;
+            background: rgba(222, 173, 111, 0.15);
+            font-weight: 600;
+        }
+        
+        header .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 3px;
+            background: #DEAD6F;
+            border-radius: 2px;
+        }
+        
+        /* Profile Icon */
+        header .profile-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #DEAD6F 0%, #cfa856 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(222, 173, 111, 0.3);
+        }
+        
+        header .profile-icon:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(222, 173, 111, 0.4);
+        }
+        
+        /* Buttons */
+        header .btn {
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 8px 20px;
+            transition: all 0.3s ease;
+        }
+        
+        header .btn-outline-dark {
+            border: 2px solid #495057;
+            color: #495057;
+        }
+        
+        header .btn-outline-dark:hover {
+            background: #495057;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Responsive */
         @media (max-width: 991px) {
             header .offcanvas-body {
                 overflow-x: hidden;
+                padding: 20px;
             }
             
-            header .container-fluid, footer .container-fluid {
+            header .container-fluid {
                 padding-left: 15px;
                 padding-right: 15px;
             }
+            
+            header .filter-categories {
+                width: 100%;
+                margin-bottom: 15px;
+            }
+            
+            header .user-info {
+                flex-direction: column;
+                text-align: center;
+                gap: 10px;
+            }
         }
         
-        /* Ensure row in header and footer has same gutter */
-        header .row, footer .row {
+        header .row {
             margin-left: calc(-0.5 * var(--bs-gutter-x, 0.75rem));
             margin-right: calc(-0.5 * var(--bs-gutter-x, 0.75rem));
+        }
+        
+        /* Logo Animation */
+        header img {
+            transition: transform 0.3s ease;
+        }
+        
+        header img:hover {
+            transform: scale(1.05);
         }
     </style>
 </head>
@@ -123,24 +325,41 @@ if (user != null) {
                 </a>
             </div>
             <div class="col-12 col-sm-8 d-flex flex-column flex-sm-row justify-content-sm-end align-items-center gap-3">
-                <div class="text-center text-sm-end">
-                    <c:choose>
-                        <c:when test="${not empty sessionScope.user}">
-                            <span class="fs-6 text-muted">${sessionScope.user.fullName}</span><br>
-                            <strong>${sessionScope.user.email}</strong>
-                        </c:when>
-                        <c:otherwise>
-                            <span class="fs-6 text-muted">Guest</span><br>
-                            <strong>guest@example.com</strong>
-                        </c:otherwise>
-                    </c:choose>
-                </div>
                 <c:choose>
                     <c:when test="${not empty sessionScope.user}">
-                        <a href="logout" class="btn btn-outline-dark btn-sm">Logout</a>
+                        <div class="user-info">
+                            <div class="user-avatar">
+                                <c:choose>
+                                    <c:when test="${not empty sessionScope.user.fullName}">
+                                        ${sessionScope.user.fullName.substring(0, 1).toUpperCase()}
+                                    </c:when>
+                                    <c:otherwise>
+                                        <i class="fas fa-user"></i>
+                                    </c:otherwise>
+                                </c:choose>
+                            </div>
+                            <div class="user-details">
+                                <p class="user-name mb-0">${sessionScope.user.fullName}</p>
+                                <p class="user-email mb-0">${sessionScope.user.email}</p>
+                            </div>
+                        </div>
+                        <a href="logout" class="btn btn-outline-dark btn-sm">
+                            <i class="fas fa-sign-out-alt me-1"></i>Logout
+                        </a>
                     </c:when>
                     <c:otherwise>
-                        <a href="Login.jsp" class="btn btn-outline-primary btn-sm">Login</a>
+                        <div class="user-info">
+                            <div class="user-avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="user-details">
+                                <p class="user-name mb-0">Guest</p>
+                                <p class="user-email mb-0">guest@example.com</p>
+                            </div>
+                        </div>
+                        <a href="Login.jsp" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-sign-in-alt me-1"></i>Login
+                        </a>
                     </c:otherwise>
                 </c:choose>
             </div>
@@ -499,13 +718,9 @@ if (user != null) {
                         </li>
                     </ul>
 
-                    <div class="d-none d-lg-flex align-items-center gap-3 align-items-end">
-                        <a href="profile" class="text-dark mx-2 mx-3">
-                            <i class="fas fa-user fs-4"></i>
-                        </a>
-                        <a href="#" class="mx-3 d-lg-none" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSearch"
-                           aria-controls="offcanvasSearch">
-                            <iconify-icon icon="tabler:search" class="fs-4"></iconify-icon>
+                    <div class="d-none d-lg-flex align-items-center gap-3">
+                        <a href="profile" class="profile-icon mx-2" title="Profile">
+                            <i class="fas fa-user"></i>
                         </a>
                     </div>
                 </div>

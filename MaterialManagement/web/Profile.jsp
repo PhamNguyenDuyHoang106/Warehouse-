@@ -52,9 +52,19 @@
         </style>
     </head>
     <body>
+        <!-- Header -->
         <jsp:include page="Header.jsp" />
 
-        <section class="py-5">
+        <!-- Main Content Wrapper - Bao sidebar và body content -->
+        <div class="main-content-wrapper">
+          <!-- Sidebar - Nằm trong wrapper -->
+          <div class="sidebar-wrapper-inner">
+            <jsp:include page="Sidebar.jsp" />
+          </div>
+          
+          <!-- Main Content Body - Nằm trong wrapper, bên cạnh sidebar -->
+          <div class="main-content-body">
+            <section class="py-5">
             <div class="container">
                 <div class="row justify-content-center">
                     <div class="col-md-10 p-4 bg-white rounded shadow profile-section">
@@ -170,6 +180,8 @@
                 </div>
             </div>
         </section>
+          </div> <!-- End main-content-body -->
+        </div> <!-- End main-content-wrapper -->
 
         <!-- Scripts -->
         <script src="js/jquery-1.11.0.min.js"></script>

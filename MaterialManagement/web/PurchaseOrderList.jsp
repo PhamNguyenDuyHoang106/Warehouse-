@@ -132,11 +132,21 @@
     </style>
 </head>
 <body>
-<jsp:include page="Header.jsp" />
-<div class="container-fluid">
-    <div class="row">
-        <jsp:include page="SidebarDirector.jsp"/>
-        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+    <!-- Header -->
+    <jsp:include page="Header.jsp" />
+
+    <!-- Main Content Wrapper - Bao sidebar và body content -->
+    <div class="main-content-wrapper">
+      <!-- Sidebar - Nằm trong wrapper -->
+      <div class="sidebar-wrapper-inner">
+        <jsp:include page="Sidebar.jsp" />
+      </div>
+      
+      <!-- Main Content Body - Nằm trong wrapper, bên cạnh sidebar -->
+      <div class="main-content-body">
+        <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px;">
+          <div class="row">
+            <div class="col-12 px-md-4">
             <div class="container-main">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h2 class="fw-bold display-6 border-bottom pb-2 m-0" style="color: #DEAD6F;"><i class="fas fa-file-invoice"></i> Purchase Order List</h2>
@@ -320,9 +330,11 @@
                     </c:if>
                 </c:if>
             </div>
-        </main>
-    </div>
-</div>
+            </div>
+          </div>
+        </div>
+      </div> <!-- End main-content-body -->
+    </div> <!-- End main-content-wrapper -->
 
 <div class="modal fade" id="statusModal" tabindex="-1">
     <div class="modal-dialog">
@@ -361,7 +373,6 @@
     <input type="hidden" name="poId" id="sendToSupplierPoId">
     <input type="hidden" name="status" value="sent">
 </form>
- <jsp:include page="Footer.jsp" />
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     function setModalAction(status, poId) {

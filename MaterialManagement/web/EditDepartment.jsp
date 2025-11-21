@@ -34,16 +34,21 @@
         </style>
     </head>
     <body>
+        <!-- Header -->
         <jsp:include page="Header.jsp" />
 
-        <div class="container-fluid">
-            <div class="row">
-                <!-- Sidebar -->
-                <div class="col-md-3 col-lg-2 bg-light p-0">
-                    <jsp:include page="Sidebar.jsp" />
-                </div>
-                <!-- Page Content -->
-                <div class="col-md-9 col-lg-10 px-md-4 py-4">
+        <!-- Main Content Wrapper - Bao sidebar và body content -->
+        <div class="main-content-wrapper">
+          <!-- Sidebar - Nằm trong wrapper -->
+          <div class="sidebar-wrapper-inner">
+            <jsp:include page="Sidebar.jsp" />
+          </div>
+          
+          <!-- Main Content Body - Nằm trong wrapper, bên cạnh sidebar -->
+          <div class="main-content-body">
+            <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px;">
+              <div class="row">
+                <div class="col-12 px-md-4 py-4">
                     <section id="EditDepartment" style="background: url('images/background-img.png') no-repeat; background-size: cover;">
                         <div class="container">
                             <div class="row my-5 py-5">
@@ -120,14 +125,10 @@
                         </div>
                     </section>
                 </div>
+              </div>
             </div>
-        </div>
-
-        <footer class="footer py-4 bg-light mt-auto">
-            <div class="container text-center">
-                <span class="text-muted">© 2025 Computer Accessories - All Rights Reserved.</span>
-            </div>
-        </footer>
+          </div> <!-- End main-content-body -->
+        </div> <!-- End main-content-wrapper -->
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe" crossorigin="anonymous"></script>
         <script>
