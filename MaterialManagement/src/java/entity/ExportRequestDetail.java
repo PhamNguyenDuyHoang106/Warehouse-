@@ -11,6 +11,7 @@ public class ExportRequestDetail {
     private int exportRequestId;
     private int materialId;
     private Integer rackId; // Vị trí kệ mong muốn
+    private Integer warehouseId;
     private String materialCode;
     private String materialName;
     private String materialUnit;
@@ -21,6 +22,7 @@ public class ExportRequestDetail {
     private Timestamp createdAt;
     private Timestamp updatedAt;
     private String unitName;
+    private String note;
 
     public ExportRequestDetail() {
     }
@@ -89,6 +91,14 @@ public class ExportRequestDetail {
         this.rackId = rackId;
     }
 
+    public Integer getWarehouseId() {
+        return warehouseId;
+    }
+
+    public void setWarehouseId(Integer warehouseId) {
+        this.warehouseId = warehouseId;
+    }
+
     public String getStatus() {
         return status;
     }
@@ -131,6 +141,14 @@ public class ExportRequestDetail {
 
     public void setUnitName(String unitName) {
         this.unitName = unitName;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 
     private String resolveMediaUrl(String value) {

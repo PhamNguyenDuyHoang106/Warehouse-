@@ -131,6 +131,7 @@ public class RequestDAO extends DBContext {
     private List<ExportRequestDetail> getExportRequestDetails(int exportRequestId) {
         List<ExportRequestDetail> details = new ArrayList<>();
         String sql = "SELECT erd.detail_id, erd.er_id, erd.material_id, erd.unit_id, erd.quantity, erd.unit_price_export, erd.status, erd.created_at, erd.updated_at, "
+                + "erd.warehouse_id, erd.note, "
                 + "m.material_code, m.material_name, u.unit_name "
                 + "FROM Export_Request_Details erd "
                 + "JOIN Materials m ON erd.material_id = m.material_id "
@@ -154,6 +155,8 @@ public class RequestDAO extends DBContext {
                 detail.setStatus(rs.getString("status"));
                 detail.setCreatedAt(rs.getTimestamp("created_at"));
                 detail.setUpdatedAt(rs.getTimestamp("updated_at"));
+                detail.setWarehouseId((Integer) rs.getObject("warehouse_id"));
+                detail.setNote(rs.getString("note"));
                 details.add(detail);
             }
         } catch (SQLException e) {

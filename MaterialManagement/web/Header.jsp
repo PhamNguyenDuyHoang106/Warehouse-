@@ -44,6 +44,7 @@ if (user != null) {
 <!-- CSS này được load sau cùng để override tất cả CSS khác (style.css, vendor.css, etc.) -->
 <!-- IMPORTANT: CSS này phải được load sau tất cả CSS khác để đảm bảo override -->
 <style id="header-custom-styles">
+        @import url('css/unified-theme.css');
         /* Modern Header Styles */
         * {
             box-sizing: border-box;

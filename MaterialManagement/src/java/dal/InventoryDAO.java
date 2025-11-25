@@ -1,5 +1,6 @@
 package dal;
 
+import dto.MaterialWarehouseStock;
 import entity.DBContext;
 import entity.Inventory;
 import java.math.BigDecimal;
@@ -328,6 +329,94 @@ public class InventoryDAO extends DBContext {
             LOGGER.log(Level.SEVERE, "Error getting all inventory", e);
         }
         return inventoryList;
+    }
+
+    /**
+     * Get availability grouped by material and warehouse for a set of materials.
+     */
+    public List<MaterialWarehouseStock> getMaterialWarehouseAvailability(List<Integer> materialIds) {
+        List<MaterialWarehouseStock> stocks = new ArrayList<>();
+        if (connection == null) {
+            return stocks;
+        }
+
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT ")
+           .append("i.material_id, ")
+           .append("COALESCE(i.warehouse_id, wz.warehouse_id) AS warehouse_id, ")
+           .append("w.warehouse_code, ")
+           .append("w.warehouse_name, ")
+           .append("COALESCE(SUM(i.stock - i.reserved_stock), 0) AS available_stock ")
+           .append("FROM Inventory i ")
+           .append("LEFT JOIN Warehouse_Racks wr ON i.rack_id = wr.rack_id ")
+           .append("LEFT JOIN Warehouse_Zones wz ON wr.zone_id = wz.zone_id ")
+           .append("LEFT JOIN Warehouses w ON COALESCE(i.warehouse_id, wz.warehouse_id) = w.warehouse_id ")
+           .append("WHERE 1 = 1 ");
+
+        List<Object> params = new ArrayList<>();
+        if (materialIds != null && !materialIds.isEmpty()) {
+            sql.append("AND i.material_id IN (");
+            for (int i = 0; i < materialIds.size(); i++) {
+                if (i > 0) {
+                    sql.append(",");
+                }
+                sql.append("?");
+                params.add(materialIds.get(i));
+            }
+            sql.append(") ");
+        }
+
+        sql.append("GROUP BY i.material_id, COALESCE(i.warehouse_id, wz.warehouse_id), w.warehouse_code, w.warehouse_name ")
+           .append("HAVING available_stock > 0 ")
+           .append("ORDER BY i.material_id, w.warehouse_name");
+
+        try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                ps.setObject(i + 1, params.get(i));
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    MaterialWarehouseStock stock = new MaterialWarehouseStock();
+                    stock.setMaterialId(rs.getInt("material_id"));
+                    stock.setWarehouseId(rs.getInt("warehouse_id"));
+                    stock.setWarehouseCode(rs.getString("warehouse_code"));
+                    stock.setWarehouseName(rs.getString("warehouse_name"));
+                    stock.setAvailableStock(rs.getBigDecimal("available_stock"));
+                    stocks.add(stock);
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting material availability", e);
+        }
+
+        return stocks;
+    }
+
+    public BigDecimal getAvailableStock(int materialId, int warehouseId) {
+        if (connection == null) {
+            return BigDecimal.ZERO;
+        }
+
+        String sql = "SELECT COALESCE(SUM(i.stock - i.reserved_stock), 0) AS available_stock "
+                   + "FROM Inventory i "
+                   + "LEFT JOIN Warehouse_Racks wr ON i.rack_id = wr.rack_id "
+                   + "LEFT JOIN Warehouse_Zones wz ON wr.zone_id = wz.zone_id "
+                   + "WHERE i.material_id = ? AND COALESCE(i.warehouse_id, wz.warehouse_id) = ?";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, materialId);
+            ps.setInt(2, warehouseId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    BigDecimal available = rs.getBigDecimal("available_stock");
+                    return available != null ? available : BigDecimal.ZERO;
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting available stock for material=" + materialId + ", warehouse=" + warehouseId, e);
+        }
+
+        return BigDecimal.ZERO;
     }
     public Map<String, Integer> getInventoryStatistics() {
         Map<String, Integer> stats = new HashMap<>();

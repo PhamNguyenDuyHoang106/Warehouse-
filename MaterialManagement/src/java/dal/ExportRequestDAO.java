@@ -297,18 +297,24 @@ public class ExportRequestDAO extends DBContext {
                     }
                 }
             }
-            String detailSql = "INSERT INTO Export_Request_Details (er_id, material_id, rack_id, quantity, unit_price_export) "
-                             + "VALUES (?, ?, ?, ?, ?)";
+            String detailSql = "INSERT INTO Export_Request_Details (er_id, material_id, rack_id, warehouse_id, quantity, unit_price_export, note) "
+                             + "VALUES (?, ?, ?, ?, ?, ?, ?)";
             try (PreparedStatement ps = conn.prepareStatement(detailSql)) {
                 for (ExportRequestDetail detail : details) {
                     ps.setInt(1, request.getExportRequestId());
                     ps.setInt(2, detail.getMaterialId());
                     ps.setObject(3, detail.getRackId());
-                    ps.setBigDecimal(4, detail.getQuantity());
+                    ps.setObject(4, detail.getWarehouseId());
+                    ps.setBigDecimal(5, detail.getQuantity());
                     if (detail.getUnitPriceExport() != null) {
-                        ps.setBigDecimal(5, detail.getUnitPriceExport());
+                        ps.setBigDecimal(6, detail.getUnitPriceExport());
                     } else {
-                        ps.setNull(5, java.sql.Types.DECIMAL);
+                        ps.setNull(6, java.sql.Types.DECIMAL);
+                    }
+                    if (detail.getNote() != null && !detail.getNote().trim().isEmpty()) {
+                        ps.setString(7, detail.getNote());
+                    } else {
+                        ps.setNull(7, java.sql.Types.VARCHAR);
                     }
                     ps.addBatch();
                 }

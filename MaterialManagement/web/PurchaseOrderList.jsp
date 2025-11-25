@@ -12,125 +12,6 @@
     <link rel="stylesheet" type="text/css" href="css/vendor.css">
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="css/override-style.css">
-    <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background-color: #faf4ee;
-        }
-        .container-main {
-            max-width: 1200px;
-            margin: 30px auto;
-            background: #fff;
-            padding: 32px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-        h2 {
-            font-size: 1.75rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-            color: #5c4434;
-        }
-        .filter-bar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin: 20px 0;
-            align-items: center;
-        }
-        .filter-bar .form-control,
-        .filter-bar .form-select,
-        .filter-bar .btn {
-            height: 48px;
-            min-width: 120px;
-        }
-        .btn-export, .btn-print {
-            background-color: #DEAD6F;
-            color: #fff;
-            border: none;
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-weight: 500;
-            height:50px;
-            transition: background 0.2s;
-        }
-        .btn-export:hover, .btn-print:hover {
-            background-color: #cfa856;
-            color: #fff;
-        }
-        .custom-table thead th {
-            background-color: #f9f5f0;
-            color: #5c4434;
-            font-weight: 600;
-        }
-        .custom-table tbody tr:hover {
-            background-color: #f1f1f1;
-        }
-        .custom-table th,
-        .custom-table td {
-            vertical-align: middle;
-            min-height: 48px;
-        }
-        .status-badge {
-            padding: 2px 10px;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 500;
-        }
-        .status-draft {
-            background-color: #e2e3e5;
-            color: #495057;
-        }
-        .status-pending {
-            background-color: #6c757d;
-            color: #fff;
-        }
-        .status-approved {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .status-rejected {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        .status-sent_to_supplier {
-            background-color: #cce5ff;
-            color: #004085;
-        }
-        .status-cancelled {
-            background-color: #e2e3f3;
-            color: #4b0082;
-        }
-        .btn-detail {
-            background-color: #fff7e6;
-            color: #b8860b;
-            border: 1px solid #ffe58f;
-            border-radius: 6px;
-            padding: 6px 14px;
-            font-weight: 500;
-            transition: background 0.2s;
-        }
-        .btn-detail:hover {
-            background-color: #ffecb3;
-            color: #b8860b;
-        }
-        .pagination .page-item.active .page-link {
-            background-color: #DEAD6F;
-            border-color: #DEAD6F;
-            color: #fff;
-        }
-        .pagination .page-link {
-            color: #DEAD6F;
-        }
-        .pagination .page-link:hover {
-            background-color: #DEAD6F;
-            border-color: #DEAD6F;
-            color: #fff;
-        }
-        .pagination .page-item.disabled .page-link {
-            color: #6c757d;
-        }
-    </style>
 </head>
 <body>
     <!-- Header -->
@@ -148,10 +29,10 @@
         <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px;">
           <div class="row">
             <div class="col-12 px-md-4">
-            <div class="container-main">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h2 class="fw-bold display-6 border-bottom pb-2 m-0" style="color: #DEAD6F;"><i class="fas fa-file-invoice"></i> Purchase Order List</h2>
-                    <div class="d-flex gap-2">
+                <div class="page-headline">
+                    <div>
+                        <h1><i class="fas fa-file-invoice me-2 text-primary"></i>Purchase Orders</h1>
+                        <p class="text-muted-soft mb-0">Quản lý toàn bộ đơn mua với giao diện đồng bộ</p>
                     </div>
                 </div>
                 
@@ -179,27 +60,50 @@
                     <jsp:include page="HomePage.jsp"/>
                 </c:if>
                 <c:if test="${hasViewPurchaseOrderListPermission}">
-                    <form class="filter-bar align-items-center" method="GET" action="${pageContext.request.contextPath}/PurchaseOrderList" style="gap: 8px; flex-wrap:nowrap;">
-                        <input type="text" class="form-control" name="poCode" value="${poCode}" placeholder="Search by PO code" style="width:230px;">
-                        <select class="form-select" name="status" style="max-width:150px;" onchange="this.form.submit()">
-                            <option value="">All Statuses</option>
-                            <option value="draft" ${status == 'draft' ? 'selected' : ''}>Draft</option>
-                            <option value="confirmed" ${status == 'confirmed' ? 'selected' : ''}>Confirmed</option>
-                            <option value="sent" ${status == 'sent' ? 'selected' : ''}>Sent</option>
-                            <option value="partially_received" ${status == 'partially_received' ? 'selected' : ''}>Partially Received</option>
-                            <option value="received" ${status == 'received' ? 'selected' : ''}>Received</option>
-                            <option value="pending_receipt" ${status == 'pending_receipt' ? 'selected' : ''}>Pending Receipt</option>
-                            <option value="cancelled" ${status == 'cancelled' ? 'selected' : ''}>Cancelled</option>
-                        </select>
-                        <select class="form-select" name="sortBy" style="max-width:150px;" onchange="this.form.submit()">
-                            <option value="" ${sortBy == null || sortBy == '' ? 'selected' : ''}>Newest First</option>
-                            <option value="oldest" ${sortBy == 'oldest' ? 'selected' : ''}>Oldest First</option>
-                        </select>
-                        <input type="date" class="form-control" name="startDate" value="${startDate}" placeholder="Start Date" style="width:200px;">
-                        <input type="date" class="form-control" name="endDate" value="${endDate}" placeholder="End Date" style="width:200px;">
-                        <button type="submit" class="btn" style="background-color: #DEAD6F; border-color: #DEAD6F; color:white;">Filter</button>
-                         <a href="${pageContext.request.contextPath}/PurchaseOrderList" class="btn btn-secondary" style="width: 75px; height: 50px;">Clear</a>
-                    </form>
+                    <div class="filter-card">
+                        <form class="row g-3 align-items-end" method="GET" action="${pageContext.request.contextPath}/PurchaseOrderList">
+                            <div class="col-md-3">
+                                <label class="form-label">PO Code</label>
+                                <input type="text" class="form-control" name="poCode" value="${poCode}" placeholder="Search by PO code">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" name="status">
+                                    <option value="">All Statuses</option>
+                                    <option value="draft" ${status == 'draft' ? 'selected' : ''}>Draft</option>
+                                    <option value="confirmed" ${status == 'confirmed' ? 'selected' : ''}>Confirmed</option>
+                                    <option value="sent" ${status == 'sent' ? 'selected' : ''}>Sent</option>
+                                    <option value="partially_received" ${status == 'partially_received' ? 'selected' : ''}>Partially Received</option>
+                                    <option value="received" ${status == 'received' ? 'selected' : ''}>Received</option>
+                                    <option value="pending_receipt" ${status == 'pending_receipt' ? 'selected' : ''}>Pending Receipt</option>
+                                    <option value="cancelled" ${status == 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Sort</label>
+                                <select class="form-select" name="sortBy">
+                                    <option value="" ${sortBy == null || sortBy == '' ? 'selected' : ''}>Newest First</option>
+                                    <option value="oldest" ${sortBy == 'oldest' ? 'selected' : ''}>Oldest First</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" class="form-control" name="startDate" value="${startDate}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">End Date</label>
+                                <input type="date" class="form-control" name="endDate" value="${endDate}">
+                            </div>
+                            <div class="col-md-3 d-flex gap-2">
+                                <button type="submit" class="btn btn-gradient flex-grow-1">
+                                    <i class="fas fa-filter me-2"></i>Filter
+                                </button>
+                                <a href="${pageContext.request.contextPath}/PurchaseOrderList" class="btn btn-outline-secondary">
+                                    Clear
+                                </a>
+                            </div>
+                        </form>
+                    </div>
                     
                     <c:if test="${not empty purchaseOrders}">
                         <div class="table-responsive" id="printTableListArea">

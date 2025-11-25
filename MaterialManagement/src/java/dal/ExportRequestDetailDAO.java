@@ -18,7 +18,7 @@ public class ExportRequestDetailDAO extends DBContext {
         // Schema thực tế sử dụng erd_id (primary key), er_id (foreign key)
         // Query cơ bản với các cột chắc chắn có, các cột optional sẽ được xử lý an toàn
         String sql = "SELECT erd.erd_id, erd.er_id, erd.material_id, erd.unit_id, "
-                + "erd.quantity, erd.note, erd.created_at, "
+                + "erd.quantity, erd.note, erd.created_at, erd.warehouse_id, erd.unit_price_export, "
                 + "m.material_code, m.material_name, m.url, "
                 + "COALESCE(u.unit_name, du.unit_name) as material_unit "
                 + "FROM Export_Request_Details erd "
@@ -41,12 +41,9 @@ public class ExportRequestDetailDAO extends DBContext {
                     detail.setQuantity(rs.getBigDecimal("quantity"));
                     detail.setMaterialImageUrl(rs.getString("url"));
                     detail.setCreatedAt(rs.getTimestamp("created_at"));
-                    
-                    // Xử lý các cột optional - không có trong schema cơ bản
-                    detail.setRackId(null);
-                    detail.setUnitPriceExport(null);
-                    detail.setStatus(null);
-                    detail.setUpdatedAt(null);
+                    detail.setWarehouseId((Integer) rs.getObject("warehouse_id"));
+                    detail.setUnitPriceExport(rs.getBigDecimal("unit_price_export"));
+                    detail.setNote(rs.getString("note"));
                     
                     details.add(detail);
                 }
@@ -64,18 +61,24 @@ public class ExportRequestDetailDAO extends DBContext {
         }
         
         // Sử dụng đúng tên cột như trong ExportRequestDAO.java: er_id (foreign key)
-        String sql = "INSERT INTO Export_Request_Details (er_id, material_id, rack_id, quantity, unit_price_export) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO Export_Request_Details (er_id, material_id, rack_id, warehouse_id, quantity, unit_price_export, note) VALUES (?, ?, ?, ?, ?, ?, ?)";
         
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             for (ExportRequestDetail detail : details) {
                 ps.setInt(1, detail.getExportRequestId());
                 ps.setInt(2, detail.getMaterialId());
                 ps.setObject(3, detail.getRackId());
-                ps.setBigDecimal(4, detail.getQuantity());
+                ps.setObject(4, detail.getWarehouseId());
+                ps.setBigDecimal(5, detail.getQuantity());
                 if (detail.getUnitPriceExport() != null) {
-                    ps.setBigDecimal(5, detail.getUnitPriceExport());
+                    ps.setBigDecimal(6, detail.getUnitPriceExport());
                 } else {
-                    ps.setNull(5, java.sql.Types.DECIMAL);
+                    ps.setNull(6, java.sql.Types.DECIMAL);
+                }
+                if (detail.getNote() != null && !detail.getNote().trim().isEmpty()) {
+                    ps.setString(7, detail.getNote());
+                } else {
+                    ps.setNull(7, java.sql.Types.VARCHAR);
                 }
                 ps.addBatch();
             }
