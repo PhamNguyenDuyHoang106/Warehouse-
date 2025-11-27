@@ -71,6 +71,7 @@ public class InventoryDAO extends DBContext {
                      "i.stock, " +
                      "i.material_id, i.rack_id, i.warehouse_id, " +
                      "m.material_name, m.material_code, m.url, c.category_name, du.unit_name AS default_unit_name, " +
+                     "m.volume_per_unit, m.weight_per_unit, " +
                      "wr.rack_name, wr.rack_code, " +
                      "w.warehouse_name, " +
                      "i.last_updated, i.last_updated AS inventory_last_updated, " +
@@ -109,6 +110,7 @@ public class InventoryDAO extends DBContext {
         }
         
         String sql = "SELECT i.*, m.material_name, m.material_code, m.url, c.category_name, du.unit_name AS default_unit_name, " +
+                     "m.volume_per_unit, m.weight_per_unit, " +
                      "wr.rack_name, wr.rack_code, " +
                      "w.warehouse_name " +
                      "FROM Inventory i " +
@@ -183,6 +185,18 @@ public class InventoryDAO extends DBContext {
         inventory.setMaterialsUrl(rs.getString("url"));
         inventory.setRackName(rs.getString("rack_name"));
         inventory.setRackCode(rs.getString("rack_code"));
+        
+        // Volume and weight per unit from Materials
+        try {
+            inventory.setVolumePerUnit(rs.getBigDecimal("volume_per_unit"));
+        } catch (SQLException e) {
+            inventory.setVolumePerUnit(null);
+        }
+        try {
+            inventory.setWeightPerUnit(rs.getBigDecimal("weight_per_unit"));
+        } catch (SQLException e) {
+            inventory.setWeightPerUnit(null);
+        }
         
         // Warehouse name (V9.1)
         try {
@@ -599,6 +613,18 @@ public class InventoryDAO extends DBContext {
         inventory.setMaterialsUrl(rs.getString("url"));
         inventory.setRackName(rs.getString("rack_name"));
         inventory.setRackCode(rs.getString("rack_code"));
+        
+        // Volume and weight per unit from Materials
+        try {
+            inventory.setVolumePerUnit(rs.getBigDecimal("volume_per_unit"));
+        } catch (SQLException e) {
+            inventory.setVolumePerUnit(null);
+        }
+        try {
+            inventory.setWeightPerUnit(rs.getBigDecimal("weight_per_unit"));
+        } catch (SQLException e) {
+            inventory.setWeightPerUnit(null);
+        }
         
         // Warehouse name (V9.1)
         try {

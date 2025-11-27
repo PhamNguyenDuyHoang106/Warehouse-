@@ -23,6 +23,8 @@ public class Inventory {
     private String rackName;
     private String rackCode;
     private String warehouseName;
+    private BigDecimal volumePerUnit; // From Materials.volume_per_unit
+    private BigDecimal weightPerUnit; // From Materials.weight_per_unit
 
     public Inventory() {}
 
@@ -167,6 +169,22 @@ public class Inventory {
 
     public void setWarehouseName(String warehouseName) {
         this.warehouseName = warehouseName;
+    }
+
+    public BigDecimal getVolumePerUnit() {
+        return volumePerUnit;
+    }
+
+    public void setVolumePerUnit(BigDecimal volumePerUnit) {
+        this.volumePerUnit = volumePerUnit;
+    }
+
+    public BigDecimal getWeightPerUnit() {
+        return weightPerUnit;
+    }
+
+    public void setWeightPerUnit(BigDecimal weightPerUnit) {
+        this.weightPerUnit = weightPerUnit;
     }
 
     private String resolveMediaUrl(String value) {

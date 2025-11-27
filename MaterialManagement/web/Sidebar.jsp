@@ -664,6 +664,11 @@
                                 <c:if test="${sessionScope.user.roleId == 1}">
                         <li><a href="RolePermission">Role & Permissions</a></li>
                         <li><a href="UserList">Users</a></li>
+                        <li><a href="AccountType?action=list">Account Types</a></li>
+                        <li><a href="ExchangeRate?action=list">Exchange Rates</a></li>
+                        <li><a href="Session?action=list">Session Management</a></li>
+                        <li><a href="APIKey?action=list">API Keys</a></li>
+                        <li><a href="RateLimit?action=list">Rate Limits</a></li>
                         <li><a href="UnitList">Units</a></li>
                         <li><a href="depairmentlist">Departments</a></li>
                         <li><a href="WarehouseRackList">Warehouse Racks</a></li>
