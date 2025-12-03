@@ -60,8 +60,14 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
         SupplierDAO supplierDAO = new SupplierDAO();
         RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
 
-        // Admin có toàn quyền - PermissionHelper đã xử lý
-        boolean hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PO");
+        // Admin (roleId == 1) has full access - check first before permission check
+        boolean hasPermission;
+        if (currentUser.getRoleId() == 1) {
+            hasPermission = true;
+            LOGGER.log(Level.INFO, "✅ CreatePurchaseOrderServlet - User {0} is ADMIN (roleId=1), granting full access", currentUser.getUsername());
+        } else {
+            hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PO");
+        }
         if (!hasPermission) {
             request.setAttribute("error", "Bạn không có quyền tạo đơn đặt hàng.");
             request.getRequestDispatcher("PurchaseOrderList.jsp").forward(request, response);
@@ -150,8 +156,14 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
         RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
         UserDAO userDAO = new UserDAO();
 
-        // Admin có toàn quyền - PermissionHelper đã xử lý
-        boolean hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PO");
+        // Admin (roleId == 1) has full access - check first before permission check
+        boolean hasPermission;
+        if (currentUser.getRoleId() == 1) {
+            hasPermission = true;
+            LOGGER.log(Level.INFO, "✅ CreatePurchaseOrderServlet - User {0} is ADMIN (roleId=1), granting full access", currentUser.getUsername());
+        } else {
+            hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PO");
+        }
         if (!hasPermission) {
             request.setAttribute("error", "Bạn không có quyền tạo đơn đặt hàng.");
             request.getRequestDispatcher("PurchaseOrderList.jsp").forward(request, response);

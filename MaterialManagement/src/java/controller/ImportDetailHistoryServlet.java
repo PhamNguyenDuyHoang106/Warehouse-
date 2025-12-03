@@ -89,15 +89,24 @@ public class ImportDetailHistoryServlet extends HttpServlet {
             }
 
             // 4. Get additional information
-            // Supplier information
-            Supplier supplier = null;
-            if (importData.getSupplierId() != null) {
-                try {
-                    supplier = supplierDAO.getSupplierByID(importData.getSupplierId());
-                } catch (Exception e) {
-                    Logger.getLogger(ImportDetailHistoryServlet.class.getName()).log(Level.WARNING, "Error getting supplier", e);
+            // Get all suppliers for this import
+            List<Supplier> suppliers = importDAO.getAllSuppliersForImport(importId);
+            if (suppliers == null || suppliers.isEmpty()) {
+                // Fallback to PO's main supplier if no suppliers found
+                if (importData.getSupplierId() != null) {
+                    try {
+                        Supplier mainSupplier = supplierDAO.getSupplierByID(importData.getSupplierId());
+                        if (mainSupplier != null) {
+                            suppliers = new ArrayList<>();
+                            suppliers.add(mainSupplier);
+                        }
+                    } catch (Exception e) {
+                        Logger.getLogger(ImportDetailHistoryServlet.class.getName()).log(Level.WARNING, "Error getting supplier", e);
+                    }
                 }
             }
+            // Keep backward compatibility - set first supplier as main supplier
+            Supplier supplier = (suppliers != null && !suppliers.isEmpty()) ? suppliers.get(0) : null;
             
             // User information
             User createdByUser = null;
@@ -166,6 +175,7 @@ public class ImportDetailHistoryServlet extends HttpServlet {
             request.setAttribute("importData", importData);
             request.setAttribute("importDetails", importDetails != null ? importDetails : new ArrayList<>());
             request.setAttribute("supplier", supplier);
+            request.setAttribute("suppliers", suppliers != null ? suppliers : new ArrayList<>());
             request.setAttribute("createdByUser", createdByUser);
             request.setAttribute("importedByUser", createdByUser);
             request.setAttribute("receivedByUser", receivedByUser);

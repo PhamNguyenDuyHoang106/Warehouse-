@@ -106,7 +106,7 @@
 </head>
 <body>
     <c:set var="roleId" value="${sessionScope.user.roleId}" />
-    <c:set var="hasCreatePurchaseRequestPermission" value="${rolePermissionDAO.hasPermission(roleId, 'Tạo PR')}" scope="request" />
+    <c:set var="hasCreatePurchaseRequestPermission" value="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'Tạo PR')}" scope="request" />
 
     <c:choose>
         <c:when test="${empty sessionScope.user}">

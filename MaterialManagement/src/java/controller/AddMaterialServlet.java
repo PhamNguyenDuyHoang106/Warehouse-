@@ -55,10 +55,13 @@ public class AddMaterialServlet extends HttpServlet {
 
         User user = (User) session.getAttribute("user");
         int roleId = user.getRoleId();
-        if (!PermissionHelper.hasPermission(user, "Tạo NVL")) {
-            request.setAttribute("error", "Bạn không có quyền thêm mới vật tư.");
-            request.getRequestDispatcher("error.jsp").forward(request, response);
-            return;
+        // Admin (roleId == 1) has full access - check first before permission check
+        if (roleId != 1) {
+            if (!PermissionHelper.hasPermission(user, "Tạo NVL")) {
+                request.setAttribute("error", "Bạn không có quyền thêm mới vật tư.");
+                request.getRequestDispatcher("error.jsp").forward(request, response);
+                return;
+            }
         }
 
         CategoryDAO cd = new CategoryDAO();
@@ -85,10 +88,13 @@ public class AddMaterialServlet extends HttpServlet {
 
         User user = (User) session.getAttribute("user");
         int roleId = user.getRoleId();
-        if (!PermissionHelper.hasPermission(user, "Tạo NVL")) {
-            request.setAttribute("error", "Bạn không có quyền thêm mới vật tư.");
-            request.getRequestDispatcher("error.jsp").forward(request, response);
-            return;
+        // Admin (roleId == 1) has full access - check first before permission check
+        if (roleId != 1) {
+            if (!PermissionHelper.hasPermission(user, "Tạo NVL")) {
+                request.setAttribute("error", "Bạn không có quyền thêm mới vật tư.");
+                request.getRequestDispatcher("error.jsp").forward(request, response);
+                return;
+            }
         }
 
         try {

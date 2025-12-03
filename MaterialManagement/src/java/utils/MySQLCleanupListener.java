@@ -1,6 +1,5 @@
 package utils;
 
-import com.mysql.cj.jdbc.AbandonedConnectionCleanupThread;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
@@ -21,13 +20,26 @@ public class MySQLCleanupListener implements ServletContextListener {
     public void contextDestroyed(ServletContextEvent sce) {
         LOGGER.log(Level.INFO, "🧹 Cleaning up JDBC drivers and threads...");
 
+        // Shutdown AbandonedConnectionCleanupThread to prevent IllegalStateException
+        // Use reflection to avoid compile-time dependency issues
         try {
-            AbandonedConnectionCleanupThread.checkedShutdown();
-            LOGGER.log(Level.INFO, "AbandonedConnectionCleanupThread shutdown successfully");
+            Class<?> cleanupThreadClass = Class.forName("com.mysql.cj.jdbc.AbandonedConnectionCleanupThread");
+            java.lang.reflect.Method shutdownMethod = cleanupThreadClass.getMethod("checkedShutdown");
+            shutdownMethod.invoke(null);
+            LOGGER.log(Level.INFO, "✅ AbandonedConnectionCleanupThread shutdown successfully");
+        } catch (ClassNotFoundException e) {
+            LOGGER.log(Level.WARNING, "MySQL connector classes not found. Cleanup thread may not exist.");
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            LOGGER.log(Level.WARNING, "Error accessing AbandonedConnectionCleanupThread method: " + e.getMessage());
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            String errorMsg = cause != null ? cause.getMessage() : e.getMessage();
+            LOGGER.log(Level.WARNING, "Error invoking AbandonedConnectionCleanupThread shutdown: " + errorMsg);
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error shutting down AbandonedConnectionCleanupThread: " + e.getMessage(), e);
         }
 
+        // Deregister all JDBC drivers
         Enumeration<Driver> drivers = DriverManager.getDrivers();
         while (drivers.hasMoreElements()) {
             Driver driver = drivers.nextElement();

@@ -2,918 +2,814 @@
 <%@ page contentType="text/html;charset=UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <html lang="en">
   <head>
-    <title>Internal Material Management System</title>
+    <title>Smart Material Dashboard</title>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-      * {
-        box-sizing: border-box;
+      :root {
+        --card-radius: 20px;
+        --shadow-md: 0 12px 30px rgba(15, 23, 42, 0.12);
+        --text-muted: #6b7280;
       }
       
       body {
-        background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+        background: #f5f6fa;
         font-family: 'Inter', 'Roboto', sans-serif;
+        color: #0f172a;
         min-height: 100vh;
-        padding: 0;
-        margin: 0;
       }
 
-      .section-card {
-        background: white;
-        border: none;
-        border-radius: 20px;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-        overflow: hidden;
-        transition: all 0.3s ease;
-        animation: fadeInUp 0.6s ease-out;
-      }
-      
-      @keyframes fadeInUp {
-        from {
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
+      .dashboard-container {
+        padding-left: min(4vw, 2.5rem);
+        padding-right: min(4vw, 2.5rem);
       }
 
-      .section-card:hover {
-        box-shadow: 0 15px 40px rgba(222, 173, 111, 0.2);
-        transform: translateY(-5px);
-      }
-
-      .section-header {
-        background: linear-gradient(135deg, #DEAD6F 0%, #cfa856 100%);
-        color: white;
-        padding: 25px 30px;
-        position: relative;
-        overflow: hidden;
-      }
-      
-      .section-header::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-        animation: shimmer 3s infinite;
-      }
-      
-      @keyframes shimmer {
-        0%, 100% { transform: translate(0, 0) rotate(0deg); }
-        50% { transform: translate(-20px, -20px) rotate(180deg); }
-      }
-
-      .section-header h4 {
-        margin: 0;
-        font-weight: 600;
-        font-size: 20px;
-        position: relative;
-        z-index: 1;
-      }
-      
-      .section-header i {
-        margin-right: 10px;
-      }
-
-      .section-body {
-        padding: 35px;
-        background: white;
-      }
-
-      .alert-custom {
-        border: none;
-        border-radius: 15px;
-        padding: 25px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-      }
-      
-      .alert-custom::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 5px;
-        background: currentColor;
-      }
-
-      .alert-custom:hover {
-        transform: translateX(5px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-      }
-
-      .alert-warning-custom {
-        background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-        border-left: 5px solid #ffc107;
-        color: #856404;
-      }
-
-      .alert-danger-custom {
-        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-        border-left: 5px solid #dc3545;
-        color: #721c24;
-      }
-
-      .alert-info-custom {
-        background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
-        border-left: 5px solid #17a2b8;
-        color: #0c5460;
-      }
-
-      .alert-primary-custom {
-        background: linear-gradient(135deg, #cce7ff 0%, #b3d9ff 100%);
-        border-left: 5px solid #007bff;
-        color: #004085;
-      }
-      
-      .alert-success-custom {
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        border-left: 5px solid #28a745;
-        color: #155724;
-      }
-
-      .quick-action-btn {
-        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-        border: 2px solid #e9ecef;
-        border-radius: 15px;
-        padding: 25px 20px;
-        text-align: center;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        color: #333;
-        min-height: 140px;
+      .dashboard-topbar {
+        background: #fff;
+        border-radius: var(--card-radius);
+        box-shadow: var(--shadow-md);
+        padding: 1.75rem;
+        margin-bottom: 1.75rem;
         display: flex;
-        flex-direction: column;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: center;
+      }
+
+      .dashboard-topbar h2 {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+
+      .topbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .profile-chip {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem 1rem;
+        background: #f8fafc;
+        border-radius: 50px;
+      }
+
+      .avatar-circle {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #2563eb, #4f46e5);
+        color: #fff;
+        display: flex;
         align-items: center;
         justify-content: center;
-        position: relative;
-        overflow: hidden;
-      }
-      
-      .quick-action-btn::before {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 0;
-        height: 0;
-        border-radius: 50%;
-        background: rgba(222, 173, 111, 0.1);
-        transform: translate(-50%, -50%);
-        transition: width 0.6s, height 0.6s;
-      }
-
-      .quick-action-btn:hover {
-        background: linear-gradient(135deg, #DEAD6F 0%, #cfa856 100%);
-        color: white;
-        transform: translateY(-5px) scale(1.02);
-        text-decoration: none;
-        border-color: #DEAD6F;
-        box-shadow: 0 10px 25px rgba(222, 173, 111, 0.4);
-      }
-      
-      .quick-action-btn:hover::before {
-        width: 300px;
-        height: 300px;
-      }
-
-      .quick-action-btn i {
-        font-size: 3rem;
-        margin-bottom: 15px;
-        transition: transform 0.3s ease;
-      }
-      
-      .quick-action-btn:hover i {
-        transform: scale(1.1) rotate(5deg);
-      }
-      
-      .quick-action-btn h6 {
         font-weight: 600;
-        margin-bottom: 5px;
-        font-size: 16px;
-      }
-      
-      .quick-action-btn small {
-        font-size: 12px;
-        opacity: 0.8;
       }
 
-      .activity-card {
-        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-        border-radius: 15px;
-        padding: 30px 20px;
-        text-align: center;
-        border: 2px solid #e9ecef;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-      }
-      
-      .activity-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #DEAD6F 0%, #cfa856 100%);
-        transform: scaleX(0);
-        transition: transform 0.3s ease;
-      }
-      
-      .activity-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        border-color: #DEAD6F;
-      }
-      
-      .activity-card:hover::before {
-        transform: scaleX(1);
-      }
-
-      .activity-card i {
-        font-size: 2.5rem;
-        margin-bottom: 15px;
-        padding: 15px;
-        border-radius: 50%;
-        background: rgba(222, 173, 111, 0.1);
-        transition: all 0.3s ease;
-      }
-      
-      .activity-card:hover i {
-        background: rgba(222, 173, 111, 0.2);
-        transform: scale(1.1);
-      }
-
-      .activity-card h4 {
-        font-weight: 700;
-        margin-bottom: 8px;
-        font-size: 2rem;
-        color: #333;
-      }
-
-      .activity-card small {
-        color: #6c757d;
-        font-size: 14px;
+      .quick-actions .btn {
+        border-radius: 999px;
+        padding: 0.5rem 1.2rem;
         font-weight: 500;
       }
-      
-      /* Chart Cards */
-      .chart-card {
-        background: white;
-        border-radius: 15px;
-        padding: 25px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        transition: all 0.3s ease;
+
+      .notifications .btn {
+        position: relative;
       }
       
-      .chart-card:hover {
-        box-shadow: 0 8px 25px rgba(222, 173, 111, 0.15);
+      .notifications .badge {
+        position: absolute;
+        top: -6px;
+        right: -6px;
       }
-      
-      .chart-card .card-header {
-        background: transparent;
-        border: none;
-        padding: 0 0 15px 0;
-        margin-bottom: 15px;
-        border-bottom: 2px solid #e9ecef;
+
+      .notification-list {
+        min-width: 260px;
+        max-height: 300px;
+        overflow-y: auto;
       }
-      
-      .chart-card .card-header h6 {
-        color: #DEAD6F;
-        font-weight: 600;
+
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .kpi-card {
+        background: #fff;
+        border-radius: var(--card-radius);
+        padding: 1.25rem;
+        box-shadow: var(--shadow-md);
+        border-left: 5px solid transparent;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+      }
+
+      .kpi-card .icon-badge {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        background: #eef2ff;
+        color: #4338ca;
+      }
+
+      .kpi-card h3 {
         margin: 0;
+        font-size: 1.8rem;
+        font-weight: 700;
       }
-      
-      /* Toggle Button */
-      #toggleReportsBtn {
+
+      .kpi-card .meta {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+      }
+
+      .accent-primary { border-left-color: #3b82f6; }
+      .accent-gold { border-left-color: #f59e0b; }
+      .accent-success { border-left-color: #10b981; }
+      .accent-warning { border-left-color: #f97316; }
+      .accent-info { border-left-color: #0ea5e9; }
+      .accent-secondary { border-left-color: #8b5cf6; }
+
+      .chart-card,
+      .section-card,
+      .capacity-card,
+      .director-card {
+        background: #fff;
+        border-radius: var(--card-radius);
+        padding: 1.5rem;
+        box-shadow: var(--shadow-md);
+        height: 100%;
+      }
+
+      .chart-card .card-header,
+      .section-card .card-header {
+        border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+      }
+
+      .capacity-card .progress {
+        height: 10px;
         border-radius: 20px;
-        padding: 8px 20px;
-        font-size: 14px;
-        transition: all 0.3s ease;
+        background: #e2e8f0;
       }
-      
-      #toggleReportsBtn:hover {
-        transform: scale(1.05);
+
+      .capacity-card .progress-bar {
+        border-radius: 20px;
       }
-      
-      /* Responsive */
-      @media (max-width: 768px) {
-        .section-body {
-          padding: 20px;
+
+      .alerts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1.25rem;
+      }
+
+      .alert-card {
+        border-radius: var(--card-radius);
+        padding: 1.25rem;
+        color: #0f172a;
+      }
+
+      .alert-card ul {
+        list-style: none;
+        padding: 0;
+        margin: 1rem 0 0 0;
+      }
+
+      .alert-card li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px dashed rgba(15, 23, 42, 0.1);
+      }
+
+      .alert-card li:last-child {
+        border-bottom: none;
+      }
+
+      .alert-card.warning { background: linear-gradient(135deg, #fff9c4, #ffecb3); }
+      .alert-card.danger { background: linear-gradient(135deg, #ffe0e0, #ffcdd2); }
+      .alert-card.info { background: linear-gradient(135deg, #e0f2fe, #bae6fd); }
+
+      .requests-card table thead {
+        background: #f8fafc;
+      }
+
+      .table-dashboard th {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+      }
+
+      .table-dashboard td {
+        vertical-align: middle;
+      }
+
+      .recent-list {
+        max-height: 360px;
+        overflow-y: auto;
+      }
+
+      .recent-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f1f5f9;
+      }
+
+      .flow-board .flow-card {
+        background: #fff;
+        border-radius: var(--card-radius);
+        box-shadow: var(--shadow-md);
+        padding: 1rem;
+        height: 100%;
+      }
+
+      .flow-steps {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.75rem;
+      }
+
+      .flow-step {
+        border-radius: 12px;
+        padding: 0.85rem;
+        background: #f8fafc;
+      }
+
+      .flow-step h4 {
+        margin: 0;
+        font-weight: 700;
+      }
+
+      .flow-step .key {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+
+      .flow-step.success { background: #ecfdf5; }
+      .flow-step.warning { background: #fefce8; }
+      .flow-step.primary { background: #eff6ff; }
+      .flow-step.info { background: #e0f2fe; }
+
+      .director-card h2 {
+        font-weight: 700;
+        font-size: 2.4rem;
+      }
+
+      @media (max-width: 991px) {
+        .topbar-actions {
+          justify-content: flex-start;
         }
-        
-        .activity-card {
-          margin-bottom: 15px;
-        }
-        
-        .quick-action-btn {
-          min-height: 120px;
-          padding: 20px 15px;
+        .flow-steps {
+          grid-template-columns: repeat(1, minmax(0, 1fr));
         }
       }
     </style>
   </head>
   <body>
-    <!-- Header - Full width, ngoài wrapper -->
     <jsp:include page="Header.jsp" />
 
-    <!-- Main Content Wrapper - Bao sidebar và body content -->
     <div class="main-content-wrapper">
-      <!-- Sidebar - Nằm trong wrapper -->
       <div class="sidebar-wrapper-inner">
         <jsp:include page="Sidebar.jsp" />
       </div>
       
-      <!-- Main Content Body - Nằm trong wrapper, bên cạnh sidebar -->
-      <div class="main-content-body" style="display: block !important; visibility: visible !important;">
-        <div class="container-fluid my-4" style="padding-left: 30px; padding-right: 30px; display: block !important;">
-      <div class="row">
-        <!-- Main Content Area -->
-        <div class="col-12">
-          <!-- ACTIVITY SUMMARY SECTION -->
-          <div class="section-card">
-            <div class="section-header">
-              <h4 class="mb-0">
-                <i class="fas fa-clock me-2"></i>Activity Summary
-              </h4>
+      <div class="main-content-body">
+        <div class="container-fluid dashboard-container py-4">
+          <div class="kpi-grid">
+            <c:forEach var="card" items="${topWidgets}">
+              <div class="kpi-card ${card.accent}">
+                <div class="icon-badge">
+                  <i class="${card.icon}"></i>
             </div>
-            <div class="section-body">
-              <div class="row text-center">
-                <div class="col-md-3 mb-3">
-                  <div class="activity-card">
-                    <i class="fas fa-arrow-down" style="color: #28a745"></i>
-                    <h4 class="mb-1">${totalImported}</h4>
-                    <small class="text-muted">Total Imported</small>
+                <div>
+                  <p class="mb-1 text-muted text-uppercase" style="letter-spacing: 0.08em;">${card.title}</p>
+                  <h3 class="mb-1">
+                    <c:choose>
+                      <c:when test="${card.format eq 'currency'}">
+                        <fmt:formatNumber value="${card.value}" type="currency" currencySymbol="₫" maxFractionDigits="0" />
+                      </c:when>
+                      <c:otherwise>
+                        <fmt:formatNumber value="${card.value}" type="number" maxFractionDigits="0" />
+                      </c:otherwise>
+                    </c:choose>
+                  </h3>
+                  <span class="meta">${card.meta}</span>
                   </div>
                 </div>
-                <div class="col-md-3 mb-3">
-                  <div class="activity-card">
-                    <i class="fas fa-arrow-up" style="color: #fd7e14"></i>
-                    <h4 class="mb-1">${totalExported}</h4>
-                    <small class="text-muted">Total Exported</small>
+            </c:forEach>
                   </div>
+
+          <div class="row g-4 mb-4">
+            <div class="col-xl-7">
+              <div class="chart-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="mb-0">Nhập - Xuất theo tháng</h6>
+                    <small class="text-muted">Chỉ tính đơn đã hoàn tất</small>
                 </div>
-                <div class="col-md-3 mb-3">
-                  <div class="activity-card">
-                    <i class="fas fa-boxes" style="color: #007bff"></i>
-                    <h4 class="mb-1">${materialCount}</h4>
-                    <small class="text-muted">Total Materials</small>
                   </div>
+                <canvas id="importExportChart" height="260"></canvas>
                 </div>
-                <div class="col-md-3 mb-3">
-                  <div class="activity-card">
-                    <i class="fas fa-warehouse" style="color: #6f42c1"></i>
-                    <h4 class="mb-1">${totalStock}</h4>
-                    <small class="text-muted">Current Stock</small>
                   </div>
+            <div class="col-xl-5">
+              <div class="chart-card">
+                <div class="card-header">
+                  <h6 class="mb-0">Tồn kho theo loại vật tư</h6>
+                </div>
+                <canvas id="categoryPieChart" height="260"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-4 mb-4">
+            <div class="col-xl-6">
+              <div class="chart-card">
+                <div class="card-header">
+                  <h6 class="mb-0">Giá trị tồn kho 12 tháng</h6>
+              </div>
+                <canvas id="inventoryValueChart" height="260"></canvas>
+            </div>
+                    </div>
+            <div class="col-xl-6">
+              <div class="capacity-card">
+                <div class="card-header mb-3">
+                  <h6 class="mb-0">Khoảng trống kho</h6>
+                  <small class="text-muted">Theo tổng volume & weight</small>
+                    </div>
+                <div class="mb-4">
+                  <div class="d-flex justify-content-between">
+                    <span>Volume</span>
+                    <strong><fmt:formatNumber value="${warehouseCapacityUsage.volumePercent}" maxFractionDigits="1" />%</strong>
+                  </div>
+                  <div class="progress my-2">
+                    <div class="progress-bar bg-primary" style="width: ${warehouseCapacityUsage.volumePercent}%"></div>
+                </div>
+                  <small class="text-muted">
+                    <fmt:formatNumber value="${warehouseCapacityUsage.usedVolume}" maxFractionDigits="0" /> /
+                    <fmt:formatNumber value="${warehouseCapacityUsage.maxVolume}" maxFractionDigits="0" /> m³
+                  </small>
+                    </div>
+                        <div>
+                  <div class="d-flex justify-content-between">
+                    <span>Weight</span>
+                    <strong><fmt:formatNumber value="${warehouseCapacityUsage.weightPercent}" maxFractionDigits="1" />%</strong>
+                    </div>
+                  <div class="progress my-2">
+                    <div class="progress-bar bg-success" style="width: ${warehouseCapacityUsage.weightPercent}%"></div>
+                  </div>
+                  <small class="text-muted">
+                    <fmt:formatNumber value="${warehouseCapacityUsage.usedWeight}" maxFractionDigits="0" /> /
+                    <fmt:formatNumber value="${warehouseCapacityUsage.maxWeight}" maxFractionDigits="0" /> kg
+                  </small>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- ANALYTICS & REPORTS SECTION -->
-          <div class="section-card">
-            <div class="section-header">
+          <div class="alerts-grid mb-4">
+            <div class="alert-card warning">
               <div class="d-flex justify-content-between align-items-center">
-                <h4 class="mb-0">
-                  <i class="fas fa-chart-bar me-2"></i>Analytics & Reports
-                </h4>
-                <button id="toggleReportsBtn" class="btn btn-outline-light btn-sm" style="border-radius: 20px; border: 2px solid rgba(255,255,255,0.3);">
-                  <i class="fas fa-eye-slash me-1"></i> Hide Reports
-                </button>
-              </div>
-            </div>
-            <div id="reportsSection" class="section-body">
-              <!-- Charts Row -->
-              <div class="row">
-                <div class="col-md-6 mb-4">
-                  <div class="card" style="border: 1px solid #dead6f; border-radius: 12px">
-                    <div class="card-header" style="background: #f8f9fa; border-bottom: 1px solid #dead6f;">
-                      <h6 class="mb-0" style="color: #dead6f; font-weight: 600">
-                        <i class="fas fa-chart-pie me-2"></i>Inventory Overview
-                      </h6>
-                    </div>
-                    <div class="card-body">
-                      <canvas id="pieChart" style="max-height: 300px"></canvas>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-6 mb-4">
-                  <div class="card" style="border: 1px solid #dead6f; border-radius: 12px">
-                    <div class="card-header" style="background: #f8f9fa; border-bottom: 1px solid #dead6f;">
-                      <h6 class="mb-0" style="color: #dead6f; font-weight: 600">
-                        <i class="fas fa-chart-line me-2"></i>Stock Level Distribution
-                      </h6>
-                    </div>
-                    <div class="card-body">
-                      <canvas id="barChart" style="max-height: 300px"></canvas>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- CRITICAL ALERTS SECTION -->
-          <div class="section-card">
-            <div class="section-header">
-              <h4 class="mb-0">
-                <i class="fas fa-exclamation-triangle me-2"></i>Critical Alerts
-              </h4>
-            </div>
-            <div class="section-body">
-              <div class="row">
-                <!-- Low Stock Alert -->
-                <c:if test="${lowStockCount > 0}">
-                  <div class="col-md-6 mb-3">
-                    <div class="alert-custom alert-warning-custom">
-                      <div class="d-flex align-items-center">
-                        <i class="fas fa-exclamation-triangle fa-2x me-3" style="color: #856404"></i>
                         <div>
-                          <h5 class="alert-heading mb-1">Low Stock</h5>
-                          <p class="mb-2">${lowStockCount} materials are low on stock</p>
-                          <a href="StaticInventory?stockFilter=low" class="btn btn-warning btn-sm">
-                            <i class="fas fa-eye me-1"></i>View Details
-                          </a>
+                  <h6 class="mb-0">🔥 Sắp hết hàng</h6>
+                  <small>Đang thấp hơn mức min-stock</small>
                         </div>
+                <span class="badge bg-dark text-white">${fn:length(lowStockAlerts)}</span>
                       </div>
-                    </div>
-                  </div>
+              <c:if test="${empty lowStockAlerts}">
+                <p class="text-muted mb-0 mt-3">Không có cảnh báo.</p>
                 </c:if>
-
-                <!-- Out of Stock Alert -->
-                <c:if test="${outOfStockCount > 0}">
-                  <div class="col-md-6 mb-3">
-                    <div class="alert-custom alert-danger-custom">
-                      <div class="d-flex align-items-center">
-                        <i class="fas fa-times-circle fa-2x me-3" style="color: #721c24"></i>
+              <ul>
+                <c:forEach var="alert" items="${lowStockAlerts}">
+                  <li>
                         <div>
-                          <h5 class="alert-heading mb-1">Out of Stock</h5>
-                          <p class="mb-2">${outOfStockCount} materials are out of stock</p>
-                          <a href="StaticInventory?stockFilter=zero" class="btn btn-danger btn-sm">
-                            <i class="fas fa-eye me-1"></i>View Details
-                          </a>
+                      <strong>${alert.material}</strong>
+                      <div class="text-muted small">${alert.category}</div>
                         </div>
+                    <span class="badge bg-warning text-dark">
+                      <fmt:formatNumber value="${alert.quantity}" maxFractionDigits="0" /> units
+                    </span>
+                  </li>
+                </c:forEach>
+              </ul>
                       </div>
+            <div class="alert-card danger">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="mb-0">⏳ Sắp hết hạn</h6>
+                  <small>Trong 30 ngày tới</small>
                     </div>
+                <span class="badge bg-dark text-white">${fn:length(expiryAlerts)}</span>
                   </div>
+              <c:if test="${empty expiryAlerts}">
+                <p class="text-muted mb-0 mt-3">Không có cảnh báo.</p>
                 </c:if>
-
-                <!-- Inactive Materials Alert (Admin/Director/Warehouse Staff) -->
-                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.user.roleId == 2 || sessionScope.user.roleId == 3}">
-                  <c:if test="${damagedMaterialsCount > 0}">
-                    <div class="col-md-6 mb-3">
-                      <div class="alert-custom" style="background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); border-left: 4px solid #ffc107;">
-                        <div class="d-flex align-items-center">
-                          <i class="fas fa-exclamation-triangle fa-2x me-3" style="color: #856404"></i>
+              <ul>
+                <c:forEach var="alert" items="${expiryAlerts}">
+                  <li>
                           <div>
-                            <h5 class="alert-heading mb-1">Inactive Materials</h5>
-                            <p class="mb-2">${damagedMaterialsCount} materials are inactive</p>
-                            <a href="StaticInventory?status=inactive" class="btn btn-warning btn-sm">
-                              <i class="fas fa-eye me-1"></i>View Details
-                            </a>
+                      <strong>${alert.material}</strong>
+                      <div class="text-muted small">${alert.category}</div>
+                          </div>
+                    <span class="badge bg-danger">
+                      ${alert.detail}
+                    </span>
+                  </li>
+                </c:forEach>
+              </ul>
+                        </div>
+            <div class="alert-card info">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="mb-0">🐢 Chậm luân chuyển</h6>
+                  <small>Không phát sinh > 60 ngày</small>
+                      </div>
+                <span class="badge bg-dark text-white">${fn:length(slowMovementAlerts)}</span>
+                    </div>
+              <c:if test="${empty slowMovementAlerts}">
+                <p class="text-muted mb-0 mt-3">Không có cảnh báo.</p>
+                  </c:if>
+              <ul>
+                <c:forEach var="alert" items="${slowMovementAlerts}">
+                  <li>
+                          <div>
+                      <strong>${alert.material}</strong>
+                      <div class="text-muted small">${alert.category}</div>
+                          </div>
+                    <span class="badge bg-info text-dark">
+                      ${alert.detail}
+                    </span>
+                  </li>
+                </c:forEach>
+              </ul>
+                        </div>
+                      </div>
+
+          <div class="row g-4 mb-4">
+            <div class="col-xl-7">
+              <div class="section-card requests-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0">Requests đang chờ xử lý</h6>
+                  <a href="ViewRequests" class="text-decoration-none small">Xem tất cả</a>
+                    </div>
+                <div class="table-responsive">
+                  <table class="table table-dashboard align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Loại đơn</th>
+                        <th>Mã</th>
+                        <th>Người tạo</th>
+                        <th>Ngày</th>
+                        <th>Trạng thái</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <c:if test="${empty pendingRequests}">
+                        <tr>
+                          <td colspan="6" class="text-center text-muted py-4">Không có yêu cầu nào.</td>
+                        </tr>
+                  </c:if>
+                      <c:forEach var="req" items="${pendingRequests}">
+                        <tr>
+                          <td>${req.type}</td>
+                          <td>
+                            <span class="fw-semibold">${req.code}</span>
+                          </td>
+                          <td>${req.owner}</td>
+                          <td>${req.dateDisplay}</td>
+                          <td>
+                            <span class="badge text-bg-light text-uppercase">${req.status}</span>
+                          </td>
+                          <td>
+                            <a href="${req.actionUrl}" class="btn btn-sm btn-outline-primary">${req.actionLabel}</a>
+                          </td>
+                        </tr>
+                      </c:forEach>
+                    </tbody>
+                  </table>
+                          </div>
+                        </div>
+                      </div>
+            <div class="col-xl-5">
+              <div class="section-card recent-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0">Nhập/Xuất gần nhất</h6>
+                    </div>
+                <div class="recent-list">
+                  <c:if test="${empty recentTransactions}">
+                    <p class="text-muted">Chưa có giao dịch trong tuần.</p>
+                  </c:if>
+                  <c:forEach var="txn" items="${recentTransactions}">
+                    <div class="recent-item">
+                          <div>
+                        <p class="mb-0 fw-semibold">${txn.material}</p>
+                        <small class="text-muted">${txn.transactionType} • ${txn.dateDisplay}</small>
+                          </div>
+                      <div class="text-end">
+                        <span class="badge bg-light text-dark mb-1">${txn.category}</span>
+                        <div class="small text-muted">
+                          <fmt:formatNumber value="${txn.quantity}" maxFractionDigits="0" /> units
+                        </div>
+                        <small class="d-block">${txn.operator}</small>
+                      </div>
+                    </div>
+                  </c:forEach>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </c:if>
-                </c:if>
 
-                <!-- Pending Requests Alerts (Admin/Director/Warehouse Staff) -->
-                <c:if test="${sessionScope.user.roleId == 1 || sessionScope.user.roleId == 2 || sessionScope.user.roleId == 3}">
-                  <c:if test="${pendingExportRequestCount > 0}">
-                    <div class="col-md-6 mb-3">
-                      <div class="alert-custom alert-info-custom">
-                        <div class="d-flex align-items-center">
-                          <i class="fas fa-file-signature fa-2x me-3" style="color: #0c5460"></i>
-                          <div>
-                            <h5 class="alert-heading mb-1">Pending Export Requests</h5>
-                            <p class="mb-2">${pendingExportRequestCount} requests waiting for approval</p>
-                            <a href="ExportRequestList" class="btn btn-info btn-sm">
-                              <i class="fas fa-eye me-1"></i>Review Requests
-                            </a>
+          <div class="flow-board mb-4">
+            <div class="row g-4">
+              <div class="col-lg-4">
+                <div class="flow-card">
+                  <div class="d-flex justify-content-between mb-2">
+                    <h6 class="mb-0">Purchasing Flow</h6>
                           </div>
+                  <div class="flow-steps">
+                    <c:forEach var="step" items="${purchasingFlowSteps}">
+                      <div class="flow-step ${step.theme}">
+                        <div class="key">${step.key}</div>
+                        <h4>${step.count}</h4>
+                        <small>${step.label}</small>
                         </div>
+                    </c:forEach>
                       </div>
                     </div>
-                  </c:if>
-
-                  <c:if test="${pendingPurchaseRequestCount > 0}">
-                    <div class="col-md-6 mb-3">
-                      <div class="alert-custom alert-primary-custom">
-                        <div class="d-flex align-items-center">
-                          <i class="fas fa-shopping-cart fa-2x me-3" style="color: #004085"></i>
-                          <div>
-                            <h5 class="alert-heading mb-1">Pending Purchase Requests</h5>
-                            <p class="mb-2">${pendingPurchaseRequestCount} requests waiting for approval</p>
-                            <a href="ListPurchaseRequests" class="btn btn-primary btn-sm">
-                              <i class="fas fa-eye me-1"></i>Review Requests
-                            </a>
                           </div>
+              <div class="col-lg-4">
+                <div class="flow-card">
+                  <div class="d-flex justify-content-between mb-2">
+                    <h6 class="mb-0">Outbound Flow</h6>
                         </div>
+                  <div class="flow-steps">
+                    <c:forEach var="step" items="${outboundFlowSteps}">
+                      <div class="flow-step ${step.theme}">
+                        <div class="key">${step.key}</div>
+                        <h4>${step.count}</h4>
+                        <small>${step.label}</small>
                       </div>
+                    </c:forEach>
                     </div>
-                  </c:if>
+              </div>
+            </div>
+              <div class="col-lg-4">
+                <div class="flow-card">
+                  <div class="d-flex justify-content-between mb-2">
+                    <h6 class="mb-0">Maintenance Flow</h6>
+          </div>
+                  <div class="flow-steps">
+                    <c:forEach var="step" items="${maintenanceFlowSteps}">
+                      <div class="flow-step ${step.theme}">
+                        <div class="key">${step.key}</div>
+                        <h4>${step.count}</h4>
+                        <small>${step.label}</small>
+            </div>
+                    </c:forEach>
+                  </div>
+                  </div>
+                  </div>
+                  </div>
+                  </div>
 
-                  <c:if test="${pendingRepairRequestCount > 0}">
-                    <div class="col-md-6 mb-3">
-                      <div class="alert-custom" style="background: linear-gradient(135deg, #e2e3e5 0%, #d6d8db 100%); border-left: 4px solid #6c757d;">
-                        <div class="d-flex align-items-center">
-                          <i class="fas fa-tools fa-2x me-3" style="color: #495057"></i>
-                          <div>
-                            <h5 class="alert-heading mb-1">Pending Repair Requests</h5>
-                            <p class="mb-2">${pendingRepairRequestCount} requests waiting for approval</p>
-                            <a href="repairrequestlist" class="btn btn-secondary btn-sm">
-                              <i class="fas fa-eye me-1"></i>Review Requests
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </c:if>
-                </c:if>
-
-                <!-- Employee Specific Alerts -->
-                <c:if test="${sessionScope.user.roleId == 4}">
-                  <!-- My Pending Requests Alert -->
-                  <c:if test="${myPendingRequestCount > 0}">
-                    <div class="col-md-6 mb-3">
-                      <div class="alert-custom alert-info-custom">
-                        <div class="d-flex align-items-center">
-                          <i class="fas fa-clock fa-2x me-3" style="color: #17a2b8"></i>
-                          <div>
-                            <h5 class="alert-heading mb-1">My Pending Requests</h5>
-                            <p class="mb-2">You have ${myPendingRequestCount} requests waiting for approval</p>
-                            <a href="ViewRequests" class="btn btn-info btn-sm">
-                              <i class="fas fa-eye me-1"></i>View My Requests
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </c:if>
-
-                  <!-- My Approved Requests Alert -->
-                  <c:if test="${myApprovedRequestCount > 0}">
-                    <div class="col-md-6 mb-3">
-                      <div class="alert-custom alert-success-custom">
-                        <div class="d-flex align-items-center">
-                          <i class="fas fa-check-circle fa-2x me-3" style="color: #28a745"></i>
-                          <div>
-                            <h5 class="alert-heading mb-1">My Approved Requests</h5>
-                            <p class="mb-2">${myApprovedRequestCount} of your requests have been approved</p>
-                            <a href="ViewRequests" class="btn btn-success btn-sm" style="border-radius: 8px;">
-                              <i class="fas fa-eye me-1"></i>View Details
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </c:if>
-
-                  <!-- Available Materials Alert -->
-                  <c:if test="${availableMaterialsCount > 0}">
-                    <div class="col-md-6 mb-3">
-                      <div class="alert-custom alert-primary-custom">
-                        <div class="d-flex align-items-center">
-                          <i class="fas fa-boxes fa-2x me-3" style="color: #007bff"></i>
-                          <div>
-                            <h5 class="alert-heading mb-1">Available Materials</h5>
-                            <p class="mb-2">${availableMaterialsCount} materials are available for request</p>
-                            <a href="StaticInventory" class="btn btn-primary btn-sm">
-                              <i class="fas fa-search me-1"></i>Browse Materials
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </c:if>
+          <c:if test="${isDirector || isAdmin}">
+            <div class="row g-4 mb-4 align-items-stretch">
+              <div class="col-xl-4">
+                <div class="director-card h-100">
+                  <p class="text-muted text-uppercase mb-1" style="letter-spacing: 0.1em;">Director Insight</p>
+                  <h5 class="mb-2">Tổng giá trị tài sản</h5>
+                  <h2 class="mb-3">
+                    <fmt:formatNumber value="${totalInventoryValue}" type="currency" currencySymbol="₫" maxFractionDigits="0" />
+                  </h2>
+                  <small class="text-muted">Tính trên tồn kho hiện tại</small>
+                  </div>
+                  </div>
+              <div class="col-xl-8">
+                <div class="chart-card h-100">
+                  <div class="card-header">
+                    <h6 class="mb-0">Lợi nhuận theo tháng</h6>
+                  </div>
+                  <canvas id="profitTrendChart" height="220"></canvas>
+                  </div>
+                  </div>
+                  </div>
+            <div class="row g-4 mb-4">
+              <div class="col-12">
+                <div class="chart-card">
+                  <div class="card-header">
+                    <h6 class="mb-0">Giá trị tồn kho theo Category</h6>
+                  </div>
+                  <canvas id="directorCategoryChart" height="240"></canvas>
+                  </div>
+                  </div>
+                  </div>
                 </c:if>
               </div>
             </div>
           </div>
 
-          <!-- QUICK ACTIONS SECTION -->
-          <div class="section-card">
-            <div class="section-header">
-              <h4 class="mb-0">
-                <i class="fas fa-bolt me-2"></i>Quick Actions
-              </h4>
-            </div>
-            <div class="section-body">
-              <div class="row">
-                <!-- Admin - All Operations -->
-                <c:if test="${sessionScope.user.roleId == 1}">
-                  <div class="col-md-2 mb-3">
-                    <a href="ImportMaterial" class="quick-action-btn">
-                      <i class="fas fa-plus-circle" style="color: #28a745"></i>
-                      <h6 class="mb-1">Import Materials</h6>
-                      <small>Add new stock</small>
-                    </a>
-                  </div>
-                  <div class="col-md-2 mb-3">
-                    <a href="ExportMaterial" class="quick-action-btn">
-                      <i class="fas fa-minus-circle" style="color: #ffc107"></i>
-                      <h6 class="mb-1">Export Materials</h6>
-                      <small>Remove stock</small>
-                    </a>
-                  </div>
-                  <div class="col-md-2 mb-3">
-                    <a href="addmaterial" class="quick-action-btn">
-                      <i class="fas fa-box" style="color: #007bff"></i>
-                      <h6 class="mb-1">Add New Material</h6>
-                      <small>Create new item</small>
-                    </a>
-                  </div>
-                  <div class="col-md-2 mb-3">
-                    <a href="StaticInventory" class="quick-action-btn">
-                      <i class="fas fa-clipboard-list" style="color: #17a2b8"></i>
-                      <h6 class="mb-1">Inventory Report</h6>
-                      <small>View all stock</small>
-                    </a>
-                  </div>
-                  <div class="col-md-2 mb-3">
-                    <a href="UserList" class="quick-action-btn">
-                      <i class="fas fa-users" style="color: #343a40"></i>
-                      <h6 class="mb-1">User Management</h6>
-                      <small>Manage users</small>
-                    </a>
-                  </div>
-                  <div class="col-md-2 mb-3">
-                    <a href="ExportRequestList" class="quick-action-btn">
-                      <i class="fas fa-eye" style="color: #17a2b8"></i>
-                      <h6 class="mb-1">View Requests</h6>
-                      <small>View all requests</small>
-                    </a>
-                  </div>
-                </c:if>
-
-                <!-- Warehouse Staff Operations -->
-                <c:if test="${sessionScope.user.roleId == 3}">
-                  <div class="col-md-2 mb-3">
-                    <a href="ImportMaterial" class="quick-action-btn">
-                      <i class="fas fa-plus-circle" style="color: #28a745"></i>
-                      <h6 class="mb-1">Import Materials</h6>
-                      <small>Add new stock</small>
-                    </a>
-                  </div>
-                  <div class="col-md-2 mb-3">
-                    <a href="ExportMaterial" class="quick-action-btn">
-                      <i class="fas fa-minus-circle" style="color: #ffc107"></i>
-                      <h6 class="mb-1">Export Materials</h6>
-                      <small>Remove stock</small>
-                    </a>
-                  </div>
-                  <div class="col-md-2 mb-3">
-                    <a href="AddMaterial" class="quick-action-btn">
-                      <i class="fas fa-box" style="color: #007bff"></i>
-                      <h6 class="mb-1">Add New Material</h6>
-                      <small>Create new item</small>
-                    </a>
-                  </div>
-                  <div class="col-md-2 mb-3">
-                    <a href="StaticInventory" class="quick-action-btn">
-                      <i class="fas fa-clipboard-list" style="color: #17a2b8"></i>
-                      <h6 class="mb-1">Inventory Report</h6>
-                      <small>View all stock</small>
-                    </a>
-                  </div>
-                  <div class="col-md-2 mb-3">
-                    <a href="CreateExportRequest" class="quick-action-btn">
-                      <i class="fas fa-plus" style="color: #20c997"></i>
-                      <h6 class="mb-1">Create Request</h6>
-                      <small>Create export request</small>
-                    </a>
-                  </div>
-                  <div class="col-md-2 mb-3">
-                    <a href="ExportRequestList" class="quick-action-btn">
-                      <i class="fas fa-eye" style="color: #17a2b8"></i>
-                      <h6 class="mb-1">View Requests</h6>
-                      <small>View all requests</small>
-                    </a>
-                  </div>
-                </c:if>
-
-                <!-- Employee Actions -->
-                <c:if test="${sessionScope.user.roleId == 4}">
-                  <div class="col-md-4 mb-3">
-                    <a href="CreateExportRequest" class="quick-action-btn">
-                      <i class="fas fa-plus" style="color: #20c997"></i>
-                      <h6 class="mb-1">Create Request</h6>
-                      <small>Create export request</small>
-                    </a>
-                  </div>
-                  <div class="col-md-4 mb-3">
-                    <a href="ViewRequests" class="quick-action-btn">
-                      <i class="fas fa-eye" style="color: #17a2b8"></i>
-                      <h6 class="mb-1">View Requests</h6>
-                      <small>View my requests</small>
-                    </a>
-                  </div>
-                  <div class="col-md-4 mb-3">
-                    <a href="StaticInventory" class="quick-action-btn">
-                      <i class="fas fa-search" style="color: #6f42c1"></i>
-                      <h6 class="mb-1">Browse Materials</h6>
-                      <small>Search available items</small>
-                    </a>
-                  </div>
-                </c:if>
-
-                <!-- Director Actions -->
-                <c:if test="${sessionScope.user.roleId == 2}">
-                  <div class="col-md-4 mb-3">
-                    <a href="ExportRequestList" class="quick-action-btn">
-                      <i class="fas fa-eye" style="color: #17a2b8"></i>
-                      <h6 class="mb-1">View Requests</h6>
-                      <small>Monitor & approve requests</small>
-                    </a>
-                  </div>
-                  <div class="col-md-4 mb-3">
-                    <a href="StaticInventory" class="quick-action-btn">
-                      <i class="fas fa-chart-bar" style="color: #6f42c1"></i>
-                      <h6 class="mb-1">Inventory Overview</h6>
-                      <small>View stock reports</small>
-                    </a>
-                  </div>
-                </c:if>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      </div> <!-- End main-content-body -->
-    </div> <!-- End main-content-wrapper -->
-
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- Reports Toggle Script -->
     <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const toggleBtn = document.getElementById("toggleReportsBtn");
-        const reportsSection = document.getElementById("reportsSection");
-        let chartsRendered = false;
+      const monthlyLabels = [
+        <c:forEach var="label" items="${monthlySeries.labels}" varStatus="loop">
+          "${label}"<c:if test="${!loop.last}">,</c:if>
+        </c:forEach>
+      ];
+      const importSeries = [
+        <c:forEach var="val" items="${monthlySeries.importSeries}" varStatus="loop">
+          ${val}<c:if test="${!loop.last}">,</c:if>
+        </c:forEach>
+      ];
+      const exportSeries = [
+        <c:forEach var="val" items="${monthlySeries.exportSeries}" varStatus="loop">
+          ${val}<c:if test="${!loop.last}">,</c:if>
+        </c:forEach>
+      ];
 
-        // Render charts immediately when page loads
-        if (reportsSection) {
-          renderCharts();
-          chartsRendered = true;
-        }
+      const categoryLabels = [
+        <c:forEach var="item" items="${categoryDistribution}" varStatus="loop">
+          "${item.label}"<c:if test="${!loop.last}">,</c:if>
+        </c:forEach>
+      ];
+      const categoryValues = [
+        <c:forEach var="item" items="${categoryDistribution}" varStatus="loop">
+          ${item.stock}<c:if test="${!loop.last}">,</c:if>
+        </c:forEach>
+      ];
 
-        if (toggleBtn && reportsSection) {
-          toggleBtn.addEventListener("click", function () {
-            const isVisible = reportsSection.style.display !== "none";
+      const inventoryValueLabels = [
+        <c:forEach var="point" items="${inventoryValueTrend}" varStatus="loop">
+          "${point.label}"<c:if test="${!loop.last}">,</c:if>
+        </c:forEach>
+      ];
+      const inventoryValueSeries = [
+        <c:forEach var="point" items="${inventoryValueTrend}" varStatus="loop">
+          ${point.value}<c:if test="${!loop.last}">,</c:if>
+        </c:forEach>
+      ];
 
-            if (isVisible) {
-              reportsSection.style.display = "none";
-              toggleBtn.innerHTML = '<i class="fas fa-eye me-1"></i> Show Reports';
-            } else {
-              reportsSection.style.display = "block";
-              toggleBtn.innerHTML = '<i class="fas fa-eye-slash me-1"></i> Hide Reports';
+      const profitLabels = [
+        <c:forEach var="point" items="${profitTrend}" varStatus="loop">
+          "${point.label}"<c:if test="${!loop.last}">,</c:if>
+        </c:forEach>
+      ];
+      const profitValues = [
+        <c:forEach var="point" items="${profitTrend}" varStatus="loop">
+          ${point.value}<c:if test="${!loop.last}">,</c:if>
+        </c:forEach>
+      ];
+
+      const directorCategoryLabels = [
+        <c:forEach var="item" items="${directorCategoryValues}" varStatus="loop">
+          "${item.label}"<c:if test="${!loop.last}">,</c:if>
+        </c:forEach>
+      ];
+      const directorCategoryValues = [
+        <c:forEach var="item" items="${directorCategoryValues}" varStatus="loop">
+          ${item.value}<c:if test="${!loop.last}">,</c:if>
+        </c:forEach>
+      ];
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const importExportChart = document.getElementById("importExportChart");
+        if (importExportChart) {
+          new Chart(importExportChart, {
+            type: "bar",
+              data: {
+              labels: monthlyLabels,
+                datasets: [
+                  {
+                  label: "Import",
+                  data: importSeries,
+                  backgroundColor: "rgba(37, 99, 235, 0.8)",
+                  borderRadius: 8
+                },
+                {
+                  label: "Export",
+                  data: exportSeries,
+                  backgroundColor: "rgba(249, 115, 22, 0.85)",
+                  borderRadius: 8
+                }
+              ]
+              },
+              options: {
+                responsive: true,
+              plugins: { legend: { position: "top" } },
+              scales: { y: { beginAtZero: true } }
             }
           });
         }
 
-        function renderCharts() {
-          // Pie Chart - Inventory Overview
-          const pieCtx = document.getElementById("pieChart");
-          if (pieCtx) {
-            const totalImported = parseInt("${totalImported}", 10) || 0;
-            const totalExported = parseInt("${totalExported}", 10) || 0;
-            const totalStock = parseInt("${totalStock}", 10) || 0;
+        const categoryPieChart = document.getElementById("categoryPieChart");
+        if (categoryPieChart) {
+          new Chart(categoryPieChart, {
+            type: "doughnut",
+            data: {
+              labels: categoryLabels,
+              datasets: [{
+                data: categoryValues,
+                backgroundColor: ["#6366f1", "#f97316", "#14b8a6", "#8b5cf6", "#f43f5e", "#0ea5e9", "#facc15", "#22c55e"],
+                borderWidth: 0
+              }]
+            },
+            options: {
+              plugins: { legend: { position: "bottom" } }
+            }
+          });
+        }
 
-            new Chart(pieCtx, {
-              type: "pie",
-              data: {
-                labels: ["Current Stock", "Total Imported", "Total Exported"],
-                datasets: [
-                  {
-                    data: [totalStock, totalImported, totalExported],
-                    backgroundColor: [
-                      "rgba(40, 167, 69, 0.8)",
-                      "rgba(0, 123, 255, 0.8)",
-                      "rgba(253, 126, 20, 0.8)",
-                    ],
-                    borderColor: [
-                      "rgba(40, 167, 69, 1)",
-                      "rgba(0, 123, 255, 1)",
-                      "rgba(253, 126, 20, 1)",
-                    ],
-                    borderWidth: 2,
-                  },
-                ],
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: {
-                    position: "bottom",
-                    labels: {
-                      padding: 20,
-                      usePointStyle: true,
-                      font: { size: 12 },
-                    },
-                  },
-                  tooltip: {
-                    callbacks: {
-                      label: function (context) {
-                        const value = context.parsed;
-                        const total = context.dataset.data.reduce(
-                          (a, b) => a + b,
-                          0
-                        );
-                        const percent =
-                          total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                        return (
-                          context.label + ": " + value + " (" + percent + "%)"
-                        );
-                      },
-                    },
-                  },
-                },
-              },
-            });
-          }
+        const inventoryValueChart = document.getElementById("inventoryValueChart");
+        if (inventoryValueChart) {
+          new Chart(inventoryValueChart, {
+            type: "line",
+            data: {
+              labels: inventoryValueLabels,
+              datasets: [{
+                label: "Inventory Value (₫)",
+                data: inventoryValueSeries,
+                borderColor: "#2563eb",
+                backgroundColor: "rgba(37, 99, 235, 0.1)",
+                tension: 0.4,
+                fill: true
+              }]
+            },
+            options: {
+              plugins: { legend: { display: false } },
+              scales: { y: { beginAtZero: true } }
+            }
+          });
+        }
 
-          // Bar Chart - Stock Level Distribution
-          const barCtx = document.getElementById("barChart");
-          if (barCtx) {
-            const lowStockCount = parseInt("${lowStockCount}", 10) || 0;
-            const outOfStockCount = parseInt("${outOfStockCount}", 10) || 0;
-            const totalMaterials = parseInt("${materialCount}", 10) || 0;
-            const normalStockCount =
-              totalMaterials - lowStockCount - outOfStockCount;
+        const profitTrendChart = document.getElementById("profitTrendChart");
+        if (profitTrendChart) {
+          new Chart(profitTrendChart, {
+            type: "line",
+            data: {
+              labels: profitLabels,
+              datasets: [{
+                label: "VNĐ",
+                data: profitValues,
+                borderColor: "#0ea5e9",
+                backgroundColor: "rgba(14, 165, 233, 0.15)",
+                fill: true,
+                tension: 0.4
+              }]
+            },
+            options: {
+              plugins: { legend: { display: false } },
+              scales: { y: { beginAtZero: true } }
+            }
+          });
+        }
 
-            new Chart(barCtx, {
+        const directorCategoryChart = document.getElementById("directorCategoryChart");
+        if (directorCategoryChart) {
+          new Chart(directorCategoryChart, {
               type: "bar",
               data: {
-                labels: ["Normal Stock", "Low Stock", "Out of Stock"],
-                datasets: [
-                  {
-                    label: "Number of Materials",
-                    data: [normalStockCount, lowStockCount, outOfStockCount],
-                    backgroundColor: [
-                      "rgba(40, 167, 69, 0.8)",
-                      "rgba(255, 193, 7, 0.8)",
-                      "rgba(220, 53, 69, 0.8)",
-                    ],
-                    borderColor: [
-                      "rgba(40, 167, 69, 1)",
-                      "rgba(255, 193, 7, 1)",
-                      "rgba(220, 53, 69, 1)",
-                    ],
-                    borderWidth: 2,
-                    borderRadius: 8,
-                  },
-                ],
+              labels: directorCategoryLabels,
+              datasets: [{
+                label: "Inventory Value (₫)",
+                data: directorCategoryValues,
+                backgroundColor: "rgba(79, 70, 229, 0.85)",
+                borderRadius: 6
+              }]
               },
               options: {
-                responsive: true,
-                maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              indexAxis: "y",
                 scales: {
-                  y: {
-                    beginAtZero: true,
-                    ticks: { stepSize: 1 },
-                  },
-                },
-                plugins: {
-                  legend: { display: false },
-                  tooltip: {
-                    callbacks: {
-                      label: function (context) {
-                        return context.parsed.y + " materials";
-                      },
-                    },
-                  },
-                },
-              },
-            });
-          }
+                x: { beginAtZero: true }
+              }
+            }
+          });
         }
       });
     </script>
   </body>
 </html>
+

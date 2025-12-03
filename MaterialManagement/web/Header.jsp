@@ -52,6 +52,7 @@ if (user != null) {
             --mm-muted: #6c757d;
             --mm-bg: #f5f7fb;
             --mm-card-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+            --mm-header-height: 160px;
         }
 
         body {
@@ -59,6 +60,19 @@ if (user != null) {
             background: linear-gradient(145deg, #f8fafc 0%, #eef2ff 45%, #f5f7fb 100%);
             color: #1f2937;
             min-height: 100vh;
+            padding-top: var(--mm-header-height, 160px);
+        }
+
+        .mm-sticky-header {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            z-index: 1300 !important;
+            background: rgba(255, 255, 255, 0.95) !important;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08) !important;
+            backdrop-filter: blur(10px);
         }
 
         .main-content-wrapper {
@@ -72,8 +86,14 @@ if (user != null) {
             min-height: 100vh;
             background: rgba(255, 255, 255, 0.9);
             padding-bottom: 48px;
+            margin-top: 0 !important;
         }
 
+        .main-content-body::before {
+            content: "";
+            display: block;
+            height: calc(var(--mm-header-height, 160px) + 20px);
+        }
         .main-content-body .container-fluid {
             padding-left: 32px;
             padding-right: 32px;
@@ -878,38 +898,133 @@ if (user != null) {
         header img:hover {
             transform: scale(1.05);
         }
+
+        .header-avatar-container {
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+
+        .header-avatar-container:hover {
+            transform: scale(1.05);
+        }
+
+        .header-avatar {
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border: 3px solid rgba(0, 86, 179, 0.3);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .header-avatar-container:hover .header-avatar {
+            border-color: rgba(0, 86, 179, 0.6);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header-alert .btn {
+            border-radius: 999px;
+            padding: 0.4rem 0.8rem;
+        }
+
+        .header-alert .badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+        }
+
+        .quick-action-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            margin-left: 1rem;
+        }
+
+        .quick-action-group .btn {
+            border-radius: 999px;
+            font-weight: 600;
+            padding: 0.35rem 0.9rem;
+        }
+
+        @media (max-width: 992px) {
+            .quick-action-group {
+                width: 100%;
+                margin-left: 0;
+                margin-top: 0.75rem;
+            }
+        }
     </style>
 
-<header>
+<header class="mm-sticky-header">
+    <c:set var="headerRoleId" value="${sessionScope.user != null ? sessionScope.user.roleId : 0}" />
+    <c:set var="headerPendingTotal" value="${empty pendingRequestTotal ? 0 : pendingRequestTotal}" />
+    <c:set var="headerNotifications" value="${pendingNotifications}" />
     <div class="container-fluid py-2">
-        <div class="row align-items-center">
-            <div class="col-12 col-sm-4 text-center text-sm-start mb-3 mb-sm-0">
+        <div class="d-flex flex-column flex-lg-row align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-3 header-brand">
                 <a href="home">
                     <img src="images/AdminLogo.png" alt="logo" class="img-fluid" style="max-width: 180px;">
                 </a>
             </div>
-            <div class="col-12 col-sm-8 d-flex flex-column flex-sm-row justify-content-sm-end align-items-center gap-3">
+            <div class="d-flex flex-column flex-sm-row flex-wrap align-items-center justify-content-end gap-3 w-100">
                 <c:choose>
                     <c:when test="${not empty sessionScope.user}">
-                        <div class="user-info">
-                            <div class="user-avatar">
+                        <div class="user-info d-flex align-items-center gap-2">
+                            <a href="profile" class="header-avatar-container" title="View Profile">
                                 <c:choose>
-                                    <c:when test="${not empty sessionScope.user.fullName}">
-                                        ${sessionScope.user.fullName.substring(0, 1).toUpperCase()}
+                                    <c:when test="${not empty sessionScope.user.avatar}">
+                                        <img src="${pageContext.request.contextPath}/images/profiles/${sessionScope.user.avatar}?t=${System.currentTimeMillis()}" 
+                                             alt="avatar" 
+                                             onerror="this.onerror=null; this.src='${pageContext.request.contextPath}/images/profiles/default.jpg';"
+                                             class="header-avatar">
                                     </c:when>
                                     <c:otherwise>
-                                        <i class="fas fa-user"></i>
+                                        <img src="${pageContext.request.contextPath}/images/profiles/default.jpg" 
+                                             alt="avatar" 
+                                             class="header-avatar">
                                     </c:otherwise>
                                 </c:choose>
-                            </div>
+                            </a>
                             <div class="user-details">
                                 <p class="user-name mb-0">${sessionScope.user.fullName}</p>
                                 <p class="user-email mb-0">${sessionScope.user.email}</p>
                             </div>
                         </div>
-                        <a href="logout" class="btn btn-outline-dark btn-sm">
-                            <i class="fas fa-sign-out-alt me-1"></i>Logout
-                        </a>
+                        <div class="header-actions">
+                            <div class="header-alert dropdown">
+                                <button class="btn btn-outline-secondary position-relative" type="button" data-bs-toggle="dropdown">
+                                    <i class="fa-regular fa-bell"></i>
+                                    <c:if test="${headerPendingTotal > 0}">
+                                        <span class="badge bg-danger rounded-pill">${headerPendingTotal}</span>
+                                    </c:if>
+                                </button>
+                                <div class="dropdown-menu dropdown-menu-end p-3 header-notify-menu">
+                                    <c:choose>
+                                        <c:when test="${not empty headerNotifications}">
+                                            <c:forEach var="notify" items="${headerNotifications}">
+                                                <a class="dropdown-item d-flex flex-column mb-2 rounded-3" href="${notify.actionUrl}">
+                                                    <strong>${notify.type}</strong>
+                                                    <small class="text-muted">${notify.code} • ${notify.status}</small>
+                                                </a>
+                                            </c:forEach>
+                                        </c:when>
+                                        <c:otherwise>
+                                            <span class="dropdown-item-text text-muted">Không có yêu cầu chờ xử lý</span>
+                                        </c:otherwise>
+                                    </c:choose>
+                                </div>
+                            </div>
+                            <a href="logout" class="btn btn-outline-dark btn-sm">
+                                <i class="fas fa-sign-out-alt me-1"></i>Logout
+                            </a>
+                        </div>
                     </c:when>
                     <c:otherwise>
                         <div class="user-info">
@@ -1150,9 +1265,6 @@ if (user != null) {
                                     <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS báo giá')}">
                                         <option value="Quotation?action=list">📄 Quotations</option>
                                     </c:if>
-                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Tạo báo giá')}">
-                                        <option value="Quotation?action=edit">➕ Create Quotation</option>
-                              </c:if>
                                     
                                     <!-- Sales Orders -->
                                     <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS đơn bán')}">
@@ -1276,15 +1388,37 @@ if (user != null) {
                         </c:if>
                     </c:if>
 
-                    <ul class="navbar-nav d-flex flex-row flex-wrap gap-3 mb-3 mb-lg-0 menu-list list-unstyled">
-                        <li class="nav-item">
-                            <a href="home" class="nav-link active">Home</a>
-                        </li>
-                    </ul>
+                    <c:if test="${headerRoleId > 0}">
+                        <div class="quick-action-group">
+                            <c:if test="${headerRoleId == 1 || headerRoleId == 3}">
+                                <a href="ImportMaterial" class="btn btn-outline-primary btn-sm">
+                                    <i class="fa-solid fa-circle-arrow-down me-1"></i> Nhập kho
+                                </a>
+                                <a href="ExportMaterial" class="btn btn-outline-primary btn-sm">
+                                    <i class="fa-solid fa-circle-arrow-up me-1"></i> Xuất kho
+                                </a>
+                            </c:if>
+                            <c:if test="${headerRoleId == 1 || headerRoleId == 2 || headerRoleId == 4}">
+                                <a href="PurchaseRequestForm" class="btn btn-outline-dark btn-sm">
+                                    <i class="fa-solid fa-file-circle-plus me-1"></i> Đề nghị mua
+                                </a>
+                            </c:if>
+                            <c:if test="${headerRoleId != 4}">
+                                <a href="CreateRepairRequest" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fa-solid fa-screwdriver-wrench me-1"></i> Đơn sửa chữa
+                                </a>
+                            </c:if>
+                            <c:if test="${headerRoleId == 4}">
+                                <a href="CreateExportRequest" class="btn btn-outline-success btn-sm">
+                                    <i class="fa-solid fa-paper-plane me-1"></i> Yêu cầu xuất
+                                </a>
+                            </c:if>
+                        </div>
+                    </c:if>
 
                     <div class="d-none d-lg-flex align-items-center gap-3">
-                        <a href="profile" class="profile-icon mx-2" title="Profile">
-                            <i class="fas fa-user"></i>
+                        <a href="home" class="btn btn-outline-primary btn-sm" title="Home">
+                            <i class="fas fa-house me-1"></i> Home
                         </a>
                     </div>
                 </div>
@@ -1292,6 +1426,23 @@ if (user != null) {
         </nav>
     </div>
 </header>
+
+<script>
+    (function () {
+        let resizeTimer;
+        function syncHeaderHeight() {
+            const header = document.querySelector('.mm-sticky-header');
+            if (!header) return;
+            const height = header.offsetHeight;
+            document.documentElement.style.setProperty('--mm-header-height', height + 'px');
+        }
+        window.addEventListener('load', syncHeaderHeight);
+        window.addEventListener('resize', function () {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(syncHeaderHeight, 120);
+        });
+    })();
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.10.2/dist/umd/popper.min.js"
         crossorigin="anonymous"></script>

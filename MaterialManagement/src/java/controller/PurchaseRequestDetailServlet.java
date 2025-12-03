@@ -44,7 +44,14 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
         RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
         MaterialDAO materialDAO = new MaterialDAO();
 
-        boolean hasPermission = PermissionHelper.hasPermission(currentUser, "DS yêu cầu mua");
+        // Admin (roleId == 1) has full access - check first before permission check
+        boolean hasPermission;
+        if (currentUser.getRoleId() == 1) {
+            hasPermission = true;
+            LOGGER.log(Level.INFO, "✅ PurchaseRequestDetailServlet - User {0} is ADMIN (roleId=1), granting full access", currentUser.getUsername());
+        } else {
+            hasPermission = PermissionHelper.hasPermission(currentUser, "DS yêu cầu mua");
+        }
         if (!hasPermission) {
             request.setAttribute("error", "You do not have permission to view purchase request details.");
             request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
@@ -142,8 +149,14 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
         PurchaseRequestDAO purchaseRequestDAO = new PurchaseRequestDAO();
         RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
 
-        // Admin có toàn quyền - PermissionHelper đã xử lý
-        boolean hasPermission = PermissionHelper.hasPermission(currentUser, "Duyệt PR");
+        // Admin (roleId == 1) has full access - check first before permission check
+        boolean hasPermission;
+        if (currentUser.getRoleId() == 1) {
+            hasPermission = true;
+            LOGGER.log(Level.INFO, "✅ PurchaseRequestDetailServlet doPost - User {0} is ADMIN (roleId=1), granting full access", currentUser.getUsername());
+        } else {
+            hasPermission = PermissionHelper.hasPermission(currentUser, "Duyệt PR");
+        }
         if (!hasPermission) {
             request.setAttribute("error", "You do not have permission to approve or reject purchase requests.");
             request.getRequestDispatcher("PurchaseRequestDetail.jsp").forward(request, response);

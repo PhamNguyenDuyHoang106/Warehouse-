@@ -116,6 +116,71 @@
             left: 50%;
             transform: translate(-50%, -50%);
         }
+        .package-grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 20px;
+            max-width: 1400px;
+        }
+        .package-module-link {
+            text-decoration: none;
+            display: block;
+        }
+        .package-module {
+            background: #ffffff;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .package-module:hover {
+            border-color: #0038d1;
+            transform: translateY(-4px);
+            box-shadow: 0 6px 16px rgba(0, 56, 209, 0.25);
+        }
+        .package-module-header {
+            background: linear-gradient(135deg, #0038d1 0%, #0052ff 100%);
+            padding: 20px;
+            text-align: center;
+            position: relative;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .package-module-icon {
+            font-size: 32px;
+            color: #ffffff;
+            transition: transform 0.3s ease;
+        }
+        .package-module:hover .package-module-icon {
+            transform: scale(1.15);
+        }
+        .package-module-body {
+            padding: 20px;
+            text-align: center;
+            flex: 1;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+        }
+        .package-module-name {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+            line-height: 1.4;
+        }
+        .package-module:hover .package-module-name {
+            color: #0038d1;
+        }
     </style>
 </head>
 <body>
@@ -141,14 +206,16 @@
                 </div>
                 <h2 class="text-primary fw-bold display-6 border-bottom pb-2 mb-4">🔐 Role Permission Management</h2>
                 
-                <!-- Search Form -->
-                <form id="searchForm" action="RolePermission" method="get" class="search-box mb-4">
-                    <div class="input-group custom-search">
-                        <input type="text" name="search" class="form-control" placeholder="Search permissions or modules..." value="${searchKeyword}">
-                        <input type="hidden" id="selectedModule" name="selectedModule" value="${selectedModule}">
-                        <button type="submit" class="btn btn-primary">Search</button>
-                    </div>
-                </form>
+                <!-- Search Form (only show when viewing permissions) -->
+                <c:if test="${not empty selectedCategory}">
+                    <form id="searchForm" action="RolePermission" method="get" class="search-box mb-4">
+                        <div class="input-group custom-search">
+                            <input type="text" name="search" class="form-control" placeholder="Search permissions..." value="${searchKeyword}">
+                            <input type="hidden" name="category" value="${selectedCategory}">
+                            <button type="submit" class="btn btn-primary">Search</button>
+                        </div>
+                    </form>
+                </c:if>
 
                 <c:if test="${not empty errorMessage}">
                     <div class="alert alert-danger">${errorMessage}</div>
@@ -158,49 +225,44 @@
                     <% session.removeAttribute("successMessage"); %>
                 </c:if>
 
-                <form action="RolePermission" method="post" class="mt-3">
-                    <input type="hidden" name="action" value="update">
-                    <input type="hidden" name="search" value="${searchKeyword}">
-                    <input type="hidden" name="selectedModule" value="${selectedModule}">
-                    <div class="table-responsive">
-                        <c:choose>
-                            <c:when test="${selectedModule == '' || empty selectedModule}">
-                                <div id="module_all" class="tabcontent" style="display: block;">
-                                    <c:forEach var="module" items="${modules}">
-                                        <c:if test="${not empty permissionsByModule[module.moduleId]}">
-                                            <h4 class="mt-4">${module.moduleName}</h4>
-                                            <table class="table table-bordered table-hover align-middle text-center">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th>Permission \ Role</th>
-                                                        <c:forEach var="role" items="${roles}">
-                                                            <th>${role.roleName}</th>
-                                                        </c:forEach>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <c:forEach var="perm" items="${permissionsByModule[module.moduleId]}">
-                                                        <c:if test="${perm.permissionId != 3 && perm.permissionId != 4 && perm.permissionId != 5 || rolePermissionMap[1][perm.permissionId]}">
-                                                            <tr>
-                                                                <td>${perm.permissionName} (${perm.description})</td>
-                                                                <c:forEach var="role" items="${roles}">
-                                                                    <td>
-                                                                        <c:if test="${role.roleId == 1 || (perm.permissionId != 3 && perm.permissionId != 4 && perm.permissionId != 5)}">
-                                                                            <input type="checkbox" 
-                                                                                   name="permission_${role.roleId}_${perm.permissionId}" 
-                                                                                   ${rolePermissionMap[role.roleId][perm.permissionId] ? 'checked' : ''}>
-                                                                        </c:if>
-                                                                    </td>
-                                                                </c:forEach>
-                                                            </tr>
-                                                        </c:if>
-                                                    </c:forEach>
-                                                </tbody>
-                                            </table>
-                                        </c:if>
-                                    </c:forEach>
-                                    <c:if test="${not empty permissionsByModule[0]}">
-                                        <h4 class="mt-4">Other</h4>
+                <c:choose>
+                    <%-- Show category list when no category selected --%>
+                    <c:when test="${empty selectedCategory}">
+                        <div class="package-grid-container">
+                            <c:forEach var="module" items="${allModules}">
+                                <a href="RolePermission?category=${module.moduleId}" class="package-module-link">
+                                    <div class="package-module">
+                                        <div class="package-module-header">
+                                            <i class="fas fa-box package-module-icon"></i>
+                                        </div>
+                                        <div class="package-module-body">
+                                            <span class="package-module-name">${module.moduleName}</span>
+                                        </div>
+                                    </div>
+                                </a>
+                            </c:forEach>
+                        </div>
+                    </c:when>
+                    
+                    <%-- Show permissions when category selected --%>
+                    <c:otherwise>
+                        <div class="mb-4">
+                            <a href="RolePermission" class="btn btn-secondary mb-3">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Categories
+                            </a>
+                            <c:forEach var="module" items="${modules}">
+                                <h3 class="text-primary">${module.moduleName}</h3>
+                                <p class="text-muted">${module.description}</p>
+                            </c:forEach>
+                        </div>
+                        
+                        <form action="RolePermission" method="post" class="mt-3">
+                            <input type="hidden" name="action" value="update">
+                            <input type="hidden" name="search" value="${searchKeyword}">
+                            <input type="hidden" name="category" value="${selectedCategory}">
+                            <div class="table-responsive">
+                                <c:forEach var="module" items="${modules}">
+                                    <c:if test="${not empty permissionsByModule[module.moduleId]}">
                                         <table class="table table-bordered table-hover align-middle text-center">
                                             <thead class="table-light">
                                                 <tr>
@@ -211,10 +273,10 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <c:forEach var="perm" items="${permissionsByModule[0]}">
+                                                <c:forEach var="perm" items="${permissionsByModule[module.moduleId]}">
                                                     <c:if test="${perm.permissionId != 3 && perm.permissionId != 4 && perm.permissionId != 5 || rolePermissionMap[1][perm.permissionId]}">
                                                         <tr>
-                                                            <td>${perm.permissionName} (${perm.description})</td>
+                                                            <td class="text-start">${perm.permissionName} (${perm.description})</td>
                                                             <c:forEach var="role" items="${roles}">
                                                                 <td>
                                                                     <c:if test="${role.roleId == 1 || (perm.permissionId != 3 && perm.permissionId != 4 && perm.permissionId != 5)}">
@@ -230,87 +292,23 @@
                                             </tbody>
                                         </table>
                                     </c:if>
-                                </div>
-                            </c:when>
-                            <c:otherwise>
-                                <c:forEach var="module" items="${modules}">
-                                    <div id="module_${module.moduleId}" class="tabcontent">
-                                        <c:choose>
-                                            <c:when test="${not empty permissionsByModule[module.moduleId]}">
-                                                <table class="table table-bordered table-hover align-middle text-center">
-                                                    <thead class="table-light">
-                                                        <tr>
-                                                            <th>Permission \ Role</th>
-                                                            <c:forEach var="role" items="${roles}">
-                                                                <th>${role.roleName}</th>
-                                                            </c:forEach>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <c:forEach var="perm" items="${permissionsByModule[module.moduleId]}">
-                                                            <c:if test="${perm.permissionId != 3 && perm.permissionId != 4 && perm.permissionId != 5 || rolePermissionMap[1][perm.permissionId]}">
-                                                                <tr>
-                                                                    <td>${perm.permissionName} (${perm.description})</td>
-                                                                    <c:forEach var="role" items="${roles}">
-                                                                        <td>
-                                                                            <c:if test="${role.roleId == 1 || (perm.permissionId != 3 && perm.permissionId != 4 && perm.permissionId != 5)}">
-                                                                                <input type="checkbox" 
-                                                                                       name="permission_${role.roleId}_${perm.permissionId}" 
-                                                                                       ${rolePermissionMap[role.roleId][perm.permissionId] ? 'checked' : ''}>
-                                                                            </c:if>
-                                                                        </td>
-                                                                    </c:forEach>
-                                                                </tr>
-                                                            </c:if>
-                                                        </c:forEach>
-                                                    </tbody>
-                                                </table>
-                                            </c:when>
-                                            <c:otherwise>
-                                                <p class="no-permissions text-muted">No permissions available for this module.</p>
-                                            </c:otherwise>
-                                        </c:choose>
-                                    </div>
                                 </c:forEach>
-                                <c:if test="${not empty permissionsByModule[0]}">
-                                    <div id="module_0" class="tabcontent">
-                                        <table class="table table-bordered table-hover align-middle text-center">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>Permission \ Role</th>
-                                                    <c:forEach var="role" items="${roles}">
-                                                        <th>${role.roleName}</th>
-                                                    </c:forEach>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <c:forEach var="perm" items="${permissionsByModule[0]}">
-                                                    <c:if test="${perm.permissionId != 3 && perm.permissionId != 4 && perm.permissionId != 5 || rolePermissionMap[1][perm.permissionId]}">
-                                                        <tr>
-                                                            <td>${perm.permissionName} (${perm.description})</td>
-                                                            <c:forEach var="role" items="${roles}">
-                                                                <td>
-                                                                    <c:if test="${role.roleId == 1 || (perm.permissionId != 3 && perm.permissionId != 4 && perm.permissionId != 5)}">
-                                                                        <input type="checkbox" 
-                                                                               name="permission_${role.roleId}_${perm.permissionId}" 
-                                                                               ${rolePermissionMap[role.roleId][perm.permissionId] ? 'checked' : ''}>
-                                                                    </c:if>
-                                                                </td>
-                                                            </c:forEach>
-                                                        </tr>
-                                                    </c:if>
-                                                </c:forEach>
-                                            </tbody>
-                                        </table>
+                                
+                                <c:if test="${empty modules || (modules.size() == 1 && permissionsByModule[modules[0].moduleId].isEmpty())}">
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        No permissions found in this category.
                                     </div>
                                 </c:if>
-                            </c:otherwise>
-                        </c:choose>
-                    </div>
-                    <div class="d-grid gap-2 mb-3">
-                        <button type="submit" class="btn btn-primary btn-lg rounded-1">Save Changes</button>
-                    </div>
-                </form>
+                            </div>
+                            <div class="d-grid gap-2 mb-3">
+                                <button type="submit" class="btn btn-primary btn-lg rounded-1">
+                                    <i class="fas fa-save me-2"></i>Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </c:otherwise>
+                </c:choose>
             </div>
           </div>
         </div>
@@ -319,68 +317,5 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js" integrity="sha512-yFjZbTYRCJodnuyGlsKamNE/LlEaEAxSUDe5+u61mV8zzqJVFOH7TnULE2/PP/l5vKWpUNnF4VGVkXh3MjgLsg==" crossorigin="anonymous"></script>
-    <script>
-        function openModule(moduleId) {
-            let tabcontents = document.getElementsByClassName("tabcontent");
-            for (let i = 0; i < tabcontents.length; i++) {
-                tabcontents[i].style.display = "none";
-                tabcontents[i].classList.remove("active");
-            }
-            let selectedTab = document.getElementById("module_" + moduleId);
-            if (selectedTab) {
-                selectedTab.style.display = "block";
-                selectedTab.classList.add("active");
-            }
-
-            let sidebarItems = document.getElementsByClassName("nav-link");
-            for (let i = 0; i < sidebarItems.length; i++) {
-                sidebarItems[i].classList.remove("active");
-                sidebarItems[i].removeAttribute("aria-current");
-            }
-            let selectedItem = document.getElementById("sidebar_" + (moduleId === "" ? "all" : moduleId));
-            if (selectedItem) {
-                selectedItem.classList.add("active");
-                selectedItem.setAttribute("aria-current", "page");
-            }
-        }
-
-        function submitForm(moduleId) {
-            document.getElementById("selectedModule").value = moduleId;
-            document.getElementById("searchForm").submit();
-        }
-
-        window.onload = function() {
-            let selectedModule = "${selectedModule}";
-            console.log("Selected module:", selectedModule);
-            
-            // Show module_all by default if no module selected
-            if (!selectedModule || selectedModule === "" || selectedModule === "all") {
-                let moduleAll = document.getElementById("module_all");
-                if (moduleAll) {
-                    moduleAll.style.display = "block";
-                    moduleAll.classList.add("active");
-                    console.log("Showing module_all");
-                } else {
-                    console.error("module_all element not found");
-                }
-            } else if (selectedModule && document.getElementById("module_" + selectedModule)) {
-                openModule(selectedModule);
-                console.log("Showing module_" + selectedModule);
-            } else if (selectedModule === "0" && document.getElementById("module_0")) {
-                openModule("0");
-                console.log("Showing module_0");
-            } else {
-                // Fallback: show first available module
-                let firstTab = document.querySelector(".tabcontent");
-                if (firstTab) {
-                    firstTab.style.display = "block";
-                    firstTab.classList.add("active");
-                    console.log("Showing first available tab");
-                } else {
-                    console.error("No tabcontent elements found");
-                }
-            }
-        };
-    </script>
 </body>
 </html>

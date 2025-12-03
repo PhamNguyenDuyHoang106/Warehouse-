@@ -86,7 +86,7 @@
           <div class="row">
             <div class="col-12 content px-md-4">
                 <c:set var="roleId" value="${sessionScope.user.roleId}" />
-                <c:set var="hasViewListPermission" value="${rolePermissionDAO.hasPermission(roleId, 'DS NCC')}" scope="request" />
+                <c:set var="hasViewListPermission" value="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'DS NCC')}" scope="request" />
 
                 <c:if test="${!hasViewListPermission}">
                     <div class="alert alert-danger">You do not have permission to view the supplier list.</div>
@@ -94,7 +94,7 @@
                 <c:if test="${hasViewListPermission}">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h2 class="text-primary fw-bold display-6 border-bottom pb-2"><i class="bi bi-person-fill-up"></i> Supplier List</h2>
-                        <c:if test="${rolePermissionDAO.hasPermission(roleId, 'Tạo NCC')}">
+                        <c:if test="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'Tạo NCC')}">
                             <a href="Supplier?action=edit" class="btn btn-primary">
                                 <i class="fas fa-plus me-1"></i> Add New Supplier
                             </a>
@@ -164,12 +164,12 @@
                                                 <a href="Supplier?action=view&id=${s.supplierId}" class="btn btn-info btn-action" title="View Details">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
-                                                <c:if test="${rolePermissionDAO.hasPermission(roleId, 'Sửa NCC')}">
+                                                <c:if test="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'Sửa NCC')}">
                                                     <a href="Supplier?action=edit&id=${s.supplierId}" class="btn btn-warning btn-action" title="Edit">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
                                                 </c:if>
-                                                <c:if test="${rolePermissionDAO.hasPermission(roleId, 'Xóa NCC')}">
+                                                <c:if test="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'Xóa NCC')}">
                                                     <a href="Supplier?action=delete&id=${s.supplierId}" class="btn btn-danger btn-action" onclick="return confirm('Are you sure you want to delete this supplier?');" title="Delete">
                                                         <i class="fas fa-trash"></i>
                                                     </a>

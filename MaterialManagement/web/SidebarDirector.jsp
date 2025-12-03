@@ -10,15 +10,29 @@
     HttpSession ses = request.getSession(false); 
     User user = (User) ses.getAttribute("user");
     if (user != null) {
-        try {
-            PermissionDAO permissionDAO = new PermissionDAO();
-            List<String> permissionNames = permissionDAO.getPermissionsByRole(user.getRoleId())
-                .stream()
-                .map(permission -> permission.getPermissionName())
-                .collect(Collectors.toList());
-            ses.setAttribute("userPermissions", permissionNames);
-        } catch (Exception e) {
-            e.printStackTrace();
+        // Check if permissions are already cached in session
+        List<String> cachedPermissions = (List<String>) ses.getAttribute("userPermissions");
+        if (cachedPermissions == null) {
+            PermissionDAO permissionDAO = null;
+            try {
+                permissionDAO = new PermissionDAO();
+                List<String> permissionNames = permissionDAO.getPermissionsByRole(user.getRoleId())
+                    .stream()
+                    .map(permission -> permission.getPermissionName())
+                    .collect(Collectors.toList());
+                ses.setAttribute("userPermissions", permissionNames);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                // Always close the connection to prevent connection leaks
+                if (permissionDAO != null) {
+                    try {
+                        permissionDAO.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
         }
     }
 %>

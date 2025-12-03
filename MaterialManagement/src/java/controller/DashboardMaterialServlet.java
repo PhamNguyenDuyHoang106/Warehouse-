@@ -41,11 +41,13 @@ public class DashboardMaterialServlet extends HttpServlet {
                 return;
             }
 
-            // Admin có toàn quyền
-            if (!PermissionHelper.hasPermission(user, "Danh sách NVL")) {
-                request.setAttribute("error", "Bạn không có quyền xem danh sách vật tư.");
-                request.getRequestDispatcher("error.jsp").forward(request, response);
-                return;
+            // Admin (roleId == 1) has full access - check first before permission check
+            if (user.getRoleId() != 1) {
+                if (!PermissionHelper.hasPermission(user, "Danh sách NVL")) {
+                    request.setAttribute("error", "Bạn không có quyền xem danh sách vật tư.");
+                    request.getRequestDispatcher("error.jsp").forward(request, response);
+                    return;
+                }
             }
 
             boolean readonly = user.getRoleId() != 1;

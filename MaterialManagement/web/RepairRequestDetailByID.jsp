@@ -7,14 +7,19 @@
 <%@ page import="entity.User" %>
 <%
     RolePermissionDAO rolePermissionDAO = (RolePermissionDAO) request.getAttribute("rolePermissionDAO");
+    boolean shouldCloseDAO = false;
     if (rolePermissionDAO == null) {
         rolePermissionDAO = new RolePermissionDAO();
+        shouldCloseDAO = true; // Only close if we created it
     }
     User user = (User) session.getAttribute("user");
     boolean canApprove = user != null && (user.getRoleId() == 1 || user.getRoleId() == 2 || rolePermissionDAO.hasPermission(user.getRoleId(), "Duyệt yêu cầu sửa"));
     boolean canReject = user != null && (user.getRoleId() == 1 || user.getRoleId() == 2 || rolePermissionDAO.hasPermission(user.getRoleId(), "Duyệt yêu cầu sửa"));
     request.setAttribute("canApprove", canApprove);
     request.setAttribute("canReject", canReject);
+    // Store flag for cleanup
+    pageContext.setAttribute("_shouldCloseRolePermissionDAO", shouldCloseDAO);
+    pageContext.setAttribute("_rolePermissionDAOForCleanup", rolePermissionDAO);
 %>
 <!DOCTYPE html>
 <html lang="en">
@@ -330,5 +335,19 @@
         </div>
       </div> <!-- End main-content-body -->
     </div> <!-- End main-content-wrapper -->
+<%
+    // Cleanup: close database connection if we created it
+    Boolean shouldClose = (Boolean) pageContext.getAttribute("_shouldCloseRolePermissionDAO");
+    if (shouldClose != null && shouldClose) {
+        RolePermissionDAO cleanupDAO = (RolePermissionDAO) pageContext.getAttribute("_rolePermissionDAOForCleanup");
+        if (cleanupDAO != null) {
+            try {
+                cleanupDAO.close();
+            } catch (Exception e) {
+                // Ignore cleanup errors
+            }
+        }
+    }
+%>
     </body>
 </html>

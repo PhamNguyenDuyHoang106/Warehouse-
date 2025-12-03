@@ -12,6 +12,37 @@
     <link rel="stylesheet" type="text/css" href="css/vendor.css">
     <link rel="stylesheet" type="text/css" href="style.css">
     <link rel="stylesheet" type="text/css" href="css/override-style.css">
+    <style>
+        /* Create Button - Nút lớn màu xanh */
+        .btn-create {
+            background: linear-gradient(135deg, #0056b3 0%, #007bff 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 86, 179, 0.25);
+            text-decoration: none;
+        }
+        
+        .btn-create:hover {
+            background: linear-gradient(135deg, #004085 0%, #0056b3 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 86, 179, 0.35);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .btn-create i {
+            font-size: 18px;
+        }
+    </style>
 </head>
 <body>
     <!-- Header -->
@@ -104,6 +135,16 @@
                             </div>
                         </form>
                     </div>
+                    
+                    <!-- Create Button -->
+                    <c:if test="${hasCreatePurchaseOrderPermission}">
+                        <div class="d-flex justify-content-end">
+                            <a href="CreatePurchaseOrder" class="btn-create">
+                                <i class="fas fa-plus"></i>
+                                Tạo đơn đặt hàng
+                            </a>
+                        </div>
+                    </c:if>
                     
                     <c:if test="${not empty purchaseOrders}">
                         <div class="table-responsive" id="printTableListArea">

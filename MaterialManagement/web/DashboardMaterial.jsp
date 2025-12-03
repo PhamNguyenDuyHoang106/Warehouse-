@@ -139,10 +139,11 @@
                 <c:if test="${not empty error}">
                     <div class="alert alert-danger">${error}</div>
                 </c:if>
-                <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Danh sách NVL')}">
+                <c:set var="roleId" value="${sessionScope.user.roleId}" />
+                <c:if test="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'Danh sách NVL')}">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h2 class="text-primary fw-bold display-6 border-bottom pb-2"><i class="bi bi-box"></i> Material List</h2>
-                        <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Tạo NVL')}">
+                        <c:if test="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'Tạo NVL')}">
                             <a href="${pageContext.request.contextPath}/addmaterial" class="btn btn-primary">
                                 <i class="fas fa-plus me-1"></i> Add New Material
                             </a>
@@ -187,7 +188,7 @@
                                     <th scope="col" style="width: 120px">Unit Volume (m³)</th>
                                     <th scope="col" style="width: 120px">Unit Weight (kg)</th>
                                     <th scope="col" style="width: 120px">Average Cost</th>
-                                    <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xem chi tiết NVL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Sửa NVL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xóa NVL')}">
+                                    <c:if test="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'Xem chi tiết NVL') || rolePermissionDAO.hasPermission(roleId, 'Sửa NVL') || rolePermissionDAO.hasPermission(roleId, 'Xóa NVL')}">
                                         <th scope="col">Actions</th>
                                     </c:if>
                                 </tr>
@@ -254,24 +255,24 @@
                                                         </c:otherwise>
                                                     </c:choose>
                                                 </td>
-                                                <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xem chi tiết NVL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Sửa NVL') || rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xóa NVL')}">
+                                                <c:if test="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'Xem chi tiết NVL') || rolePermissionDAO.hasPermission(roleId, 'Sửa NVL') || rolePermissionDAO.hasPermission(roleId, 'Xóa NVL')}">
                                                     <td>
                                                         <div class="d-flex justify-content-center">
-                                                            <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xem chi tiết NVL')}">
+                                                            <c:if test="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'Xem chi tiết NVL')}">
                                                                 <a href="${pageContext.request.contextPath}/viewmaterial?materialId=${material.materialId}" 
                                                                    class="btn btn-info btn-action" 
                                                                    title="View Details">
                                                                     <i class="fas fa-eye"></i>
                                                                 </a>
                                                             </c:if>
-                                                            <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Sửa NVL')}">
+                                                            <c:if test="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'Sửa NVL')}">
                                                                 <a href="${pageContext.request.contextPath}/editmaterial?materialId=${material.materialId}" 
                                                                    class="btn btn-warning btn-action" 
                                                                    title="Edit Material">
                                                                     <i class="fas fa-edit"></i>
                                                                 </a>
                                                             </c:if>
-                                                            <c:if test="${rolePermissionDAO.hasPermission(sessionScope.user.roleId, 'Xóa NVL')}">
+                                                            <c:if test="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'Xóa NVL')}">
                                                                 <form method="post" action="${pageContext.request.contextPath}/deletematerial" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this material? (Only materials with stock quantity = 0 can be deleted)');">
                                                                     <input type="hidden" name="materialId" value="${material.materialId}" />
                                                                     <button type="submit" class="btn btn-danger btn-action" title="Delete Material">

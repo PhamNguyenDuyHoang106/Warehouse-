@@ -32,8 +32,14 @@ public class PurchaseOrderDetailServlet extends HttpServlet {
         }
 
         User user = (User) session.getAttribute("user");
-        // Admin có toàn quyền
-        boolean hasListPermission = PermissionHelper.hasPermission(user, "DS đơn đặt hàng");
+        // Admin (roleId == 1) has full access - check first before permission check
+        boolean hasListPermission;
+        if (user.getRoleId() == 1) {
+            hasListPermission = true;
+            System.out.println("✅ PurchaseOrderDetailServlet - User " + user.getUsername() + " is ADMIN (roleId=1), granting full access");
+        } else {
+            hasListPermission = PermissionHelper.hasPermission(user, "DS đơn đặt hàng");
+        }
         request.setAttribute("hasViewPurchaseOrderDetailPermission", hasListPermission);
         if (!hasListPermission) {
             request.setAttribute("error", "You do not have permission to view purchase order details.");

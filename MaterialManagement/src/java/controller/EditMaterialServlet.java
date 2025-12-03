@@ -53,10 +53,13 @@ public class EditMaterialServlet extends HttpServlet {
 
         User user = (User) session.getAttribute("user");
         int roleId = user.getRoleId();
-        if (!PermissionHelper.hasPermission(user, "Sửa NVL")) {
-            request.setAttribute("error", "You do not have permission to edit material.");
-            request.getRequestDispatcher("error.jsp").forward(request, response);
-            return;
+        // Admin (roleId == 1) has full access - check first before permission check
+        if (roleId != 1) {
+            if (!PermissionHelper.hasPermission(user, "Sửa NVL")) {
+                request.setAttribute("error", "You do not have permission to edit material.");
+                request.getRequestDispatcher("error.jsp").forward(request, response);
+                return;
+            }
         }
 
         String materialId = request.getParameter("materialId");
@@ -129,10 +132,13 @@ public class EditMaterialServlet extends HttpServlet {
         User user = (User) session.getAttribute("user");
         int roleId = user.getRoleId();
         
-        if (!PermissionHelper.hasPermission(user, "Sửa NVL")) {
-            request.setAttribute("error", "You do not have permission to edit material.");
-            request.getRequestDispatcher("error.jsp").forward(request, response);
-            return;
+        // Admin (roleId == 1) has full access - check first before permission check
+        if (roleId != 1) {
+            if (!PermissionHelper.hasPermission(user, "Sửa NVL")) {
+                request.setAttribute("error", "You do not have permission to edit material.");
+                request.getRequestDispatcher("error.jsp").forward(request, response);
+                return;
+            }
         }
 
         try {

@@ -3,6 +3,7 @@ package dal;
 import entity.DBContext;
 import entity.Import;
 import entity.ImportDetail;
+import entity.Supplier;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -13,7 +14,9 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -423,5 +426,101 @@ public class ImportDAO extends DBContext {
 
     private BigDecimal defaultBigDecimal(BigDecimal value) {
         return value != null ? value : BigDecimal.ZERO;
+    }
+    
+    /**
+     * Get all unique suppliers for an import by checking:
+     * 1. Suppliers from Material_Supplier_Prices for materials in Import_Details
+     * 2. Fallback to PO's main supplier if no suppliers found from Material_Supplier_Prices
+     */
+    public List<Supplier> getAllSuppliersForImport(int importId) {
+        List<Supplier> suppliers = new ArrayList<>();
+        Set<Integer> supplierIds = new LinkedHashSet<>();
+        
+        String sql = "SELECT DISTINCT " +
+                    "COALESCE(msp.supplier_id, po.supplier_id) AS supplier_id, " +
+                    "COALESCE(s2.supplier_name, s1.supplier_name) AS supplier_name, " +
+                    "COALESCE(s2.supplier_code, s1.supplier_code) AS supplier_code, " +
+                    "COALESCE(s2.contact_person, s1.contact_person) AS contact_person, " +
+                    "COALESCE(s2.phone, s1.phone) AS phone, " +
+                    "COALESCE(s2.email, s1.email) AS email, " +
+                    "COALESCE(s2.tax_code, s1.tax_code) AS tax_code, " +
+                    "COALESCE(s2.address, s1.address) AS address " +
+                    "FROM Import_Details id " +
+                    "INNER JOIN Purchase_Order_Details pod ON id.po_detail_id = pod.po_detail_id " +
+                    "INNER JOIN Purchase_Orders po ON pod.po_id = po.po_id " +
+                    "LEFT JOIN Material_Supplier_Prices msp ON id.material_id = msp.material_id " +
+                    "    AND id.unit_id = msp.unit_id " +
+                    "    AND msp.is_current = 1 " +
+                    "LEFT JOIN Suppliers s1 ON po.supplier_id = s1.supplier_id " +
+                    "LEFT JOIN Suppliers s2 ON msp.supplier_id = s2.supplier_id " +
+                    "WHERE id.import_id = ? " +
+                    "AND (msp.supplier_id IS NOT NULL OR po.supplier_id IS NOT NULL) " +
+                    "ORDER BY supplier_name";
+        
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, importId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Integer supplierId = rs.getObject("supplier_id", Integer.class);
+                    if (supplierId != null && !supplierIds.contains(supplierId)) {
+                        supplierIds.add(supplierId);
+                        Supplier supplier = new Supplier();
+                        supplier.setSupplierId(supplierId);
+                        supplier.setSupplierCode(rs.getString("supplier_code"));
+                        supplier.setSupplierName(rs.getString("supplier_name"));
+                        supplier.setContactPerson(rs.getString("contact_person"));
+                        supplier.setPhone(rs.getString("phone"));
+                        supplier.setEmail(rs.getString("email"));
+                        supplier.setTaxCode(rs.getString("tax_code"));
+                        supplier.setAddress(rs.getString("address"));
+                        suppliers.add(supplier);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error getting all suppliers for import ID: " + importId, e);
+        }
+        
+        // If no suppliers found from Material_Supplier_Prices, get PO's main supplier
+        if (suppliers.isEmpty()) {
+            Import importObj = getImportById(importId);
+            if (importObj != null && importObj.getSupplierId() != null) {
+                SupplierDAO supplierDAO = new SupplierDAO();
+                try {
+                    Supplier mainSupplier = supplierDAO.getSupplierByID(importObj.getSupplierId());
+                    if (mainSupplier != null) {
+                        suppliers.add(mainSupplier);
+                    }
+                } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "Error getting PO main supplier for import ID: " + importId, e);
+                } finally {
+                    supplierDAO.close();
+                }
+            }
+        }
+        
+        return suppliers;
+    }
+    
+    /**
+     * Get comma-separated supplier names for an import (used in Import List)
+     */
+    public String getSupplierNamesForImport(int importId) {
+        List<Supplier> suppliers = getAllSuppliersForImport(importId);
+        if (suppliers.isEmpty()) {
+            return "N/A";
+        }
+        StringBuilder names = new StringBuilder();
+        for (int i = 0; i < suppliers.size(); i++) {
+            if (i > 0) {
+                names.append(", ");
+            }
+            String name = suppliers.get(i).getSupplierName();
+            if (name != null && !name.trim().isEmpty()) {
+                names.append(name);
+            }
+        }
+        return names.length() > 0 ? names.toString() : "N/A";
     }
 }

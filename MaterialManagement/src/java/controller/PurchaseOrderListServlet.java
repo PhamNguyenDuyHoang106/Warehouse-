@@ -45,8 +45,14 @@ public class PurchaseOrderListServlet extends HttpServlet {
                 return;
             }
 
-            // Admin có toàn quyền
-            boolean hasPermission = PermissionHelper.hasPermission(user, "DS đơn đặt hàng");
+            // Admin (roleId == 1) has full access - check first before permission check
+            boolean hasPermission;
+            if (user.getRoleId() == 1) {
+                hasPermission = true;
+                LOGGER.log(Level.INFO, "✅ PurchaseOrderListServlet - User {0} is ADMIN (roleId=1), granting full access", user.getUsername());
+            } else {
+                hasPermission = PermissionHelper.hasPermission(user, "DS đơn đặt hàng");
+            }
             request.setAttribute("hasViewPurchaseOrderListPermission", hasPermission);
             if (!hasPermission) {
                 LOGGER.log(Level.WARNING, "User {0} attempted to access PurchaseOrderList without permission.", user.getUsername());
@@ -126,6 +132,16 @@ public class PurchaseOrderListServlet extends HttpServlet {
             request.setAttribute("sortBy", sortBy);
             request.setAttribute("startDate", startDateStr);
             request.setAttribute("endDate", endDateStr);
+            request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+            
+            // Check permission for creating purchase order
+            boolean hasCreatePurchaseOrderPermission;
+            if (user.getRoleId() == 1) {
+                hasCreatePurchaseOrderPermission = true;
+            } else {
+                hasCreatePurchaseOrderPermission = PermissionHelper.hasPermission(user, "Tạo PO");
+            }
+            request.setAttribute("hasCreatePurchaseOrderPermission", hasCreatePurchaseOrderPermission);
 
             request.getRequestDispatcher("PurchaseOrderList.jsp").forward(request, response);
             

@@ -118,4 +118,9 @@
     <welcome-file-list>
         <welcome-file>Login.jsp</welcome-file>
     </welcome-file-list>
+
+    <!-- MySQL Cleanup Listener: Shutdown AbandonedConnectionCleanupThread when application stops -->
+    <listener>
+        <listener-class>utils.MySQLCleanupListener</listener-class>
+    </listener>
 </web-app>

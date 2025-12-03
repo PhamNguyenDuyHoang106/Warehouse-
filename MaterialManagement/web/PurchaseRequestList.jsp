@@ -279,9 +279,9 @@
           <div class="row">
             <div class="col-12 px-md-4">
                 <c:set var="roleId" value="${sessionScope.user.roleId}" />
-                <c:set var="hasViewPurchaseRequestListPermission" value="${rolePermissionDAO.hasPermission(roleId, 'DS yêu cầu mua')}" scope="request" />
-                <c:set var="hasDeletePurchaseRequestPermission" value="${rolePermissionDAO.hasPermission(roleId, 'Xóa PR')}" scope="request" />
-                <c:set var="hasHandleRequestPermission" value="${rolePermissionDAO.hasPermission(roleId, 'Duyệt PR') || roleId == 1}" scope="request" />
+                <c:set var="hasViewPurchaseRequestListPermission" value="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'DS yêu cầu mua')}" scope="request" />
+                <c:set var="hasDeletePurchaseRequestPermission" value="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'Xóa PR')}" scope="request" />
+                <c:set var="hasHandleRequestPermission" value="${roleId == 1 || rolePermissionDAO.hasPermission(roleId, 'Duyệt PR')}" scope="request" />
 
                 <c:if test="${empty sessionScope.user}">
                     <div class="alert alert-danger">Please log in to view purchase requests.</div>

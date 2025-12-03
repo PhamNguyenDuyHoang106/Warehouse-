@@ -14,7 +14,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.HashMap;
 @WebServlet(name = "ListPurchaseRequestsServlet", urlPatterns = {"/ListPurchaseRequests"})
 public class ListPurchaseRequestsServlet extends HttpServlet {
@@ -37,11 +36,19 @@ public class ListPurchaseRequestsServlet extends HttpServlet {
         UserDAO userDAO = new UserDAO();
         RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
 
-        boolean hasPermission = PermissionHelper.hasPermission(currentUser, "DS yêu cầu mua");
-        if (!hasPermission) {
-            request.setAttribute("error", "You do not have permission to view purchase requests.");
-            request.getRequestDispatcher("error.jsp").forward(request, response);
-            return;
+        // Admin (roleId == 1) has full access - check first before permission check
+        if (currentUser.getRoleId() == 1) {
+            System.out.println("✅ ListPurchaseRequestsServlet - User " + currentUser.getUsername() + " is ADMIN (roleId=1), granting full access");
+            // Admin has permission, continue to load the page
+        } else {
+            // For non-admin users, check permission
+            boolean hasPermission = PermissionHelper.hasPermission(currentUser, "DS yêu cầu mua");
+            if (!hasPermission) {
+                System.err.println("❌ ListPurchaseRequestsServlet - Access denied for user: " + currentUser.getUsername() + " (roleId: " + currentUser.getRoleId() + ")");
+                request.setAttribute("error", "You do not have permission to view purchase requests.");
+                request.getRequestDispatcher("error.jsp").forward(request, response);
+                return;
+            }
         }
 
         try {

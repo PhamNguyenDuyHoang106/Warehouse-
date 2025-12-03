@@ -13,15 +13,29 @@
         user = (User) ses.getAttribute("user");
     }
     if (user != null) {
-        try {
-            PermissionDAO permissionDAO = new PermissionDAO();
-            List<String> permissionNames = permissionDAO.getPermissionsByRole(user.getRoleId())
-                .stream()
-                .map(permission -> permission.getPermissionName())
-                .collect(Collectors.toList());
-            ses.setAttribute("userPermissions", permissionNames);
-        } catch (Exception e) {
-            e.printStackTrace();
+        // Check if permissions are already cached in session
+        List<String> cachedPermissions = (List<String>) ses.getAttribute("userPermissions");
+        if (cachedPermissions == null) {
+            PermissionDAO permissionDAO = null;
+            try {
+                permissionDAO = new PermissionDAO();
+                List<String> permissionNames = permissionDAO.getPermissionsByRole(user.getRoleId())
+                    .stream()
+                    .map(permission -> permission.getPermissionName())
+                    .collect(Collectors.toList());
+                ses.setAttribute("userPermissions", permissionNames);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                // Always close the connection to prevent connection leaks
+                if (permissionDAO != null) {
+                    try {
+                        permissionDAO.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
         }
     }
 %>
@@ -30,17 +44,28 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <style>
+:root {
+    --sidebar-expanded-width: 300px;
+    --sidebar-collapsed-width: 80px;
+    --sidebar-active-width: var(--sidebar-expanded-width);
+    --sidebar-transition-duration: 0.18s;
+}
+
+body.sidebar-collapsed {
+    --sidebar-active-width: var(--sidebar-collapsed-width);
+}
     /* Sidebar mặc định - khi không nằm trong wrapper (cho các trang khác) */
     .sidebar {
-        width: 300px;
+        width: var(--sidebar-expanded-width);
         min-height: 100vh;
         position: fixed;
         left: 0;
-        top: 0;
+        top: var(--mm-header-height, 160px);
+        height: calc(100vh - var(--mm-header-height, 160px));
         background: linear-gradient(180deg, #1e3a8a 0%, #3b82f6 15%, #e5e7eb 15%);
         border-right: 1px solid #e4e4e4;
         padding: 0;
-        transition: all 0.3s ease;
+        transition: width var(--sidebar-transition-duration) ease, background 0.2s ease;
         z-index: 1000;
         overflow-y: auto;
         overflow-x: hidden;
@@ -48,7 +73,7 @@
     }
     
     .sidebar.collapsed {
-        width: 80px;
+        width: var(--sidebar-collapsed-width);
         /* Khi collapsed, không còn background xanh ở phần header nữa */
         background: #e5e7eb;
     }
@@ -419,12 +444,10 @@
         width: 100%;
         max-width: 100%;
         min-height: calc(100vh - 100px);
-        display: flex;
-        flex-direction: row;
+        display: block;
         margin: 0;
         padding: 0;
-        transition: all 0.3s ease;
-        align-items: stretch;
+        transition: none;
         box-sizing: border-box;
         clear: both;
     }
@@ -432,54 +455,29 @@
     /* Sidebar wrapper trong main-content-wrapper */
     .main-content-wrapper .sidebar-wrapper-inner {
         flex-shrink: 0;
-        width: 300px;
-        position: relative;
-        z-index: 1;
-        height: 100%;
+        width: var(--sidebar-expanded-width, 300px);
+        position: fixed;
+        top: var(--mm-header-height, 160px);
+        left: 0;
+        z-index: 1000;
+        height: calc(100vh - var(--mm-header-height, 160px));
     }
     
     body.sidebar-collapsed .main-content-wrapper .sidebar-wrapper-inner {
-        width: 80px;
-    }
-    
-    /* Sidebar trong wrapper - relative position, nằm cùng box với body */
-    /* QUAN TRỌNG: CSS này phải override hoàn toàn CSS của .sidebar */
-    .main-content-wrapper .sidebar-wrapper-inner .sidebar,
-    .main-content-wrapper .sidebar {
-        position: relative !important;
-        flex-shrink: 0 !important;
-        width: 100% !important;
-        min-height: 100% !important;
-        height: 100% !important;
-        top: auto !important;
-        left: auto !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        z-index: 1 !important;
-        background: linear-gradient(180deg, #1e3a8a 0%, #3b82f6 15%, #e5e7eb 15%) !important;
-        border-right: 1px solid #e4e4e4 !important;
-        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1) !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-    }
-    
-    body.sidebar-collapsed .main-content-wrapper .sidebar-wrapper-inner .sidebar,
-    body.sidebar-collapsed .main-content-wrapper .sidebar {
-        width: 100% !important;
-        /* Khi collapsed, không còn background xanh */
-        background: #e5e7eb !important;
+        width: var(--sidebar-collapsed-width, 80px);
     }
     
     /* Body content trong wrapper */
     .main-content-wrapper .main-content-body {
         flex: 1 !important;
         margin: 0 !important;
-        padding: 0 !important;
-        width: calc(100% - 300px) !important;
-        transition: all 0.3s ease;
+        padding: 30px 0 0 0 !important;
+        width: calc(100% - var(--sidebar-active-width, var(--sidebar-expanded-width))) !important;
+        margin-left: var(--sidebar-active-width, var(--sidebar-expanded-width)) !important;
+        transition: margin-left var(--sidebar-transition-duration) ease;
         min-height: 100vh !important;
         overflow-x: hidden !important;
-        overflow-y: auto !important;
+        overflow-y: visible !important;
         box-sizing: border-box !important;
         display: block !important;
         visibility: visible !important;
@@ -487,10 +485,6 @@
         position: relative !important;
         z-index: 2 !important;
         background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%) !important;
-    }
-    
-    body.sidebar-collapsed .main-content-wrapper .main-content-body {
-        width: calc(100% - 80px) !important;
     }
     
     /* Đảm bảo container-fluid trong main-content-body hiển thị */
@@ -518,8 +512,6 @@
         box-sizing: border-box;
     }
     
-    /* Header và Footer luôn full width, không bị ảnh hưởng bởi sidebar */
-    header,
     footer {
         width: 100% !important;
         max-width: 100% !important;
@@ -530,14 +522,6 @@
         position: relative;
         z-index: 998;
         box-sizing: border-box;
-    }
-    
-    /* Đảm bảo header và footer không bị ảnh hưởng bởi main-content-wrapper */
-    header {
-        clear: both;
-    }
-    
-    footer {
         clear: both;
     }
     
@@ -571,6 +555,21 @@
     }
     
     /* Responsive */
+    @media (max-width: 992px) {
+        .main-content-wrapper .sidebar-wrapper-inner {
+            position: static;
+            top: auto;
+            left: auto;
+            width: 100%;
+            height: auto;
+        }
+        
+        .main-content-wrapper .main-content-body {
+            width: 100% !important;
+            margin-left: 0 !important;
+        }
+    }
+    
     @media (max-width: 768px) {
         .sidebar {
             transform: translateX(-100%);
@@ -580,20 +579,12 @@
             transform: translateX(0);
         }
         
-        body {
-            padding-left: 0 !important;
-        }
-        
-        body.sidebar-collapsed {
-            padding-left: 0 !important;
-        }
-        
         .main-content-wrapper {
             margin-left: 0 !important;
             width: 100% !important;
         }
         
-        header {
+        .mm-sticky-header {
             margin-left: 0 !important;
         }
     }
@@ -672,7 +663,6 @@
                         <li><a href="UnitList">Units</a></li>
                         <li><a href="depairmentlist">Departments</a></li>
                         <li><a href="WarehouseRackList">Warehouse Racks</a></li>
-                        <li><a href="VehicleList">Vehicles</a></li>
                                 </c:if>
                                 
                     <!-- Common -->
@@ -826,9 +816,6 @@
                                     <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS báo giá')}">
                             <li><a href="Quotation?action=list">Quotations</a></li>
                                     </c:if>
-                                    <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'Tạo báo giá')}">
-                            <li><a href="Quotation?action=edit">Create Quotation</a></li>
-                                    </c:if>
                                     <c:if test="${sessionScope.user.roleId == 1 || PermissionHelper.hasPermission(sessionScope.user, 'DS đơn bán')}">
                             <li><a href="SalesOrder?action=list">Sales Orders</a></li>
                                     </c:if>
@@ -908,15 +895,26 @@
 </nav>
 
 <script>
+    let sidebarAnimating = false;
     function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const body = document.body;
-        
-        sidebar.classList.toggle('collapsed');
-        body.classList.toggle('sidebar-collapsed');
-        
-        // Save state to localStorage
-        localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        if (sidebarAnimating) {
+            return;
+        }
+        sidebarAnimating = true;
+        window.requestAnimationFrame(function () {
+            const sidebar = document.getElementById('sidebar');
+            const body = document.body;
+            
+            sidebar.classList.toggle('collapsed');
+            body.classList.toggle('sidebar-collapsed');
+            
+            // Save state to localStorage
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+            
+            setTimeout(function () {
+                sidebarAnimating = false;
+            }, parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-transition-duration')) * 1000 || 200);
+        });
     }
     
     function toggleMenuGroup(element, event) {
@@ -955,10 +953,45 @@
         return false;
     }
     
+    // Flag để ngăn chặn multiple navigations
+    let isNavigating = false;
+    let lastClickTime = 0;
+    let lastClickedLink = null;
+    const CLICK_DEBOUNCE_TIME = 800; // 800ms debounce
+    
     // Lưu menu group khi click vào menu item
     document.addEventListener('click', function(e) {
         const menuItem = e.target.closest('.submenu a, .menu-item');
-        if (menuItem && menuItem.href) {
+        if (menuItem && menuItem.href && !menuItem.href.startsWith('javascript:')) {
+            const currentTime = Date.now();
+            const linkHref = menuItem.getAttribute('href');
+            
+            // Kiểm tra xem có đang navigate không hoặc đã click link này gần đây
+            if (isNavigating) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+            
+            // Kiểm tra xem có click vào cùng một link quá nhanh không
+            if (lastClickedLink === linkHref && (currentTime - lastClickTime < CLICK_DEBOUNCE_TIME)) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+            
+            // Đánh dấu đang navigate
+            isNavigating = true;
+            lastClickTime = currentTime;
+            lastClickedLink = linkHref;
+            
+            // Visual feedback - thêm loading state
+            const originalContent = menuItem.innerHTML;
+            menuItem.style.pointerEvents = 'none';
+            menuItem.style.opacity = '0.6';
+            menuItem.style.position = 'relative';
+            
+            // Lưu menu group state trước khi navigate
             const submenu = menuItem.closest('.submenu');
             if (submenu) {
                 const parentGroup = submenu.parentElement;
@@ -973,6 +1006,21 @@
                     }
                 }
             }
+            
+            // Reset flag sau một khoảng thời gian
+            // Nếu trang load thành công, flag sẽ được reset khi page unload
+            const resetTimeout = setTimeout(function() {
+                isNavigating = false;
+                lastClickedLink = null;
+            }, 2000);
+            
+            // Reset khi page unload (navigation thành công)
+            window.addEventListener('beforeunload', function cleanup() {
+                clearTimeout(resetTimeout);
+                isNavigating = false;
+                lastClickedLink = null;
+                window.removeEventListener('beforeunload', cleanup);
+            }, { once: true });
         }
     }, true); // Use capture phase to catch clicks early
     
@@ -1110,40 +1158,26 @@
             }
         }
         
-        // Đảm bảo các menu group khác không tự động mở (trừ menu group chứa active item)
-        // QUAN TRỌNG: Khi có active item, chỉ mở menu group chứa active item
-        // Đóng TẤT CẢ các menu groups khác có item cùng href với active item
+        // CHỈ đóng các menu groups khác nếu chúng có item active (cùng href)
+        // KHÔNG đóng menu groups đang mở trừ khi có conflict thực sự
         const allMenuGroups = document.querySelectorAll('.menu-group');
         const activeHref = bestMatch ? bestMatch.getAttribute('href') : null;
         
-        // Đóng tất cả menu groups trước, sau đó mới mở active menu group
+        // Chỉ xóa active class từ items trong các menu groups khác (không đóng menu groups)
         allMenuGroups.forEach(group => {
             if (group !== activeMenuGroup) {
                 const submenu = group.querySelector('.submenu');
                 if (submenu) {
-                    // Kiểm tra xem menu group này có chứa item có cùng href với active item không
                     const itemsInGroup = submenu.querySelectorAll('a');
-                    let hasSameHrefItem = false;
+                    let hasActiveItem = false;
                     
-                    if (activeHref) {
-                        itemsInGroup.forEach(item => {
-                            if (item.getAttribute('href') === activeHref) {
-                                hasSameHrefItem = true;
-                            }
-                        });
-                    }
-                    
-                    // Nếu menu group này có item cùng href với active item, ĐÓNG NÓ NGAY LẬP TỨC
-                    if (hasSameHrefItem) {
-                        group.classList.remove('active');
-                        submenu.style.display = 'none';
-                        // Xóa state từ localStorage để tránh restore lại
-                        const menuToggle = group.querySelector('.menu-toggle span');
-                        const menuGroupName = menuToggle ? menuToggle.textContent.trim() : '';
-                        if (menuGroupName) {
-                            localStorage.removeItem('menuGroup_' + menuGroupName);
+                    itemsInGroup.forEach(item => {
+                        if (item.classList.contains('active')) {
+                            hasActiveItem = true;
+                            // Chỉ xóa active class, KHÔNG đóng menu group
+                            item.classList.remove('active');
                         }
-                    }
+                    });
                 }
             }
         });
@@ -1175,13 +1209,7 @@
                 });
             }
             
-            // QUAN TRỌNG: Nếu menu group này có item cùng href với active item, KHÔNG restore
-            // Nó đã bị đóng ở trên rồi
-            if (hasSameHrefItem) {
-                return; // Bỏ qua, không restore
-            }
-            
-            // Chỉ restore nếu menu group này không có item cùng href với active item
+            // KHÔNG đóng menu groups đang mở - chỉ restore menu groups đã mở từ localStorage
             const menuToggle = group.querySelector('.menu-toggle span');
             const menuGroupName = menuToggle ? menuToggle.textContent.trim() : '';
             if (menuGroupName) {
@@ -1189,17 +1217,15 @@
                 const hasActiveItem = submenu.querySelector('a.active');
                 
                 // Chỉ restore nếu không có active item trong menu group này
-                // Và menu group này chưa bị đóng (không có class 'active' và submenu đang ẩn)
-                if (!hasActiveItem) {
-                    // Chỉ restore nếu state trong localStorage là 'open' và menu group hiện tại đang đóng
+                // VÀ menu group này không phải active menu group
+                if (!hasActiveItem && group !== activeMenuGroup) {
+                    // CHỈ mở menu group nếu state trong localStorage là 'open' và menu group hiện tại đang đóng
+                    // KHÔNG đóng menu groups đang mở (giữ nguyên trạng thái hiện tại)
                     if (savedState === 'open' && !group.classList.contains('active')) {
                         group.classList.add('active');
                         submenu.style.display = 'block';
-                    } else if (savedState === 'closed' || !savedState) {
-                        // Đảm bảo menu group đóng nếu state là 'closed' hoặc không có state
-                        group.classList.remove('active');
-                        submenu.style.display = 'none';
                     }
+                    // KHÔNG đóng menu groups - giữ nguyên trạng thái hiện tại của chúng
                 }
             }
         });

@@ -41,21 +41,24 @@ public class SupplierServlet extends HttpServlet {
         String action = request.getParameter("action");
         if (action == null) action = "list";
 
-        if (!PermissionHelper.hasPermission(currentUser, "DS NCC") && "list".equals(action)) {
-            request.setAttribute("error", "You do not have permission to view the supplier list.");
-            request.getRequestDispatcher("/error.jsp").forward(request, response);
-            return;
-        }
-        // Check permissions based on action
-        if ("edit".equals(action) && !PermissionHelper.hasPermission(currentUser, "Sửa NCC")) {
-            request.setAttribute("error", "You do not have permission to edit or view supplier details.");
-            request.getRequestDispatcher("/error.jsp").forward(request, response);
-            return;
-        }
-        if ("delete".equals(action) && !PermissionHelper.hasPermission(currentUser, "Xóa NCC")) {
-            request.setAttribute("error", "You do not have permission to delete suppliers.");
-            request.getRequestDispatcher("/error.jsp").forward(request, response);
-            return;
+        // Admin (roleId == 1) has full access - check first before permission check
+        if (roleId != 1) {
+            if (!PermissionHelper.hasPermission(currentUser, "DS NCC") && "list".equals(action)) {
+                request.setAttribute("error", "You do not have permission to view the supplier list.");
+                request.getRequestDispatcher("/error.jsp").forward(request, response);
+                return;
+            }
+            // Check permissions based on action
+            if ("edit".equals(action) && !PermissionHelper.hasPermission(currentUser, "Sửa NCC")) {
+                request.setAttribute("error", "You do not have permission to edit or view supplier details.");
+                request.getRequestDispatcher("/error.jsp").forward(request, response);
+                return;
+            }
+            if ("delete".equals(action) && !PermissionHelper.hasPermission(currentUser, "Xóa NCC")) {
+                request.setAttribute("error", "You do not have permission to delete suppliers.");
+                request.getRequestDispatcher("/error.jsp").forward(request, response);
+                return;
+            }
         }
 
         switch (action) {
@@ -205,15 +208,18 @@ public class SupplierServlet extends HttpServlet {
         int roleId = currentUser.getRoleId();
         String idStr = request.getParameter("supplier_id");
 
-        if ((idStr == null || idStr.isEmpty()) && !PermissionHelper.hasPermission(currentUser, "Tạo NCC")) {
-            request.setAttribute("error", "You do not have permission to create suppliers.");
-            request.getRequestDispatcher("/error.jsp").forward(request, response);
-            return;
-        }
-        if (idStr != null && !idStr.isEmpty() && !PermissionHelper.hasPermission(currentUser, "Sửa NCC")) {
-            request.setAttribute("error", "You do not have permission to update suppliers.");
-            request.getRequestDispatcher("/error.jsp").forward(request, response);
-            return;
+        // Admin (roleId == 1) has full access - check first before permission check
+        if (roleId != 1) {
+            if ((idStr == null || idStr.isEmpty()) && !PermissionHelper.hasPermission(currentUser, "Tạo NCC")) {
+                request.setAttribute("error", "You do not have permission to create suppliers.");
+                request.getRequestDispatcher("/error.jsp").forward(request, response);
+                return;
+            }
+            if (idStr != null && !idStr.isEmpty() && !PermissionHelper.hasPermission(currentUser, "Sửa NCC")) {
+                request.setAttribute("error", "You do not have permission to update suppliers.");
+                request.getRequestDispatcher("/error.jsp").forward(request, response);
+                return;
+            }
         }
 
         String code = request.getParameter("supplier_code");

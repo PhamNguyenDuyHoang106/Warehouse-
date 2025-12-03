@@ -155,49 +155,65 @@
                 </div>
             </div>
             
-            <!-- Supplier Information Card -->
-            <c:if test="${not empty supplier}">
+            <!-- Suppliers Information Card -->
+            <c:if test="${not empty suppliers}">
                 <div class="card">
-                    <div class="card-header"><i class="fas fa-truck me-1"></i>Supplier Information</div>
+                    <div class="card-header">
+                        <i class="fas fa-truck me-1"></i>
+                        <c:choose>
+                            <c:when test="${fn:length(suppliers) == 1}">Supplier Information</c:when>
+                            <c:otherwise>Suppliers Information (${fn:length(suppliers)})</c:otherwise>
+                        </c:choose>
+                    </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <p><strong>Supplier Code:</strong> ${supplier.supplierCode}</p>
-                                <p><strong>Supplier Name:</strong> ${supplier.supplierName}</p>
-                                <p><strong>Contact Person:</strong> 
-                                    <c:choose>
-                                        <c:when test="${not empty supplier.contactPerson}">${supplier.contactPerson}</c:when>
-                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
-                                    </c:choose>
-                                </p>
-                                <p><strong>Phone:</strong> 
-                                    <c:choose>
-                                        <c:when test="${not empty supplier.phone}">${supplier.phone}</c:when>
-                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
-                                    </c:choose>
-                                </p>
+                        <c:forEach var="supplier" items="${suppliers}" varStatus="status">
+                            <c:if test="${status.index > 0}">
+                                <hr class="my-4">
+                            </c:if>
+                            <c:if test="${fn:length(suppliers) > 1}">
+                                <h6 class="mb-3 text-primary">
+                                    <i class="fas fa-building me-2"></i>Supplier ${status.index + 1}: ${supplier.supplierName}
+                                </h6>
+                            </c:if>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Supplier Code:</strong> ${supplier.supplierCode}</p>
+                                    <p><strong>Supplier Name:</strong> ${supplier.supplierName}</p>
+                                    <p><strong>Contact Person:</strong> 
+                                        <c:choose>
+                                            <c:when test="${not empty supplier.contactPerson}">${supplier.contactPerson}</c:when>
+                                            <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                        </c:choose>
+                                    </p>
+                                    <p><strong>Phone:</strong> 
+                                        <c:choose>
+                                            <c:when test="${not empty supplier.phone}">${supplier.phone}</c:when>
+                                            <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                        </c:choose>
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Email:</strong> 
+                                        <c:choose>
+                                            <c:when test="${not empty supplier.email}">${supplier.email}</c:when>
+                                            <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                        </c:choose>
+                                    </p>
+                                    <p><strong>Address:</strong> 
+                                        <c:choose>
+                                            <c:when test="${not empty supplier.address}">${supplier.address}</c:when>
+                                            <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                        </c:choose>
+                                    </p>
+                                    <p><strong>Tax Code:</strong> 
+                                        <c:choose>
+                                            <c:when test="${not empty supplier.taxCode}">${supplier.taxCode}</c:when>
+                                            <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
+                                        </c:choose>
+                                    </p>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <p><strong>Email:</strong> 
-                                    <c:choose>
-                                        <c:when test="${not empty supplier.email}">${supplier.email}</c:when>
-                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
-                                    </c:choose>
-                                </p>
-                                <p><strong>Address:</strong> 
-                                    <c:choose>
-                                        <c:when test="${not empty supplier.address}">${supplier.address}</c:when>
-                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
-                                    </c:choose>
-                                </p>
-                                <p><strong>Tax Code:</strong> 
-                                    <c:choose>
-                                        <c:when test="${not empty supplier.taxCode}">${supplier.taxCode}</c:when>
-                                        <c:otherwise><span class="text-muted">N/A</span></c:otherwise>
-                                    </c:choose>
-                                </p>
-                            </div>
-                        </div>
+                        </c:forEach>
                     </div>
                 </div>
             </c:if>

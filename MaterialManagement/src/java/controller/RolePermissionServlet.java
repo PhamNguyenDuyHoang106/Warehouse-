@@ -48,32 +48,77 @@ public class RolePermissionServlet extends HttpServlet {
 
         try {
             String searchKeyword = request.getParameter("search");
-            String selectedModule = request.getParameter("selectedModule");
+            String selectedCategory = request.getParameter("category"); // Changed from selectedModule to category
             if (searchKeyword == null) searchKeyword = "";
-            if (selectedModule == null) selectedModule = "";
+            if (selectedCategory == null || selectedCategory.isEmpty()) {
+                selectedCategory = null; // null means show category list
+            }
 
             List<Role> roles = roleDAO.getAllRolesIncludingAdmin();
             System.out.println("✅ Loaded " + roles.size() + " roles");
             
-            List<Permission> permissions = searchKeyword.isEmpty() ? 
-                permissionDAO.getAllPermissions() : 
-                permissionDAO.searchPermissions(searchKeyword);
-            System.out.println("✅ Loaded " + permissions.size() + " permissions");
+            // Get all modules first
+            List<Module> allModules = moduleDAO.getAllModules();
+            System.out.println("✅ Loaded " + allModules.size() + " modules");
             
-            List<Module> modules = moduleDAO.getAllModules();
-            System.out.println("✅ Loaded " + modules.size() + " modules");
+            // Get permissions - if category selected, filter by category
+            List<Permission> allPermissions = permissionDAO.getAllPermissions();
+            List<Permission> permissions;
+            
+            if (selectedCategory != null && !selectedCategory.isEmpty()) {
+                try {
+                    int categoryId = Integer.parseInt(selectedCategory);
+                    permissions = allPermissions.stream()
+                        .filter(p -> p.getModuleId() != null && p.getModuleId() == categoryId)
+                        .collect(Collectors.toList());
+                } catch (NumberFormatException e) {
+                    permissions = allPermissions;
+                }
+            } else if (!searchKeyword.isEmpty()) {
+                permissions = permissionDAO.searchPermissions(searchKeyword);
+            } else {
+                permissions = new ArrayList<>(); // Don't load all permissions if no category selected
+            }
+            
+            System.out.println("✅ Loaded " + permissions.size() + " permissions");
 
-            // Ánh xạ quyền theo module
-            Map<Integer, List<Permission>> permissionsByModule = permissions.stream()
-                .collect(Collectors.groupingBy(
-                    p -> p.getModuleId() != null ? p.getModuleId() : 0,
-                    Collectors.toList()
-                ));
+            // Ánh xạ quyền theo module (only if we have permissions)
+            Map<Integer, List<Permission>> permissionsByModule = new HashMap<>();
+            if (selectedCategory != null) {
+                permissionsByModule = permissions.stream()
+                    .collect(Collectors.groupingBy(
+                        p -> p.getModuleId() != null ? p.getModuleId() : 0,
+                        Collectors.toList()
+                    ));
+            } else {
+                // Group all permissions by module for counting
+                Map<Integer, List<Permission>> allPermsByModule = allPermissions.stream()
+                    .collect(Collectors.groupingBy(
+                        p -> p.getModuleId() != null ? p.getModuleId() : 0,
+                        Collectors.toList()
+                    ));
+                // Add permission counts to modules
+                for (Module module : allModules) {
+                    List<Permission> modulePerms = allPermsByModule.getOrDefault(module.getModuleId(), new ArrayList<>());
+                    permissionsByModule.put(module.getModuleId(), modulePerms);
+                }
+            }
 
-            // Lọc modules chỉ chứa quyền khớp với từ khóa (trừ "Other")
-            modules = modules.stream()
-                .filter(m -> permissionsByModule.containsKey(m.getModuleId()))
-                .collect(Collectors.toList());
+            // Filter modules to show - if category selected, show only that category
+            List<Module> modules = new ArrayList<>();
+            if (selectedCategory != null && !selectedCategory.isEmpty()) {
+                try {
+                    int categoryId = Integer.parseInt(selectedCategory);
+                    modules = allModules.stream()
+                        .filter(m -> m.getModuleId() == categoryId)
+                        .collect(Collectors.toList());
+                } catch (NumberFormatException e) {
+                    modules = allModules;
+                }
+            } else {
+                // Show all modules with permission counts
+                modules = allModules;
+            }
 
             // Lọc roles: chỉ hiển thị roles có is_system = 0 (không phải system roles)
             // Admin (role_id = 1) KHÔNG hiển thị vì đã có full quyền
@@ -87,12 +132,15 @@ public class RolePermissionServlet extends HttpServlet {
             System.out.println("✅ Filtered roles: " + displayRoles.size() + " roles (excluding Admin and system roles)");
 
             // Ánh xạ quyền đã gán cho từng vai trò (chỉ cho các role được hiển thị)
+            // Luôn build map với tất cả permissions để có thể save được
             Map<Integer, Map<Integer, Boolean>> rolePermissionMap = new HashMap<>();
+            
             for (Role role : displayRoles) {
                 // Load permissions từ database cho từng role
                 List<Permission> assignedPermissions = permissionDAO.getPermissionsByRole(role.getRoleId());
                 Map<Integer, Boolean> permMap = new HashMap<>();
-                for (Permission perm : permissions) {
+                // Build map for all permissions (needed for saving in doPost)
+                for (Permission perm : allPermissions) {
                     permMap.put(perm.getPermissionId(),
                         assignedPermissions.stream().anyMatch(p -> p.getPermissionId() == perm.getPermissionId()));
                 }
@@ -102,10 +150,11 @@ public class RolePermissionServlet extends HttpServlet {
             
             request.setAttribute("roles", displayRoles);
             request.setAttribute("modules", modules);
+            request.setAttribute("allModules", allModules); // All modules for category list
             request.setAttribute("permissionsByModule", permissionsByModule);
             request.setAttribute("rolePermissionMap", rolePermissionMap);
             request.setAttribute("searchKeyword", searchKeyword);
-            request.setAttribute("selectedModule", selectedModule);
+            request.setAttribute("selectedCategory", selectedCategory != null ? selectedCategory : "");
             
             System.out.println("✅ Forwarding to RolePermission.jsp with " + displayRoles.size() + " roles, " + modules.size() + " modules, " + permissionsByModule.size() + " permission groups");
 
@@ -130,15 +179,15 @@ public class RolePermissionServlet extends HttpServlet {
 
         try {
             String searchKeyword = request.getParameter("search");
-            String selectedModule = request.getParameter("selectedModule");
+            String selectedCategory = request.getParameter("category");
             if (searchKeyword == null) searchKeyword = "";
-            if (selectedModule == null) selectedModule = "";
+            if (selectedCategory == null) selectedCategory = "";
 
             String action = request.getParameter("action");
             if (!"update".equals(action)) {
                 request.setAttribute("errorMessage", "Invalid action!");
                 request.setAttribute("searchKeyword", searchKeyword);
-                request.setAttribute("selectedModule", selectedModule);
+                request.setAttribute("selectedCategory", selectedCategory);
                 doGet(request, response);
                 return;
             }
@@ -146,7 +195,21 @@ public class RolePermissionServlet extends HttpServlet {
             List<Role> roles = roleDAO.getAllRolesIncludingAdmin();
             List<Permission> permissions = permissionDAO.getAllPermissions();
 
+            // CRITICAL FIX: Chỉ xử lý các role được hiển thị trong form (không bao gồm admin và system roles)
+            // Admin (role_id = 1) và system roles không được hiển thị trong form nên không có checkbox
+            // Nếu xử lý chúng sẽ vô tình xóa permissions của admin!
+            List<Role> displayRoles = new ArrayList<>();
             for (Role role : roles) {
+                // Chỉ xử lý các role có is_system = 0 (không phải Admin và không phải system roles)
+                if (role.getRoleId() != 1 && !role.isIsSystem()) {
+                    displayRoles.add(role);
+                }
+            }
+            
+            System.out.println("✅ doPost: Processing permissions for " + displayRoles.size() + " roles (excluding Admin and system roles)");
+            
+            // CHỈ xử lý permissions cho các role được hiển thị trong form
+            for (Role role : displayRoles) {
                 for (Permission perm : permissions) {
                     String paramName = "permission_" + role.getRoleId() + "_" + perm.getPermissionId();
                     boolean isChecked = request.getParameter(paramName) != null;
@@ -154,20 +217,24 @@ public class RolePermissionServlet extends HttpServlet {
 
                     if (isChecked && !hasPermission) {
                         rolePermissionDAO.assignPermissionToRole(role.getRoleId(), perm.getPermissionId());
+                        System.out.println("✅ Assigned permission " + perm.getPermissionId() + " to role " + role.getRoleId());
                     } else if (!isChecked && hasPermission) {
                         rolePermissionDAO.removePermissionFromRole(role.getRoleId(), perm.getPermissionId());
+                        System.out.println("✅ Removed permission " + perm.getPermissionId() + " from role " + role.getRoleId());
                     }
                 }
             }
+            
+            System.out.println("✅ doPost: Skipped Admin (role_id=1) and system roles - they have full access and should not be modified");
 
             request.setAttribute("successMessage", "Permissions updated successfully!");
             request.setAttribute("searchKeyword", searchKeyword);
-            request.setAttribute("selectedModule", selectedModule);
+            request.setAttribute("selectedCategory", selectedCategory);
             doGet(request, response);
         } catch (Exception e) {
             request.setAttribute("errorMessage", "System error: " + e.getMessage());
             request.setAttribute("searchKeyword", request.getParameter("search") != null ? request.getParameter("search") : "");
-            request.setAttribute("selectedModule", request.getParameter("selectedModule") != null ? request.getParameter("selectedModule") : "");
+            request.setAttribute("selectedCategory", request.getParameter("category") != null ? request.getParameter("category") : "");
             System.out.println("❌ Error in doPost: " + e.getMessage());
             e.printStackTrace();
             doGet(request, response);
