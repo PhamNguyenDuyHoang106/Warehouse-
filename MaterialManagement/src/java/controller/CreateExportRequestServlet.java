@@ -39,7 +39,7 @@ import utils.EmailUtils;
 import utils.ExportRequestValidator;
 
 @WebServlet(name = "CreateExportRequestServlet", urlPatterns = {"/CreateExportRequest"})
-public class CreateExportRequestServlet extends HttpServlet {
+public class CreateExportRequestServlet extends BaseServlet {
 
     private ExportRequestDAO exportRequestDAO;
     private ExportRequestDetailDAO exportRequestDetailDAO;
@@ -54,6 +54,7 @@ public class CreateExportRequestServlet extends HttpServlet {
 
     @Override
     public void init() throws ServletException {
+        super.init();
         exportRequestDAO = new ExportRequestDAO();
         exportRequestDetailDAO = new ExportRequestDetailDAO();
         materialDAO = new MaterialDAO();
@@ -64,6 +65,17 @@ public class CreateExportRequestServlet extends HttpServlet {
         userDAO = new UserDAO();
         rolePermissionDAO = new RolePermissionDAO();
         pricingDAO = new PricingDAO();
+        
+        registerDAO(exportRequestDAO);
+        registerDAO(exportRequestDetailDAO);
+        registerDAO(materialDAO);
+        registerDAO(customerDAO);
+        registerDAO(rackDAO);
+        registerDAO(warehouseDAO);
+        registerDAO(inventoryDAO);
+        registerDAO(pricingDAO);
+        registerDAO(userDAO);
+        registerDAO(rolePermissionDAO);
     }
 
     @Override
@@ -399,7 +411,6 @@ public class CreateExportRequestServlet extends HttpServlet {
                 if (director.getEmail() != null && !director.getEmail().trim().isEmpty()) {
                     try {
                         EmailUtils.sendEmail(director.getEmail(), subject, content.toString());
-                        System.out.println("Email sent to director: " + director.getEmail());
                     } catch (Exception e) {
                         System.err.println("Error sending email to director " + director.getEmail() + ": " + e.getMessage());
                     }

@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 @WebServlet(name = "StaticInventoryServlet", urlPatterns = {"/StaticInventory"})
-public class StaticInventoryServlet extends HttpServlet {
+public class StaticInventoryServlet extends BaseServlet {
     private InventoryDAO inventoryDAO;
     private UserDAO userDAO;
     private ImportDAO importDAO;
@@ -30,11 +30,17 @@ public class StaticInventoryServlet extends HttpServlet {
 
     @Override
     public void init() throws ServletException {
+        super.init();
         inventoryDAO = new InventoryDAO();
         userDAO = new UserDAO();
         importDAO = new ImportDAO();
         exportDAO = new ExportDAO();
         rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(inventoryDAO);
+        registerDAO(userDAO);
+        registerDAO(importDAO);
+        registerDAO(exportDAO);
+        registerDAO(rolePermissionDAO);
     }
 
     @Override

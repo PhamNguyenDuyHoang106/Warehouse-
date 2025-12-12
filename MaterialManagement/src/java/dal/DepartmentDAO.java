@@ -11,8 +11,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class DepartmentDAO extends DBContext {
+    private static final Logger LOGGER = Logger.getLogger(DepartmentDAO.class.getName());
 
     public List<Department> getAllDepartments() {
         List<Department> departmentList = new ArrayList<>();
@@ -171,7 +174,7 @@ public class DepartmentDAO extends DBContext {
                 }
             }
         } catch (SQLException e) {
-            System.out.println("❌ Lỗi getTotalDepartmentCount: " + e.getMessage());
+            LOGGER.log(Level.SEVERE, "Error getting total department count", e);
             throw e;
         }
         return 0;
@@ -209,9 +212,8 @@ public class DepartmentDAO extends DBContext {
                 material.setMaterialsUrl(rs.getString("url"));
                 materials.add(material);
             }
-            System.out.println("✅ Get list of materials successfully, quantity: " + materials.size());
         } catch (SQLException e) {
-            System.out.println("❌ Lỗi getMaterials: " + e.getMessage());
+            LOGGER.log(Level.SEVERE, "Error getting materials", e);
             throw e;
         }
         return materials;
@@ -263,38 +265,31 @@ public class DepartmentDAO extends DBContext {
             // Update user status
             try (PreparedStatement psUsers = connection.prepareStatement(updateUsersSql)) {
                 psUsers.setInt(1, id);
-                int usersAffected = psUsers.executeUpdate();
-                System.out.println("✅ Updated " + usersAffected + " users to 'deleted' status for department_id: " + id);
+                psUsers.executeUpdate();
             }
 
-            // Delete department
             try (PreparedStatement psDept = connection.prepareStatement(deleteDepartmentSql)) {
                 psDept.setInt(1, id);
                 int deptAffected = psDept.executeUpdate();
                 if (deptAffected == 0) {
                     throw new SQLException("No department found with department_id: " + id);
                 }
-                System.out.println("✅ Deleted department with department_id: " + id);
             }
 
-            connection.commit(); // Commit transaction
-            System.out.println("✅ Department and associated users deleted successfully");
+            connection.commit();
         } catch (SQLException e) {
             try {
-                connection.rollback(); // Rollback on error
-                System.out.println("🔄 Transaction rolled back due to error: " + e.getMessage());
+                connection.rollback();
             } catch (SQLException rollbackEx) {
-                System.out.println("❌ Error during rollback: " + rollbackEx.getMessage());
-                rollbackEx.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Error during rollback", rollbackEx);
             }
-            System.out.println("❌ Error in deleteDepartment: " + e.getMessage());
+            LOGGER.log(Level.SEVERE, "Error in deleteDepartment", e);
             throw new RuntimeException("Error deleting department and updating user statuses", e);
         } finally {
             try {
-                connection.setAutoCommit(true); // Restore default auto-commit mode
+                connection.setAutoCommit(true);
             } catch (SQLException e) {
-                System.out.println("❌ Error restoring auto-commit: " + e.getMessage());
-                e.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Error restoring auto-commit", e);
             }
         }
     }
@@ -394,7 +389,6 @@ public class DepartmentDAO extends DBContext {
         DepartmentDAO dao = new DepartmentDAO();
         List<Department> list = dao.getAllDepartments();
         for (Department department : list) {
-            System.out.println(department.toString());
         }
     }
 }

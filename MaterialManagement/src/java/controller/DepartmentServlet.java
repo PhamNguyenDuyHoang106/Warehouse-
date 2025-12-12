@@ -16,10 +16,19 @@ import java.util.Arrays;
 import java.util.List;
 
 @WebServlet(urlPatterns = {"/depairmentlist"})
-public class DepartmentServlet extends HttpServlet {
+public class DepartmentServlet extends BaseServlet {
 
-    private DepartmentDAO departmentDAO = new DepartmentDAO();
-    private RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
+    private DepartmentDAO departmentDAO;
+    private RolePermissionDAO rolePermissionDAO;
+    
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        departmentDAO = new DepartmentDAO();
+        rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(departmentDAO);
+        registerDAO(rolePermissionDAO);
+    }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -94,7 +103,6 @@ public class DepartmentServlet extends HttpServlet {
             request.setAttribute("rolePermissionDAO", rolePermissionDAO);
             request.getRequestDispatcher("DepartmentList.jsp").forward(request, response);
         } catch (Exception e) {
-            System.out.println("❌ Error when getting department list: " + e.getMessage());
             request.setAttribute("error", "Error when getting department list: " + e.getMessage());
             request.getRequestDispatcher("error.jsp").forward(request, response);
         }

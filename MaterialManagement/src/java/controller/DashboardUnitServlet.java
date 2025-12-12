@@ -42,43 +42,52 @@ public class DashboardUnitServlet extends HttpServlet {
             return;
         }
 
-        UnitDAO unitDAO = new UnitDAO();
-        String keyword = request.getParameter("keyword");
-        String pageParam = request.getParameter("page");
-        int page = 1;
-        int pageSize = 5;
-        if (pageParam != null) {
-            try {
-                page = Integer.parseInt(pageParam);
-                if (page < 1) page = 1;
-            } catch (NumberFormatException e) {
-                page = 1;
+        UnitDAO unitDAO = null;
+        RolePermissionDAO rolePermissionDAO = null;
+        try {
+            unitDAO = new UnitDAO();
+            String keyword = request.getParameter("keyword");
+            String pageParam = request.getParameter("page");
+            int page = 1;
+            int pageSize = 5;
+            if (pageParam != null) {
+                try {
+                    page = Integer.parseInt(pageParam);
+                    if (page < 1) page = 1;
+                } catch (NumberFormatException e) {
+                    page = 1;
+                }
             }
+            int totalUnits = unitDAO.countUnits(keyword);
+            int totalPages = (int) Math.ceil((double) totalUnits / pageSize);
+            if (page > totalPages && totalPages > 0) page = totalPages;
+            int offset = (page - 1) * pageSize;
+            List<Unit> units = unitDAO.getUnitsByPage(offset, pageSize, keyword);
+            rolePermissionDAO = new RolePermissionDAO();
+            request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+            request.setAttribute("units", units);
+            request.setAttribute("currentPage", page);
+            request.setAttribute("totalPages", totalPages);
+            request.setAttribute("keyword", keyword);
+            request.getRequestDispatcher("DashboardUnit.jsp").forward(request, response);
+        } finally {
+            if (unitDAO != null) unitDAO.close();
+            if (rolePermissionDAO != null) rolePermissionDAO.close();
         }
-        int totalUnits = unitDAO.countUnits(keyword);
-        int totalPages = (int) Math.ceil((double) totalUnits / pageSize);
-        if (page > totalPages && totalPages > 0) page = totalPages;
-        int offset = (page - 1) * pageSize;
-        List<Unit> units = unitDAO.getUnitsByPage(offset, pageSize, keyword);
-        RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
-        request.setAttribute("rolePermissionDAO", rolePermissionDAO);
-        request.setAttribute("units", units);
-        request.setAttribute("currentPage", page);
-        request.setAttribute("totalPages", totalPages);
-        request.setAttribute("keyword", keyword);
-        request.getRequestDispatcher("DashboardUnit.jsp").forward(request, response);
     }
 
     private void viewUnit(HttpServletRequest request, HttpServletResponse response, User user)
             throws ServletException, IOException {
         String idStr = request.getParameter("id");
         if (idStr != null && !idStr.isEmpty()) {
+            UnitDAO unitDAO = null;
+            RolePermissionDAO rolePermissionDAO = null;
             try {
                 int id = Integer.parseInt(idStr);
-                UnitDAO unitDAO = new UnitDAO();
+                unitDAO = new UnitDAO();
                 Unit unit = unitDAO.getUnitById(id);
                 if (unit != null) {
-                    RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
+                    rolePermissionDAO = new RolePermissionDAO();
                     request.setAttribute("unit", unit);
                     request.setAttribute("rolePermissionDAO", rolePermissionDAO);
                     request.getRequestDispatcher("/UnitDetail.jsp").forward(request, response);
@@ -89,6 +98,9 @@ public class DashboardUnitServlet extends HttpServlet {
             } catch (NumberFormatException e) {
                 request.setAttribute("error", "Invalid unit ID.");
                 request.getRequestDispatcher("/error.jsp").forward(request, response);
+            } finally {
+                if (unitDAO != null) unitDAO.close();
+                if (rolePermissionDAO != null) rolePermissionDAO.close();
             }
         } else {
             request.setAttribute("error", "Unit ID is required.");

@@ -18,16 +18,20 @@ import dal.CategoryDAO;
 import entity.Category;
 
 @WebServlet(name = "DashboardMaterialServlet", urlPatterns = {"/dashboardmaterial"})
-public class DashboardMaterialServlet extends HttpServlet {
+public class DashboardMaterialServlet extends BaseServlet {
     private MaterialDAO materialDAO;
     private RolePermissionDAO rolePermissionDAO;
     private CategoryDAO categoryDAO;
 
     @Override
     public void init() throws ServletException {
+        super.init();
         materialDAO = new MaterialDAO();
         rolePermissionDAO = new RolePermissionDAO();
         categoryDAO = new CategoryDAO();
+        registerDAO(materialDAO);
+        registerDAO(rolePermissionDAO);
+        registerDAO(categoryDAO);
     }
 
     @Override

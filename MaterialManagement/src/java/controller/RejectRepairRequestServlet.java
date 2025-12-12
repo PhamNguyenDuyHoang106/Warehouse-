@@ -17,10 +17,19 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @WebServlet(name = "RejectRepairRequestServlet", urlPatterns = {"/reject"})
-public class RejectRepairRequestServlet extends HttpServlet {
+public class RejectRepairRequestServlet extends BaseServlet {
 
-    private RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
-    private RepairRequestDAO repairRequestDAO = new RepairRequestDAO();
+    private RolePermissionDAO rolePermissionDAO;
+    private RepairRequestDAO repairRequestDAO;
+
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        rolePermissionDAO = new RolePermissionDAO();
+        repairRequestDAO = new RepairRequestDAO();
+        registerDAO(rolePermissionDAO);
+        registerDAO(repairRequestDAO);
+    }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)

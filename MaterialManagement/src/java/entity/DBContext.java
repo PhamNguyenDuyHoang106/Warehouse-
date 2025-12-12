@@ -173,19 +173,28 @@ public class DBContext {
         try {
             if (connection != null && !connection.isClosed()) {
                 if (fromPool && USE_CONNECTION_POOL) {
+                    // Untrack connection before returning to pool
+                    ConnectionLeakDetector.getInstance().untrackConnection(connection);
                     // Return connection to pool
                     ConnectionManager.getInstance().returnConnection(connection);
-                    LOGGER.log(Level.FINE, "Connection returned to pool");
                 } else {
+                    // Untrack direct connection
+                    ConnectionLeakDetector.getInstance().untrackConnection(connection);
                     // Close direct connection
                     connection.close();
-                    LOGGER.log(Level.FINE, "Direct connection closed");
                 }
+                connection = null;
+                fromPool = false;
+            } else if (connection != null) {
+                // Connection is already closed, but still tracked - untrack it
+                ConnectionLeakDetector.getInstance().untrackConnection(connection);
                 connection = null;
                 fromPool = false;
             }
         } catch (SQLException e) {
             LOGGER.log(Level.WARNING, "Error closing connection: " + e.getMessage(), e);
+            // Ensure connection is untracked even if close fails
+            ConnectionLeakDetector.getInstance().untrackConnection(connection);
             // Try to close directly if pool return failed
             try {
                 if (connection != null && !connection.isClosed()) {
@@ -193,6 +202,9 @@ public class DBContext {
                 }
             } catch (SQLException ex) {
                 // Ignore
+            } finally {
+                connection = null;
+                fromPool = false;
             }
         }
     }

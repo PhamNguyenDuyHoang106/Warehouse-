@@ -14,15 +14,18 @@ import entity.User;
 import java.io.IOException;
 
 @WebServlet(name = "RejectExportRequestServlet", urlPatterns = {"/RejectExportRequest"})
-public class RejectExportRequestServlet extends HttpServlet {
+public class RejectExportRequestServlet extends BaseServlet {
 
     private ExportRequestDAO exportRequestDAO;
     private RolePermissionDAO rolePermissionDAO;
 
     @Override
     public void init() throws ServletException {
+        super.init();
         exportRequestDAO = new ExportRequestDAO();
         rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(exportRequestDAO);
+        registerDAO(rolePermissionDAO);
     }
 
     @Override

@@ -16,12 +16,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 @WebServlet(name = "EditUnitServlet", urlPatterns = {"/EditUnit"})
-public class EditUnitServlet extends HttpServlet {
+public class EditUnitServlet extends BaseServlet {
     private RolePermissionDAO rolePermissionDAO;
 
     @Override
     public void init() throws ServletException {
+        super.init();
         rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(rolePermissionDAO);
     }
 
     @Override
@@ -43,15 +45,20 @@ public class EditUnitServlet extends HttpServlet {
             return;
         }
 
-        UnitDAO unitDAO = new UnitDAO();
-        String idStr = request.getParameter("id");
-        if (idStr != null) {
-            int id = Integer.parseInt(idStr);
-            Unit unit = unitDAO.getUnitById(id);
-            request.setAttribute("unit", unit);
+        UnitDAO unitDAO = null;
+        try {
+            unitDAO = new UnitDAO();
+            String idStr = request.getParameter("id");
+            if (idStr != null) {
+                int id = Integer.parseInt(idStr);
+                Unit unit = unitDAO.getUnitById(id);
+                request.setAttribute("unit", unit);
+            }
+            request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+            request.getRequestDispatcher("EditUnit.jsp").forward(request, response);
+        } finally {
+            if (unitDAO != null) unitDAO.close();
         }
-        request.setAttribute("rolePermissionDAO", rolePermissionDAO);
-        request.getRequestDispatcher("EditUnit.jsp").forward(request, response);
     }
 
     @Override
@@ -128,23 +135,24 @@ public class EditUnitServlet extends HttpServlet {
         unit.setBase(isBase);
         unit.setStatus(status);
         
-        UnitDAO unitDAO = new UnitDAO();
-        Map<String, String> validationErrors = UnitValidator.validateUnitUpdate(unit, unitDAO);
-        
-        if (!validationErrors.isEmpty()) {
-            request.setAttribute("errors", validationErrors);
-            request.setAttribute("unitCode", unitCode);
-            request.setAttribute("unitName", unitName);
-            request.setAttribute("symbol", symbol);
-            request.setAttribute("isBase", isBase);
-            request.setAttribute("status", status);
-            request.setAttribute("unit", unit);
-            request.getRequestDispatcher("EditUnit.jsp").forward(request, response);
-            return;
-        }
-        
-        // Update unit in database
+        UnitDAO unitDAO = null;
         try {
+            unitDAO = new UnitDAO();
+            Map<String, String> validationErrors = UnitValidator.validateUnitUpdate(unit, unitDAO);
+            
+            if (!validationErrors.isEmpty()) {
+                request.setAttribute("errors", validationErrors);
+                request.setAttribute("unitCode", unitCode);
+                request.setAttribute("unitName", unitName);
+                request.setAttribute("symbol", symbol);
+                request.setAttribute("isBase", isBase);
+                request.setAttribute("status", status);
+                request.setAttribute("unit", unit);
+                request.getRequestDispatcher("EditUnit.jsp").forward(request, response);
+                return;
+            }
+            
+            // Update unit in database
             unitDAO.updateUnit(unit);
             response.sendRedirect("UnitList");
         } catch (Exception e) {
@@ -156,6 +164,8 @@ public class EditUnitServlet extends HttpServlet {
             request.setAttribute("status", status);
             request.setAttribute("unit", unit);
             request.getRequestDispatcher("EditUnit.jsp").forward(request, response);
+        } finally {
+            if (unitDAO != null) unitDAO.close();
         }
     }
 }

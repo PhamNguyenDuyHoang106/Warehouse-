@@ -3,8 +3,11 @@ package dal;
 import entity.DBContext;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class RolePermissionDAO extends DBContext {
+    private static final Logger LOGGER = Logger.getLogger(RolePermissionDAO.class.getName());
 
     public void assignPermissionToRole(int roleId, int permissionId) {
         String sql = "INSERT INTO Role_Permissions (role_id, permission_id) VALUES (?, ?)";
@@ -13,10 +16,8 @@ public class RolePermissionDAO extends DBContext {
             ps.setInt(1, roleId);
             ps.setInt(2, permissionId);
             ps.executeUpdate();
-            System.out.println("✅ Gán permission " + permissionId + " cho role " + roleId + " thành công");
         } catch (Exception e) {
-            System.out.println("❌ Lỗi assignPermissionToRole: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error assigning permission to role", e);
         }
     }
 
@@ -27,10 +28,8 @@ public class RolePermissionDAO extends DBContext {
             ps.setInt(1, roleId);
             ps.setInt(2, permissionId);
             ps.executeUpdate();
-            System.out.println("✅ Xóa permission " + permissionId + " khỏi role " + roleId + " thành công");
         } catch (Exception e) {
-            System.out.println("❌ Lỗi removePermissionFromRole: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error removing permission from role", e);
         }
     }
 
@@ -43,14 +42,11 @@ public class RolePermissionDAO extends DBContext {
             ps.setString(2, permissionName);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    boolean hasPerm = rs.getInt(1) > 0;
-                    System.out.println("🔍 Checking permission '" + permissionName + "' for role " + roleId + ": " + (hasPerm ? "GRANTED" : "DENIED"));
-                    return hasPerm;
+                    return rs.getInt(1) > 0;
                 }
             }
         } catch (Exception e) {
-            System.out.println("❌ Lỗi hasPermission: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error checking permission", e);
         }
         return false;
     }

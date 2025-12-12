@@ -361,8 +361,6 @@ public class PurchaseRequestDAO extends DBContext {
             while (rs.next()) {
                 codes.add(rs.getString("pr_code"));
             }
-            LOGGER.log(Level.INFO, "Total purchase request codes: {0}", codes.size());
-            LOGGER.log(Level.INFO, "Codes: {0}", codes);
         } catch (SQLException ex) {
             LOGGER.log(Level.SEVERE, "Error debugging request codes.", ex);
         }

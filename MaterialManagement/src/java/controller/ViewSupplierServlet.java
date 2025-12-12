@@ -60,10 +60,15 @@ public class ViewSupplierServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        SupplierDAO dao = new SupplierDAO();
-        List<Supplier> suppliers = dao.getAllSuppliers();
-        request.setAttribute("suppliers", suppliers);
-        request.getRequestDispatcher("ViewSupplier.jsp").forward(request, response);
+        SupplierDAO dao = null;
+        try {
+            dao = new SupplierDAO();
+            List<Supplier> suppliers = dao.getAllSuppliers();
+            request.setAttribute("suppliers", suppliers);
+            request.getRequestDispatcher("ViewSupplier.jsp").forward(request, response);
+        } finally {
+            if (dao != null) dao.close();
+        }
     }
 
     /**

@@ -75,9 +75,10 @@ public class MaterialDetailServlet extends HttpServlet {
         request.setAttribute("user", user);
         request.setAttribute("roleName", roleName);
         if (idParam != null) {
+            MaterialDAO dao = null;
             try {
                 int id = Integer.parseInt(idParam);
-                MaterialDAO dao = new MaterialDAO();
+                dao = new MaterialDAO();
                 Material product = dao.getProductById(id);
 
                 if (product != null) {
@@ -88,6 +89,8 @@ public class MaterialDetailServlet extends HttpServlet {
                 }
             } catch (NumberFormatException e) {
                 response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid product ID");
+            } finally {
+                if (dao != null) dao.close();
             }
         } else {
             response.sendRedirect("view"); // chuyển về danh sách nếu không có id

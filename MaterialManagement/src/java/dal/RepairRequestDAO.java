@@ -148,9 +148,18 @@ public class RepairRequestDAO extends DBContext {
                     request.setStatus(rs.getString("status"));
                     request.setReason(rs.getString("issue_description"));
                     request.setApprovedBy(rs.getObject("approved_by") != null ? rs.getInt("approved_by") : null);
-                    request.setApprovalReason(rs.getString("approval_reason"));
+                    // approval_reason may not exist in DB; guard access
+                    try {
+                        request.setApprovalReason(rs.getString("approval_reason"));
+                    } catch (SQLException ex) {
+                        request.setApprovalReason(null);
+                    }
                     request.setApprovedAt(rs.getTimestamp("approved_at"));
-                    request.setRejectionReason(rs.getString("rejection_reason"));
+                    try {
+                        request.setRejectionReason(rs.getString("rejection_reason"));
+                    } catch (SQLException ex) {
+                        request.setRejectionReason(null);
+                    }
                     request.setCreatedAt(rs.getTimestamp("created_at"));
                     request.setUpdatedAt(rs.getTimestamp("updated_at"));
                     request.setDeletedAt(rs.getTimestamp("deleted_at"));
@@ -333,7 +342,6 @@ public class RepairRequestDAO extends DBContext {
         // Example: Get repair requests with pagination
         List<RepairRequest> requests = dao.getRepairRequestsWithPagination(0, 5, "equipment", "pending", "asc", "2025-01-01", "2025-12-31");
         for (RepairRequest req : requests) {
-            LOGGER.log(Level.INFO, "Request ID: " + req.getRepairRequestId() + ", Code: " + req.getRequestCode() + ", Status: " + req.getStatus());
         }
     } catch (SQLException e) {
         LOGGER.log(Level.SEVERE, "Error in main method: ", e);

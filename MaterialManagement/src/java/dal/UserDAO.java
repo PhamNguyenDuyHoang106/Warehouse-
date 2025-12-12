@@ -7,14 +7,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import utils.EmailUtils;
 import utils.PasswordHasher;
 
 /**
@@ -45,8 +42,8 @@ public class UserDAO extends DBContext {
 
     /**
      * Authenticate user by username and password.
-     * Supports both MD5 (legacy) and BCrypt (new) password hashes.
-     * Automatically migrates MD5 passwords to BCrypt on successful login.
+     * Supports SHA-256 (MySQL SHA2), MD5 (legacy), and BCrypt (new) password hashes.
+     * Automatically migrates old password formats to BCrypt on successful login.
      * 
      * @param username The username
      * @param password The plain text password
@@ -72,12 +69,10 @@ public class UserDAO extends DBContext {
                         return null;
                     }
 
-                    // Migrate password from MD5 to BCrypt if needed
                     String newHash = PasswordHasher.migratePasswordIfNeeded(password, user.getPasswordHash());
                     if (newHash != null) {
                         updatePasswordHash(user.getUserId(), newHash);
                         user.setPasswordHash(newHash);
-                        LOGGER.log(Level.INFO, "Migrated password from MD5 to BCrypt for user: {0}", username);
                     }
 
                     if (user.getStatus() == User.Status.locked) {
@@ -94,7 +89,6 @@ public class UserDAO extends DBContext {
                     user.setLastLogin(LocalDateTime.now());
                     user.setFailedLoginAttempts(0);
 
-                    LOGGER.log(Level.INFO, "User logged in successfully: {0}", username);
                     return user;
                 } else {
                     LOGGER.log(Level.WARNING, "Login failed for username: {0} - User not found or deactivated", username);
@@ -208,7 +202,6 @@ public class UserDAO extends DBContext {
             while (rs.next()) {
                 userList.add(mapResultSetToUser(rs));
             }
-            LOGGER.log(Level.INFO, "Retrieved {0} users successfully", userList.size());
         } catch (SQLException e) {
             LOGGER.log(Level.SEVERE, "Error retrieving all users", e);
         }
@@ -234,7 +227,6 @@ public class UserDAO extends DBContext {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     User user = mapResultSetToUser(rs);
-                    LOGGER.log(Level.INFO, "Retrieved user: {0}", user.getUsername());
                     return user;
                 } else {
                     LOGGER.log(Level.WARNING, "User not found with ID: {0}", userId);
@@ -268,16 +260,6 @@ public class UserDAO extends DBContext {
             "WHERE user_id = ? " +
             "AND deleted_at IS NULL";
         try (PreparedStatement ps = getConnectionSafely().prepareStatement(sql)) {
-            System.out.println("[UPDATE] Cap nhat user voi user_id = " + user.getUserId());
-            System.out.println("full_name = " + user.getFullName());
-            System.out.println("email = " + user.getEmail());
-            System.out.println("phone = " + user.getPhone());
-            System.out.println("avatar = " + user.getAvatar());
-            System.out.println("date_of_birth = " + (user.getDateOfBirth() != null ? user.getDateOfBirth().toString() : "null"));
-            System.out.println("gender = " + (user.getGender() != null ? user.getGender().toString() : "null"));
-            System.out.println("status = " + (user.getStatus() != null ? user.getStatus().toString() : "null"));
-            System.out.println("department_id = " + user.getDepartmentId());
-
             ps.setString(1, user.getPasswordHash());
             ps.setString(2, user.getFullName());
             ps.setString(3, user.getEmail());
@@ -301,17 +283,9 @@ public class UserDAO extends DBContext {
             ps.setInt(17, user.getUserId());
 
             int rowsAffected = ps.executeUpdate();
-            System.out.println("Rows affected: " + rowsAffected + " for user_id: " + user.getUserId());
-            if (rowsAffected > 0) {
-                System.out.println("[OK] Cap nhat thong tin user thanh cong: " + user.getUsername());
-                return true;
-            } else {
-                System.out.println("X Khong tim thay user de cap nhat voi user_id: " + user.getUserId());
-                return false;
-            }
+            return rowsAffected > 0;
         } catch (Exception e) {
-            System.out.println("[ERROR] Lỗi updateUser: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error updating user: " + e.getMessage(), e);
             return false;
         }
     }
@@ -351,13 +325,10 @@ public class UserDAO extends DBContext {
         try (PreparedStatement ps = getConnectionSafely().prepareStatement(sql)) {
             ps.setString(1, user.getUsername());
             
-            // Hash password if it's plain text (not already hashed)
             String passwordToStore = user.getPassword();
             if (passwordToStore != null && !PasswordHasher.isMD5Hash(passwordToStore) 
                 && !passwordToStore.startsWith("$2a$") && !passwordToStore.startsWith("$2b$")) {
-                // Plain text password - hash it
                 passwordToStore = PasswordHasher.hashPassword(passwordToStore);
-                LOGGER.log(Level.INFO, "Hashed password for new user: {0}", user.getUsername());
             }
             ps.setString(2, passwordToStore);
             ps.setString(3, user.getFullName());
@@ -388,7 +359,6 @@ public class UserDAO extends DBContext {
 
             int rowsAffected = ps.executeUpdate();
             if (rowsAffected > 0) {
-                LOGGER.log(Level.INFO, "User created successfully: {0}", user.getUsername());
                 return true;
             } else {
                 LOGGER.log(Level.WARNING, "Failed to create user: No rows affected");
@@ -405,16 +375,9 @@ public class UserDAO extends DBContext {
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setInt(1, id);
             int affectedRows = ps.executeUpdate();
-            if (affectedRows > 0) {
-                System.out.println("[OK] Đánh dấu xóa user thành công với user_id: " + id);
-                return true;
-            } else {
-                System.out.println("[ERROR] Không tìm thấy user còn hoạt động để xóa với user_id: " + id);
-                return false;
-            }
+            return affectedRows > 0;
         } catch (Exception e) {
-            System.out.println("[ERROR] Lỗi deleteUserById: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error deleting user by ID: " + id, e);
             return false;
         }
     }
@@ -428,8 +391,7 @@ public class UserDAO extends DBContext {
                 return rs.getInt(1) > 0;
             }
         } catch (Exception e) {
-            System.out.println("[ERROR] Lỗi khi kiểm tra username tồn tại: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error checking username existence", e);
         }
         return false;
     }
@@ -443,8 +405,7 @@ public class UserDAO extends DBContext {
                 return rs.getInt(1) > 0;
             }
         } catch (Exception e) {
-            System.out.println("[ERROR] Error checking if email exists: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error checking email existence", e);
         }
         return false;
     }
@@ -469,10 +430,8 @@ public class UserDAO extends DBContext {
             ps.setString(2, email);
             
             int rows = ps.executeUpdate();
-            if (rows > 0) {
-                LOGGER.log(Level.INFO, "Password updated for email: {0}", email);
-            } else {
-                LOGGER.log(Level.WARNING, "No user found with email: {0} (or not verified)", email);
+            if (rows == 0) {
+                LOGGER.log(Level.WARNING, "No user found with email: {0}", email);
             }
             return rows > 0;
         } catch (SQLException e) {
@@ -488,13 +447,10 @@ public class UserDAO extends DBContext {
             ps.setInt(2, excludeUserId);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
-                boolean exists = rs.getInt(1) > 0;
-                System.out.println(exists ? "[ERROR] Email already exists: " + email : "[OK] Email available: " + email);
-                return exists;
+                return rs.getInt(1) > 0;
             }
         } catch (Exception e) {
-            System.out.println("[ERROR] Error checking email existence: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error checking email existence", e);
         }
         return false;
     }
@@ -505,16 +461,9 @@ public class UserDAO extends DBContext {
             ps.setString(1, status.name());
             ps.setInt(2, userId);
             int rowsAffected = ps.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("[OK] Cập nhật status thành công cho user_id: " + userId);
-                return true;
-            } else {
-                System.out.println("[ERROR] Không tìm thấy user để cập nhật với user_id: " + userId);
-                return false;
-            }
+            return rowsAffected > 0;
         } catch (Exception e) {
-            System.out.println("[ERROR] Lỗi updateStatus: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error updating user status", e);
             return false;
         }
     }
@@ -526,12 +475,11 @@ public class UserDAO extends DBContext {
             checkPs.setInt(1, roleId);
             ResultSet rs = checkPs.executeQuery();
             if (rs.next() && rs.getInt("status") == 0) {
-                System.out.println("[ERROR] Role đang bị vô hiệu hóa: role_id = " + roleId);
+                LOGGER.log(Level.WARNING, "Role is disabled: role_id = {0}", roleId);
                 return false;
             }
         } catch (Exception e) {
-            System.out.println("[ERROR] Lỗi kiểm tra role: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error checking role", e);
             return false;
         }
 
@@ -540,16 +488,9 @@ public class UserDAO extends DBContext {
             ps.setInt(1, roleId);
             ps.setInt(2, userId);
             int rowsAffected = ps.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("[OK] Cập nhật role thành công cho user_id: " + userId);
-                return true;
-            } else {
-                System.out.println("[ERROR] Không tìm thấy user để cập nhật với user_id: " + userId);
-                return false;
-            }
+            return rowsAffected > 0;
         } catch (Exception e) {
-            System.out.println("[ERROR] Lỗi updateRole: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error updating user role", e);
             return false;
         }
     }
@@ -560,16 +501,9 @@ public class UserDAO extends DBContext {
             ps.setObject(1, departmentId);
             ps.setInt(2, userId);
             int rowsAffected = ps.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("[OK] Cập nhật department thành công cho user_id: " + userId);
-                return true;
-            } else {
-                System.out.println("[ERROR] Không tìm thấy user để cập nhật với user_id: " + userId);
-                return false;
-            }
+            return rowsAffected > 0;
         } catch (Exception e) {
-            System.out.println("[ERROR] Lỗi updateDepartment: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error updating user department", e);
             return false;
         }
     }
@@ -621,10 +555,8 @@ public class UserDAO extends DBContext {
             while (rs.next()) {
                 userList.add(mapResultSetToUser(rs));
             }
-            System.out.println("[OK] Lấy danh sách user phân trang thành công, số lượng: " + userList.size());
         } catch (Exception e) {
-            System.out.println("[ERROR] Lỗi getUsersByPageAndFilter: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting users by page and filter", e);
         }
 
         return userList;
@@ -664,8 +596,7 @@ public class UserDAO extends DBContext {
                 return rs.getInt(1);
             }
         } catch (Exception e) {
-            System.out.println("[ERROR] Lỗi getUserCountByFilter: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting user count by filter", e);
         }
 
         return 0;
@@ -685,10 +616,8 @@ public class UserDAO extends DBContext {
             while (rs.next()) {
                 userList.add(mapResultSetToUser(rs));
             }
-            System.out.println("[OK] Lấy danh sách user theo role_id " + roleId + " thành công, số lượng: " + userList.size());
         } catch (Exception e) {
-            System.out.println("[ERROR] Lỗi getUsersByRoleId: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting users by role ID", e);
         }
         return userList;
     }
@@ -726,10 +655,8 @@ public class UserDAO extends DBContext {
                 // dept.setUpdatedAt(rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null);
                 departmentList.add(dept);
             }
-            System.out.println("[OK] Lấy danh sách phòng ban active thành công, số lượng: " + departmentList.size());
         } catch (Exception e) {
-            System.out.println("[ERROR] Lỗi getActiveDepartments: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting active departments", e);
         }
         return departmentList;
     }

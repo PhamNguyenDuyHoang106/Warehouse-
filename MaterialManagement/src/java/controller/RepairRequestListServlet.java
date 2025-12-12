@@ -14,9 +14,16 @@ import java.io.IOException;
 import java.util.List;
 
 @WebServlet(name = "RepairRequestListServlet", urlPatterns = {"/repairrequestlist"})
-public class RepairRequestListServlet extends HttpServlet {
+public class RepairRequestListServlet extends BaseServlet {
 
-    private RepairRequestDAO repairRequestDAO = new RepairRequestDAO();
+    private RepairRequestDAO repairRequestDAO;
+
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        repairRequestDAO = new RepairRequestDAO();
+        registerDAO(repairRequestDAO);
+    }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)

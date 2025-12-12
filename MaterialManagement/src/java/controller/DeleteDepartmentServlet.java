@@ -14,9 +14,18 @@ import java.io.IOException;
 import java.sql.SQLException;
 
 @WebServlet(urlPatterns = {"/deletedepartment"})
-public class DeleteDepartmentServlet extends HttpServlet {
-    private DepartmentDAO departmentDAO = new DepartmentDAO();
-    private RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
+public class DeleteDepartmentServlet extends BaseServlet {
+    private DepartmentDAO departmentDAO;
+    private RolePermissionDAO rolePermissionDAO;
+    
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        departmentDAO = new DepartmentDAO();
+        rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(departmentDAO);
+        registerDAO(rolePermissionDAO);
+    }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -41,7 +50,6 @@ public class DeleteDepartmentServlet extends HttpServlet {
             request.setAttribute("message", "Department deleted successfully!");
             response.sendRedirect("depairmentlist");
         } catch (Exception e) {
-            System.out.println("❌ Lỗi khi xóa phòng ban: " + e.getMessage());
             request.setAttribute("error", "Error when deleting department: " + e.getMessage());
             request.getRequestDispatcher("depairmentlist").forward(request, response);
         }

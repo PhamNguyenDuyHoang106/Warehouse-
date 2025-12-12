@@ -8,7 +8,6 @@ import entity.Role;
 import entity.Permission;
 import entity.Module;
 import entity.User;
-import utils.PermissionHelper;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,14 +19,30 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @WebServlet(name = "RolePermissionServlet", urlPatterns = {"/RolePermission"})
-public class RolePermissionServlet extends HttpServlet {
+public class RolePermissionServlet extends BaseServlet {
 
-    private RoleDAO roleDAO = new RoleDAO();
-    private PermissionDAO permissionDAO = new PermissionDAO();
-    private RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
-    private ModuleDAO moduleDAO = new ModuleDAO();
+    private static final Logger LOGGER = Logger.getLogger(RolePermissionServlet.class.getName());
+    private RoleDAO roleDAO;
+    private PermissionDAO permissionDAO;
+    private RolePermissionDAO rolePermissionDAO;
+    private ModuleDAO moduleDAO;
+    
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        roleDAO = new RoleDAO();
+        permissionDAO = new PermissionDAO();
+        rolePermissionDAO = new RolePermissionDAO();
+        moduleDAO = new ModuleDAO();
+        registerDAO(roleDAO);
+        registerDAO(permissionDAO);
+        registerDAO(rolePermissionDAO);
+        registerDAO(moduleDAO);
+    }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -55,11 +70,8 @@ public class RolePermissionServlet extends HttpServlet {
             }
 
             List<Role> roles = roleDAO.getAllRolesIncludingAdmin();
-            System.out.println("✅ Loaded " + roles.size() + " roles");
             
-            // Get all modules first
             List<Module> allModules = moduleDAO.getAllModules();
-            System.out.println("✅ Loaded " + allModules.size() + " modules");
             
             // Get permissions - if category selected, filter by category
             List<Permission> allPermissions = permissionDAO.getAllPermissions();
@@ -77,10 +89,8 @@ public class RolePermissionServlet extends HttpServlet {
             } else if (!searchKeyword.isEmpty()) {
                 permissions = permissionDAO.searchPermissions(searchKeyword);
             } else {
-                permissions = new ArrayList<>(); // Don't load all permissions if no category selected
+                permissions = new ArrayList<>();
             }
-            
-            System.out.println("✅ Loaded " + permissions.size() + " permissions");
 
             // Ánh xạ quyền theo module (only if we have permissions)
             Map<Integer, List<Permission>> permissionsByModule = new HashMap<>();
@@ -129,7 +139,6 @@ public class RolePermissionServlet extends HttpServlet {
                     displayRoles.add(role);
                 }
             }
-            System.out.println("✅ Filtered roles: " + displayRoles.size() + " roles (excluding Admin and system roles)");
 
             // Ánh xạ quyền đã gán cho từng vai trò (chỉ cho các role được hiển thị)
             // Luôn build map với tất cả permissions để có thể save được
@@ -146,22 +155,19 @@ public class RolePermissionServlet extends HttpServlet {
                 }
                 rolePermissionMap.put(role.getRoleId(), permMap);
             }
-            System.out.println("✅ Built rolePermissionMap for " + rolePermissionMap.size() + " roles");
             
             request.setAttribute("roles", displayRoles);
             request.setAttribute("modules", modules);
-            request.setAttribute("allModules", allModules); // All modules for category list
+            request.setAttribute("allModules", allModules);
             request.setAttribute("permissionsByModule", permissionsByModule);
             request.setAttribute("rolePermissionMap", rolePermissionMap);
             request.setAttribute("searchKeyword", searchKeyword);
             request.setAttribute("selectedCategory", selectedCategory != null ? selectedCategory : "");
-            
-            System.out.println("✅ Forwarding to RolePermission.jsp with " + displayRoles.size() + " roles, " + modules.size() + " modules, " + permissionsByModule.size() + " permission groups");
 
             request.getRequestDispatcher("RolePermission.jsp").forward(request, response);
         } catch (Exception e) {
             request.setAttribute("errorMessage", "System error: " + e.getMessage());
-            System.out.println("❌ Error in doGet: " + e.getMessage());
+            LOGGER.log(Level.SEVERE, "Error in doGet", e);
             e.printStackTrace();
             throw new ServletException("System error", e);
         }
@@ -206,8 +212,6 @@ public class RolePermissionServlet extends HttpServlet {
                 }
             }
             
-            System.out.println("✅ doPost: Processing permissions for " + displayRoles.size() + " roles (excluding Admin and system roles)");
-            
             // CHỈ xử lý permissions cho các role được hiển thị trong form
             for (Role role : displayRoles) {
                 for (Permission perm : permissions) {
@@ -217,15 +221,11 @@ public class RolePermissionServlet extends HttpServlet {
 
                     if (isChecked && !hasPermission) {
                         rolePermissionDAO.assignPermissionToRole(role.getRoleId(), perm.getPermissionId());
-                        System.out.println("✅ Assigned permission " + perm.getPermissionId() + " to role " + role.getRoleId());
                     } else if (!isChecked && hasPermission) {
                         rolePermissionDAO.removePermissionFromRole(role.getRoleId(), perm.getPermissionId());
-                        System.out.println("✅ Removed permission " + perm.getPermissionId() + " from role " + role.getRoleId());
                     }
                 }
             }
-            
-            System.out.println("✅ doPost: Skipped Admin (role_id=1) and system roles - they have full access and should not be modified");
 
             request.setAttribute("successMessage", "Permissions updated successfully!");
             request.setAttribute("searchKeyword", searchKeyword);
@@ -235,8 +235,7 @@ public class RolePermissionServlet extends HttpServlet {
             request.setAttribute("errorMessage", "System error: " + e.getMessage());
             request.setAttribute("searchKeyword", request.getParameter("search") != null ? request.getParameter("search") : "");
             request.setAttribute("selectedCategory", request.getParameter("category") != null ? request.getParameter("category") : "");
-            System.out.println("❌ Error in doPost: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error in doPost", e);
             doGet(request, response);
         }
     }

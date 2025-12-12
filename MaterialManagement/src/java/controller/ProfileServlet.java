@@ -21,7 +21,7 @@ import java.util.Map;
 @MultipartConfig
 public class ProfileServlet extends HttpServlet {
 
-    private UserDAO userDAO = new UserDAO();
+    private UserDAO userDAO;
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -56,6 +56,10 @@ public class ProfileServlet extends HttpServlet {
 
         User user = (User) session.getAttribute("user");
 
+        if (userDAO == null) {
+            userDAO = new UserDAO();
+        }
+        
         try {
             request.setCharacterEncoding("UTF-8");
 
@@ -145,6 +149,15 @@ public class ProfileServlet extends HttpServlet {
             request.setAttribute("error", "An error occurred: " + e.getMessage());
             request.setAttribute("user", user);
             request.getRequestDispatcher("Profile.jsp").forward(request, response);
+        } finally {
+            if (userDAO != null) {
+                try {
+                    userDAO.close();
+                } catch (Exception e) {
+                    // Ignore
+                }
+                userDAO = null;
+            }
         }
     }
 }

@@ -6,8 +6,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class RoleDAO extends DBContext {
+    private static final Logger LOGGER = Logger.getLogger(RoleDAO.class.getName());
 
     public List<Role> getAllRoles() {
         List<Role> roleList = new ArrayList<>();
@@ -24,10 +27,8 @@ public class RoleDAO extends DBContext {
                 role.setStatus(rs.getString("status"));
                 roleList.add(role);
             }
-            System.out.println("✅ Retrieved roles (excluding Admin) successfully, count: " + roleList.size());
         } catch (Exception e) {
-            System.out.println("❌ Error in getAllRoles: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting all roles", e);
         }
         return roleList;
     }
@@ -44,13 +45,11 @@ public class RoleDAO extends DBContext {
                     role.setDescription(rs.getString("description"));
                     role.setIsSystem(rs.getBoolean("is_system"));
                     role.setStatus(rs.getString("status"));
-                    System.out.println("✅ Retrieved role with ID: " + roleId);
                     return role;
                 }
             }
         } catch (Exception e) {
-            System.out.println("❌ Error in getRoleById: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting role by ID", e);
         }
         return null;
     }
@@ -67,13 +66,11 @@ public class RoleDAO extends DBContext {
                     role.setDescription(rs.getString("description"));
                     role.setIsSystem(rs.getBoolean("is_system"));
                     role.setStatus(rs.getString("status"));
-                    System.out.println("✅ Retrieved role (including admin) with ID: " + roleId + ", is_system: " + rs.getBoolean("is_system"));
                     return role;
                 }
             }
         } catch (Exception e) {
-            System.out.println("❌ Error in getRoleByIdIncludingAdmin: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting role by ID including admin", e);
         }
         return null;
     }
@@ -110,10 +107,8 @@ public class RoleDAO extends DBContext {
                 
                 roleList.add(role);
             }
-            System.out.println("✅ Retrieved all roles (including Admin) successfully, count: " + roleList.size());
         } catch (Exception e) {
-            System.out.println("❌ Error in getAllRolesIncludingAdmin: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting all roles including admin", e);
         }
         return roleList;
     }

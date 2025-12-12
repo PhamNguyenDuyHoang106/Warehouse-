@@ -6,8 +6,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class PermissionDAO extends DBContext {
+    private static final Logger LOGGER = Logger.getLogger(PermissionDAO.class.getName());
 
     public List<Permission> getAllPermissions() {
         List<Permission> permissionList = new ArrayList<>();
@@ -23,10 +26,8 @@ public class PermissionDAO extends DBContext {
                 permission.setModuleId(rs.getObject("module_id") != null ? rs.getInt("module_id") : null);
                 permissionList.add(permission);
             }
-            System.out.println("✅ Lấy danh sách permission thành công, số lượng: " + permissionList.size());
         } catch (Exception e) {
-            System.out.println("❌ Lỗi getAllPermissions: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting all permissions", e);
         }
         return permissionList;
     }
@@ -48,11 +49,9 @@ public class PermissionDAO extends DBContext {
                     permission.setModuleId(rs.getObject("module_id") != null ? rs.getInt("module_id") : null);
                     permissionList.add(permission);
                 }
-                System.out.println("✅ Lấy danh sách permission cho role " + roleId + " thành công, số lượng: " + permissionList.size());
             }
         } catch (Exception e) {
-            System.out.println("❌ Lỗi getPermissionsByRole: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting permissions by role", e);
         }
         return permissionList;
     }
@@ -77,11 +76,9 @@ public class PermissionDAO extends DBContext {
                     permission.setModuleId(rs.getObject("module_id") != null ? rs.getInt("module_id") : null);
                     permissionList.add(permission);
                 }
-                System.out.println("✅ Tìm kiếm permission với keyword '" + keyword + "', số lượng: " + permissionList.size());
             }
         } catch (Exception e) {
-            System.out.println("❌ Lỗi searchPermissions: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error searching permissions", e);
         }
         return permissionList;
     }

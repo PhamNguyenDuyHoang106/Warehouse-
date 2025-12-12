@@ -37,10 +37,15 @@ public class MaterialServlet extends HttpServlet {
             return;
         }
         
-        MaterialDAO dao = new MaterialDAO();
-        List<Material> productList = dao.getAllProducts();
-        request.setAttribute("productList", productList);
-        request.getRequestDispatcher("MaterialList.jsp").forward(request, response);
+        MaterialDAO dao = null;
+        try {
+            dao = new MaterialDAO();
+            List<Material> productList = dao.getAllProducts();
+            request.setAttribute("productList", productList);
+            request.getRequestDispatcher("MaterialList.jsp").forward(request, response);
+        } finally {
+            if (dao != null) dao.close();
+        }
     } 
 
     @Override

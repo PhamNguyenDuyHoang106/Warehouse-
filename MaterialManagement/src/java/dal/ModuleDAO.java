@@ -6,8 +6,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ModuleDAO extends DBContext {
+    private static final Logger LOGGER = Logger.getLogger(ModuleDAO.class.getName());
 
     public List<Module> getAllModules() {
         List<Module> moduleList = new ArrayList<>();
@@ -30,10 +33,8 @@ public class ModuleDAO extends DBContext {
                 
                 moduleList.add(module);
             }
-            System.out.println("✅ Lấy danh sách module thành công, số lượng: " + moduleList.size());
         } catch (Exception e) {
-            System.out.println("❌ Lỗi getAllModules: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error getting all modules", e);
         }
         return moduleList;
     }

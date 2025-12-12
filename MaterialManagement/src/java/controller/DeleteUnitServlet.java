@@ -29,9 +29,14 @@ public class DeleteUnitServlet extends HttpServlet {
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
         }
-        dal.UnitDAO unitDAO = new dal.UnitDAO();
-        int id = Integer.parseInt(request.getParameter("id"));
-        unitDAO.deleteUnit(id); // Chỉ xóa unit, không xóa materials
-        response.sendRedirect("UnitList");
+        dal.UnitDAO unitDAO = null;
+        try {
+            unitDAO = new dal.UnitDAO();
+            int id = Integer.parseInt(request.getParameter("id"));
+            unitDAO.deleteUnit(id); // Chỉ xóa unit, không xóa materials
+            response.sendRedirect("UnitList");
+        } finally {
+            if (unitDAO != null) unitDAO.close();
+        }
     }
 }

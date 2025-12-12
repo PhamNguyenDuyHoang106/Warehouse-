@@ -38,27 +38,31 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
             return;
         }
 
-        PurchaseRequestDAO purchaseRequestDAO = new PurchaseRequestDAO();
-        PurchaseRequestDetailDAO purchaseRequestDetailDAO = new PurchaseRequestDetailDAO();
-        UserDAO userDAO = new UserDAO();
-        RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
-        MaterialDAO materialDAO = new MaterialDAO();
-
-        // Admin (roleId == 1) has full access - check first before permission check
-        boolean hasPermission;
-        if (currentUser.getRoleId() == 1) {
-            hasPermission = true;
-            LOGGER.log(Level.INFO, "✅ PurchaseRequestDetailServlet - User {0} is ADMIN (roleId=1), granting full access", currentUser.getUsername());
-        } else {
-            hasPermission = PermissionHelper.hasPermission(currentUser, "DS yêu cầu mua");
-        }
-        if (!hasPermission) {
-            request.setAttribute("error", "You do not have permission to view purchase request details.");
-            request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
-            return;
-        }
+        PurchaseRequestDAO purchaseRequestDAO = null;
+        PurchaseRequestDetailDAO purchaseRequestDetailDAO = null;
+        UserDAO userDAO = null;
+        RolePermissionDAO rolePermissionDAO = null;
+        MaterialDAO materialDAO = null;
 
         try {
+            purchaseRequestDAO = new PurchaseRequestDAO();
+            purchaseRequestDetailDAO = new PurchaseRequestDetailDAO();
+            userDAO = new UserDAO();
+            rolePermissionDAO = new RolePermissionDAO();
+            materialDAO = new MaterialDAO();
+
+            // Admin (roleId == 1) has full access - check first before permission check
+            boolean hasPermission;
+            if (currentUser.getRoleId() == 1) {
+                hasPermission = true;
+            } else {
+                hasPermission = PermissionHelper.hasPermission(currentUser, "DS yêu cầu mua");
+            }
+            if (!hasPermission) {
+                request.setAttribute("error", "You do not have permission to view purchase request details.");
+                request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
+                return;
+            }
             int purchaseRequestId = Integer.parseInt(request.getParameter("id"));
             
             PurchaseRequest purchaseRequest = purchaseRequestDAO.getPurchaseRequestById(purchaseRequestId);
@@ -131,6 +135,12 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
             LOGGER.log(Level.SEVERE, "Error in doGet for PurchaseRequestDetailServlet for ID: " + request.getParameter("id"), ex);
             request.setAttribute("error", "An error occurred while processing your request. Please try again later.");
             request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
+        } finally {
+            if (purchaseRequestDAO != null) purchaseRequestDAO.close();
+            if (purchaseRequestDetailDAO != null) purchaseRequestDetailDAO.close();
+            if (userDAO != null) userDAO.close();
+            if (rolePermissionDAO != null) rolePermissionDAO.close();
+            if (materialDAO != null) materialDAO.close();
         }
     } 
 
@@ -146,24 +156,25 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
             return;
         }
 
-        PurchaseRequestDAO purchaseRequestDAO = new PurchaseRequestDAO();
-        RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
-
-        // Admin (roleId == 1) has full access - check first before permission check
-        boolean hasPermission;
-        if (currentUser.getRoleId() == 1) {
-            hasPermission = true;
-            LOGGER.log(Level.INFO, "✅ PurchaseRequestDetailServlet doPost - User {0} is ADMIN (roleId=1), granting full access", currentUser.getUsername());
-        } else {
-            hasPermission = PermissionHelper.hasPermission(currentUser, "Duyệt PR");
-        }
-        if (!hasPermission) {
-            request.setAttribute("error", "You do not have permission to approve or reject purchase requests.");
-            request.getRequestDispatcher("PurchaseRequestDetail.jsp").forward(request, response);
-            return;
-        }
+        PurchaseRequestDAO purchaseRequestDAO = null;
+        RolePermissionDAO rolePermissionDAO = null;
 
         try {
+            purchaseRequestDAO = new PurchaseRequestDAO();
+            rolePermissionDAO = new RolePermissionDAO();
+
+            // Admin (roleId == 1) has full access - check first before permission check
+            boolean hasPermission;
+            if (currentUser.getRoleId() == 1) {
+                hasPermission = true;
+            } else {
+                hasPermission = PermissionHelper.hasPermission(currentUser, "Duyệt PR");
+            }
+            if (!hasPermission) {
+                request.setAttribute("error", "You do not have permission to approve or reject purchase requests.");
+                request.getRequestDispatcher("PurchaseRequestDetail.jsp").forward(request, response);
+                return;
+            }
             String modalStatus = request.getParameter("modalStatus");
             int purchaseRequestId = Integer.parseInt(request.getParameter("id"));
             String decisionNote = request.getParameter("reason");
@@ -179,7 +190,6 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
             }
             
             if (success) {
-                LOGGER.log(Level.INFO, "Purchase request ID " + purchaseRequestId + " successfully " + modalStatus);
                 response.sendRedirect(request.getContextPath() + "/ListPurchaseRequests?success=The request has been " + ("approved".equals(modalStatus) ? "approved" : "rejected") + " successfully!");
                 return;
             } else {
@@ -196,6 +206,9 @@ public class PurchaseRequestDetailServlet extends HttpServlet {
             LOGGER.log(Level.SEVERE, "Error in doPost for PurchaseRequestDetailServlet for ID: " + request.getParameter("id"), ex);
             response.sendRedirect(request.getContextPath() + "/ListPurchaseRequests?error=An error occurred while processing the request. Please try again later.");
             return;
+        } finally {
+            if (purchaseRequestDAO != null) purchaseRequestDAO.close();
+            if (rolePermissionDAO != null) rolePermissionDAO.close();
         }
     }
 

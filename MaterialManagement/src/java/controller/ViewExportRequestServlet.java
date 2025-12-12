@@ -20,7 +20,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 @WebServlet(name = "ViewExportRequestServlet", urlPatterns = {"/ViewExportRequest"})
-public class ViewExportRequestServlet extends HttpServlet {
+public class ViewExportRequestServlet extends BaseServlet {
 
     private ExportRequestDAO exportRequestDAO;
     private ExportRequestDetailDAO exportRequestDetailDAO;
@@ -30,11 +30,17 @@ public class ViewExportRequestServlet extends HttpServlet {
 
     @Override
     public void init() throws ServletException {
+        super.init();
         exportRequestDAO = new ExportRequestDAO();
         exportRequestDetailDAO = new ExportRequestDetailDAO();
         userDAO = new UserDAO();
         rolePermissionDAO = new RolePermissionDAO();
         customerDAO = new CustomerDAO();
+        registerDAO(exportRequestDAO);
+        registerDAO(exportRequestDetailDAO);
+        registerDAO(userDAO);
+        registerDAO(rolePermissionDAO);
+        registerDAO(customerDAO);
     }
 
     @Override

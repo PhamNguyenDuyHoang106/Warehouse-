@@ -13,9 +13,16 @@ import utils.PermissionHelper;
 import java.io.IOException;
 
 @WebServlet(name = "UserDetailServlet", urlPatterns = {"/UserDetail"})
-public class UserDetailServlet extends HttpServlet {
+public class UserDetailServlet extends BaseServlet {
 
-    private RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
+    private RolePermissionDAO rolePermissionDAO;
+    
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(rolePermissionDAO);
+    }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -41,9 +48,10 @@ public class UserDetailServlet extends HttpServlet {
             return;
         }
 
+        UserDAO userDAO = null;
         try {
             int userId = Integer.parseInt(userIdStr);
-            UserDAO userDAO = new UserDAO();
+            userDAO = new UserDAO();
             User user = userDAO.getUserById(userId);
 
             if (user != null) {
@@ -61,6 +69,8 @@ public class UserDetailServlet extends HttpServlet {
             request.setAttribute("error", "Error retrieving details: " + e.getMessage());
             e.printStackTrace();
             request.getRequestDispatcher("UserList.jsp").forward(request, response);
+        } finally {
+            if (userDAO != null) userDAO.close();
         }
     }
 }

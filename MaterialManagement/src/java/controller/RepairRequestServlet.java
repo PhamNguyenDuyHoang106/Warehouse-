@@ -65,7 +65,6 @@ public class RepairRequestServlet extends HttpServlet {
             List<Material> materialList = materialDAO.getAllProducts();
             
             // Debug log
-            LOGGER.log(Level.INFO, "Found " + materialList.size() + " materials for repair request autocomplete");
 
             supplierDAO = new SupplierDAO();
             List<Supplier> supplierList = supplierDAO.getAllSuppliers();
@@ -293,7 +292,6 @@ public class RepairRequestServlet extends HttpServlet {
             }
 
             boolean success = new RepairRequestDAO().createRepairRequest(requestObj, detailList);
-            LOGGER.log(Level.INFO, "[doPost] Kết quả lưu yêu cầu vào DB: " + success);
 
             if (success) {
                 // Get user and supplier data, then close connections immediately
@@ -404,7 +402,6 @@ public class RepairRequestServlet extends HttpServlet {
                                 LOGGER.log(Level.WARNING, "Failed to send email to manager: " + manager.getEmail() + " - " + e.getMessage());
                             }
                         } else {
-                            LOGGER.log(Level.INFO, "Manager has no valid email: " + manager.getFullName());
                         }
                     }
 
@@ -416,7 +413,6 @@ public class RepairRequestServlet extends HttpServlet {
                             LOGGER.log(Level.WARNING, "Failed to send email to user: " + user.getEmail() + " - " + e.getMessage());
                         }
                     } else {
-                        LOGGER.log(Level.INFO, "User has no valid email: " + user.getFullName());
                     }
                 }
             }
@@ -432,6 +428,10 @@ public class RepairRequestServlet extends HttpServlet {
 
     private String generateRequestCode() {
         RepairRequestDAO repairRequestDAO = new RepairRequestDAO();
-        return repairRequestDAO.generateNextRequestCode();
+        try {
+            return repairRequestDAO.generateNextRequestCode();
+        } finally {
+            repairRequestDAO.close();
+        }
     }
 }

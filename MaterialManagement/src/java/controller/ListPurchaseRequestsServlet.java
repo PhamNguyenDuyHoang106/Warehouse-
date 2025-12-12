@@ -32,26 +32,27 @@ public class ListPurchaseRequestsServlet extends HttpServlet {
             return;
         }
 
-        PurchaseRequestDAO prd = new PurchaseRequestDAO();
-        UserDAO userDAO = new UserDAO();
-        RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
-
-        // Admin (roleId == 1) has full access - check first before permission check
-        if (currentUser.getRoleId() == 1) {
-            System.out.println("✅ ListPurchaseRequestsServlet - User " + currentUser.getUsername() + " is ADMIN (roleId=1), granting full access");
-            // Admin has permission, continue to load the page
-        } else {
-            // For non-admin users, check permission
-            boolean hasPermission = PermissionHelper.hasPermission(currentUser, "DS yêu cầu mua");
-            if (!hasPermission) {
-                System.err.println("❌ ListPurchaseRequestsServlet - Access denied for user: " + currentUser.getUsername() + " (roleId: " + currentUser.getRoleId() + ")");
-                request.setAttribute("error", "You do not have permission to view purchase requests.");
-                request.getRequestDispatcher("error.jsp").forward(request, response);
-                return;
-            }
-        }
+        PurchaseRequestDAO prd = null;
+        UserDAO userDAO = null;
+        RolePermissionDAO rolePermissionDAO = null;
 
         try {
+            prd = new PurchaseRequestDAO();
+            userDAO = new UserDAO();
+            rolePermissionDAO = new RolePermissionDAO();
+
+            // Admin (roleId == 1) has full access - check first before permission check
+            if (currentUser.getRoleId() == 1) {
+                // Admin has permission, continue to load the page
+            } else {
+                // For non-admin users, check permission
+                boolean hasPermission = PermissionHelper.hasPermission(currentUser, "DS yêu cầu mua");
+                if (!hasPermission) {
+                    request.setAttribute("error", "You do not have permission to view purchase requests.");
+                    request.getRequestDispatcher("error.jsp").forward(request, response);
+                    return;
+                }
+            }
             String keyword = request.getParameter("keyword");
             String status = request.getParameter("status");
             String sortOption = request.getParameter("sort");
@@ -110,6 +111,10 @@ public class ListPurchaseRequestsServlet extends HttpServlet {
         } catch (Exception e) {
             request.setAttribute("error", "An error occurred: " + e.getMessage());
             request.getRequestDispatcher("error.jsp").forward(request, response);
+        } finally {
+            if (prd != null) prd.close();
+            if (userDAO != null) userDAO.close();
+            if (rolePermissionDAO != null) rolePermissionDAO.close();
         }
     }
 

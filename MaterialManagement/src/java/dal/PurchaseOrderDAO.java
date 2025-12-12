@@ -248,7 +248,6 @@ public class PurchaseOrderDAO extends DBContext {
         } else if (rejectionReason != null && !rejectionReason.trim().isEmpty()) {
             decisionNote = rejectionReason.trim();
         }
-        // TODO: Log decisionNote to Activity_Log table
         String sql = "UPDATE Purchase_Orders SET status = ?, confirmed_by = ?, confirmed_at = ?, updated_at = CURRENT_TIMESTAMP "
                 + "WHERE po_id = ? AND deleted_at IS NULL";
 
@@ -265,11 +264,7 @@ public class PurchaseOrderDAO extends DBContext {
                 ps.setTimestamp(3, confirmedAt);
                 ps.setInt(4, poId);
                 
-                LOGGER.log(Level.INFO, "Executing UPDATE - poId: {0}, status: {1}, confirmed_by: {2}, confirmed_at: {3}", 
-                    new Object[]{poId, normalizedStatus, newConfirmedBy, confirmedAt});
-                
                 int rowsAffected = ps.executeUpdate();
-                LOGGER.log(Level.INFO, "UPDATE result - poId: {0}, rowsAffected: {1}", new Object[]{poId, rowsAffected});
                 
                 if (rowsAffected == 0) {
                     LOGGER.log(Level.WARNING, "No rows affected for poId: {0}. PO may not exist or already deleted.", poId);

@@ -16,15 +16,18 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @WebServlet(name = "CategoryServlet", urlPatterns = {"/Category"})
-public class CategoryServlet extends HttpServlet {
+public class CategoryServlet extends BaseServlet {
     private CategoryDAO categoryDAO;
     private RolePermissionDAO rolePermissionDAO;
     private static final int PAGE_SIZE = 5;
 
     @Override
     public void init() throws ServletException {
+        super.init();
         categoryDAO = new CategoryDAO();
         rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(categoryDAO);
+        registerDAO(rolePermissionDAO);
     }
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
@@ -353,7 +356,6 @@ public class CategoryServlet extends HttpServlet {
                             if (currentPage < 1) currentPage = 1;
                         }
                     } catch (NumberFormatException e) {
-                        System.out.println("CategoryServlet - Invalid page number: " + pageStr);
                     }
 
                     String sortCol = null;

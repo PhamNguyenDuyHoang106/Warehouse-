@@ -16,12 +16,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 @WebServlet(name = "AddUnitServlet", urlPatterns = {"/AddUnit"})
-public class AddUnitServlet extends HttpServlet {
+public class AddUnitServlet extends BaseServlet {
     private RolePermissionDAO rolePermissionDAO;
 
     @Override
     public void init() throws ServletException {
+        super.init();
         rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(rolePermissionDAO);
     }
 
     @Override
@@ -108,22 +110,23 @@ public class AddUnitServlet extends HttpServlet {
         unit.setBase(isBase);
         unit.setStatus(status);
         
-        UnitDAO unitDAO = new UnitDAO();
-        Map<String, String> validationErrors = UnitValidator.validateUnit(unit, unitDAO);
-        
-        if (!validationErrors.isEmpty()) {
-            request.setAttribute("errors", validationErrors);
-            request.setAttribute("unitCode", unitCode);
-            request.setAttribute("unitName", unitName);
-            request.setAttribute("symbol", symbol);
-            request.setAttribute("isBase", isBase);
-            request.setAttribute("status", status);
-            request.getRequestDispatcher("AddUnit.jsp").forward(request, response);
-            return;
-        }
-        
-        // Add unit to database
+        UnitDAO unitDAO = null;
         try {
+            unitDAO = new UnitDAO();
+            Map<String, String> validationErrors = UnitValidator.validateUnit(unit, unitDAO);
+            
+            if (!validationErrors.isEmpty()) {
+                request.setAttribute("errors", validationErrors);
+                request.setAttribute("unitCode", unitCode);
+                request.setAttribute("unitName", unitName);
+                request.setAttribute("symbol", symbol);
+                request.setAttribute("isBase", isBase);
+                request.setAttribute("status", status);
+                request.getRequestDispatcher("AddUnit.jsp").forward(request, response);
+                return;
+            }
+            
+            // Add unit to database
             unitDAO.addUnit(unit);
             response.sendRedirect("UnitList");
         } catch (Exception e) {
@@ -134,6 +137,8 @@ public class AddUnitServlet extends HttpServlet {
             request.setAttribute("isBase", isBase);
             request.setAttribute("status", status);
             request.getRequestDispatcher("AddUnit.jsp").forward(request, response);
+        } finally {
+            if (unitDAO != null) unitDAO.close();
         }
     }
 } 

@@ -27,14 +27,16 @@ import java.util.Map;
     maxFileSize = 1024 * 1024 * 10,
     maxRequestSize = 1024 * 1024 * 15
 )
-public class AddMaterialServlet extends HttpServlet {
+public class AddMaterialServlet extends BaseServlet {
 
     private static final String UPLOAD_DIRECTORY = "images/material";
     private RolePermissionDAO rolePermissionDAO;
 
     @Override
     public void init() throws ServletException {
+        super.init();
         rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(rolePermissionDAO);
     }
 
     @Override
@@ -64,17 +66,26 @@ public class AddMaterialServlet extends HttpServlet {
             }
         }
 
-        CategoryDAO cd = new CategoryDAO();
-        UnitDAO ud = new UnitDAO();
-        request.setAttribute("categories", cd.getAllCategories());
-        request.setAttribute("units", ud.getAllUnits());
+        CategoryDAO cd = null;
+        UnitDAO ud = null;
+        MaterialDAO materialDAO = null;
+        try {
+            cd = new CategoryDAO();
+            ud = new UnitDAO();
+            request.setAttribute("categories", cd.getAllCategories());
+            request.setAttribute("units", ud.getAllUnits());
 
-        MaterialDAO materialDAO = new MaterialDAO();
-        int maxNum = materialDAO.getMaxMaterialNumber();
-        String newMaterialCode = "MAT" + (maxNum + 1);
-        request.setAttribute("materialCode", newMaterialCode);
+            materialDAO = new MaterialDAO();
+            int maxNum = materialDAO.getMaxMaterialNumber();
+            String newMaterialCode = "MAT" + (maxNum + 1);
+            request.setAttribute("materialCode", newMaterialCode);
 
-        request.getRequestDispatcher("AddMaterial.jsp").forward(request, response);
+            request.getRequestDispatcher("AddMaterial.jsp").forward(request, response);
+        } finally {
+            if (cd != null) cd.close();
+            if (ud != null) ud.close();
+            if (materialDAO != null) materialDAO.close();
+        }
     }
 
     @Override
@@ -97,6 +108,9 @@ public class AddMaterialServlet extends HttpServlet {
             }
         }
 
+        CategoryDAO categoryDAO = null;
+        UnitDAO unitDAO = null;
+        MaterialDAO materialDAO = null;
         try {
             request.setCharacterEncoding("UTF-8");
 
@@ -129,6 +143,8 @@ public class AddMaterialServlet extends HttpServlet {
             }
 
             if (!errors.isEmpty()) {
+                categoryDAO = new CategoryDAO();
+                unitDAO = new UnitDAO();
                 Material m = new Material();
                 m.setMaterialCode(materialCode);
                 m.setMaterialName(materialName);
@@ -139,8 +155,8 @@ public class AddMaterialServlet extends HttpServlet {
 
                 request.setAttribute("errors", errors);
                 request.setAttribute("m", m);
-                request.setAttribute("categories", new CategoryDAO().getAllCategories());
-                request.setAttribute("units", new UnitDAO().getAllUnits());
+                request.setAttribute("categories", categoryDAO.getAllCategories());
+                request.setAttribute("units", unitDAO.getAllUnits());
                 request.setAttribute("materialCode", materialCode);
                 request.setAttribute("barcode", barcode);
                 request.setAttribute("materialsUrl", urlInput);
@@ -178,10 +194,12 @@ public class AddMaterialServlet extends HttpServlet {
                 }
                 m.setUrl(finalUrl);
 
+                if (categoryDAO == null) categoryDAO = new CategoryDAO();
+                if (unitDAO == null) unitDAO = new UnitDAO();
                 request.setAttribute("error", "Đường dẫn URL không được vượt quá 500 ký tự.");
                 request.setAttribute("m", m);
-                request.setAttribute("categories", new CategoryDAO().getAllCategories());
-                request.setAttribute("units", new UnitDAO().getAllUnits());
+                request.setAttribute("categories", categoryDAO.getAllCategories());
+                request.setAttribute("units", unitDAO.getAllUnits());
                 request.setAttribute("materialCode", materialCode);
                 request.setAttribute("barcode", barcode);
                 request.setAttribute("materialsUrl", urlInput);
@@ -195,16 +213,20 @@ public class AddMaterialServlet extends HttpServlet {
             }
 
             if (categoryIdStr == null || categoryIdStr.isEmpty()) {
+                if (categoryDAO == null) categoryDAO = new CategoryDAO();
+                if (unitDAO == null) unitDAO = new UnitDAO();
                 request.setAttribute("error", "Bạn phải chọn Category từ danh sách gợi ý.");
-                request.setAttribute("categories", new CategoryDAO().getAllCategories());
-                request.setAttribute("units", new UnitDAO().getAllUnits());
+                request.setAttribute("categories", categoryDAO.getAllCategories());
+                request.setAttribute("units", unitDAO.getAllUnits());
                 request.getRequestDispatcher("AddMaterial.jsp").forward(request, response);
                 return;
             }
             if (unitIdStr == null || unitIdStr.isEmpty()) {
+                if (categoryDAO == null) categoryDAO = new CategoryDAO();
+                if (unitDAO == null) unitDAO = new UnitDAO();
                 request.setAttribute("error", "Bạn phải chọn Unit từ danh sách gợi ý.");
-                request.setAttribute("categories", new CategoryDAO().getAllCategories());
-                request.setAttribute("units", new UnitDAO().getAllUnits());
+                request.setAttribute("categories", categoryDAO.getAllCategories());
+                request.setAttribute("units", unitDAO.getAllUnits());
                 request.getRequestDispatcher("AddMaterial.jsp").forward(request, response);
                 return;
             }
@@ -236,10 +258,12 @@ public class AddMaterialServlet extends HttpServlet {
             material.setCreatedBy(user.getUserId());
             material.setUpdatedBy(user.getUserId());
 
-            MaterialDAO materialDAO = new MaterialDAO();
+            materialDAO = new MaterialDAO();
             if (materialDAO.isMaterialCodeExists(materialCode)) {
-                request.setAttribute("categories", new CategoryDAO().getAllCategories());
-                request.setAttribute("units", new UnitDAO().getAllUnits());
+                if (categoryDAO == null) categoryDAO = new CategoryDAO();
+                if (unitDAO == null) unitDAO = new UnitDAO();
+                request.setAttribute("categories", categoryDAO.getAllCategories());
+                request.setAttribute("units", unitDAO.getAllUnits());
                 request.setAttribute("error", "Mã vật tư đã tồn tại.");
                 request.setAttribute("m", material);
                 request.setAttribute("materialCode", materialCode);
@@ -248,8 +272,10 @@ public class AddMaterialServlet extends HttpServlet {
             }
 
             if (materialDAO.isMaterialNameAndStatusExists(materialName, materialStatus)) {
-                request.setAttribute("categories", new CategoryDAO().getAllCategories());
-                request.setAttribute("units", new UnitDAO().getAllUnits());
+                if (categoryDAO == null) categoryDAO = new CategoryDAO();
+                if (unitDAO == null) unitDAO = new UnitDAO();
+                request.setAttribute("categories", categoryDAO.getAllCategories());
+                request.setAttribute("units", unitDAO.getAllUnits());
                 request.setAttribute("error", "Tên vật tư đã tồn tại với trạng thái này.");
                 request.setAttribute("m", material);
                 request.setAttribute("materialCode", materialCode);
@@ -262,10 +288,16 @@ public class AddMaterialServlet extends HttpServlet {
             response.sendRedirect("dashboardmaterial?success=Material added successfully");
         } catch (Exception ex) {
             ex.printStackTrace();
+            if (categoryDAO == null) categoryDAO = new CategoryDAO();
+            if (unitDAO == null) unitDAO = new UnitDAO();
             request.setAttribute("error", "Đã xảy ra lỗi: " + ex.getMessage());
-            request.setAttribute("categories", new CategoryDAO().getAllCategories());
-            request.setAttribute("units", new UnitDAO().getAllUnits());
+            request.setAttribute("categories", categoryDAO.getAllCategories());
+            request.setAttribute("units", unitDAO.getAllUnits());
             request.getRequestDispatcher("AddMaterial.jsp").forward(request, response);
+        } finally {
+            if (categoryDAO != null) categoryDAO.close();
+            if (unitDAO != null) unitDAO.close();
+            if (materialDAO != null) materialDAO.close();
         }
     }
 

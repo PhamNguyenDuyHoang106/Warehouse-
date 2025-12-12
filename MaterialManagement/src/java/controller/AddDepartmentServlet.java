@@ -15,14 +15,17 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 
 @WebServlet(urlPatterns = {"/adddepartment"})
-public class AddDepartmentServlet extends HttpServlet {
+public class AddDepartmentServlet extends BaseServlet {
     private DepartmentDAO departmentDAO;
     private RolePermissionDAO rolePermissionDAO;
 
     @Override
     public void init() throws ServletException {
+        super.init();
         departmentDAO = new DepartmentDAO();
         rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(departmentDAO);
+        registerDAO(rolePermissionDAO);
     }
 
     @Override

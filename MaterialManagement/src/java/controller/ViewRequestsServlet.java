@@ -22,7 +22,7 @@ import java.util.List;
 @WebServlet(name = "ViewRequestsServlet", urlPatterns = {"/ViewRequests"})
 public class ViewRequestsServlet extends HttpServlet {
 
-    private RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
+    private RolePermissionDAO rolePermissionDAO;
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -47,8 +47,12 @@ public class ViewRequestsServlet extends HttpServlet {
             return;
         }
 
+        RequestDAO requestDAO = null;
         try {
-            RequestDAO requestDAO = new RequestDAO();
+            requestDAO = new RequestDAO();
+            if (rolePermissionDAO == null) {
+                rolePermissionDAO = new RolePermissionDAO();
+            }
             Integer userId = user.getUserId();
 
             int page = request.getParameter("page") != null ? Integer.parseInt(request.getParameter("page")) : 1;
@@ -101,6 +105,8 @@ public class ViewRequestsServlet extends HttpServlet {
             request.getRequestDispatcher("/ViewRequests.jsp").forward(request, response);
         } catch (Exception e) {
             throw new ServletException("Error fetching requests", e);
+        } finally {
+            if (requestDAO != null) requestDAO.close();
         }
     }
 
@@ -125,8 +131,9 @@ public class ViewRequestsServlet extends HttpServlet {
             return;
         }
 
+        RequestDAO requestDAO = null;
         try {
-            RequestDAO requestDAO = new RequestDAO();
+            requestDAO = new RequestDAO();
             String action = request.getParameter("action");
             if ("cancel".equalsIgnoreCase(action)) {
                 String type = request.getParameter("type");
@@ -156,6 +163,8 @@ public class ViewRequestsServlet extends HttpServlet {
         } catch (Exception e) {
             response.sendRedirect(request.getContextPath() + "/ViewRequests?message=Error: " + e.getMessage());
             throw new ServletException("Error processing request", e);
+        } finally {
+            if (requestDAO != null) requestDAO.close();
         }
     }
 

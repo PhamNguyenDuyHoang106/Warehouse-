@@ -23,11 +23,20 @@ import utils.EmailUtils;
 import utils.PermissionHelper;
 
 @WebServlet(name = "PurchaseOrderListServlet", urlPatterns = {"/PurchaseOrderList"})
-public class PurchaseOrderListServlet extends HttpServlet {
+public class PurchaseOrderListServlet extends BaseServlet {
 
     private static final Logger LOGGER = Logger.getLogger(PurchaseOrderListServlet.class.getName());
-    private final PurchaseOrderDAO purchaseOrderDAO = new PurchaseOrderDAO();
-    private final RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
+    private PurchaseOrderDAO purchaseOrderDAO;
+    private RolePermissionDAO rolePermissionDAO;
+    
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        purchaseOrderDAO = new PurchaseOrderDAO();
+        rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(purchaseOrderDAO);
+        registerDAO(rolePermissionDAO);
+    }
     
     private static final int DEFAULT_PAGE = 1;
     private static final int DEFAULT_ITEMS_PER_PAGE = 10;
@@ -49,7 +58,6 @@ public class PurchaseOrderListServlet extends HttpServlet {
             boolean hasPermission;
             if (user.getRoleId() == 1) {
                 hasPermission = true;
-                LOGGER.log(Level.INFO, "✅ PurchaseOrderListServlet - User {0} is ADMIN (roleId=1), granting full access", user.getUsername());
             } else {
                 hasPermission = PermissionHelper.hasPermission(user, "DS đơn đặt hàng");
             }
@@ -176,8 +184,6 @@ public class PurchaseOrderListServlet extends HttpServlet {
                 String approvalReason = request.getParameter("approvalReason");
                 String rejectionReason = request.getParameter("rejectionReason");
 
-                LOGGER.log(Level.INFO, "Updating PO status - poId: {0}, status: {1}, approvalReason: {2}, rejectionReason: {3}", 
-                    new Object[]{poId, status, approvalReason, rejectionReason});
 
                 if ("sent".equalsIgnoreCase(status)) {
                     // Admin có toàn quyền - PermissionHelper đã xử lý
@@ -190,15 +196,15 @@ public class PurchaseOrderListServlet extends HttpServlet {
                 }
 
                 boolean success = purchaseOrderDAO.updatePurchaseOrderStatus(poId, status, user.getUserId(), approvalReason, rejectionReason);
-                LOGGER.log(Level.INFO, "Update PO status result - poId: {0}, status: {1}, success: {2}", 
-                    new Object[]{poId, status, success});
 
                 if (success) {
                     if ("sent".equalsIgnoreCase(status)) {
+                        SupplierDAO supplierDAO = null;
                         try {
                             PurchaseOrder po = purchaseOrderDAO.getPurchaseOrderById(poId);
                             if (po != null && po.getSupplierId() != null) {
-                                entity.Supplier supplier = new SupplierDAO().getSupplierByID(po.getSupplierId());
+                                supplierDAO = new SupplierDAO();
+                                entity.Supplier supplier = supplierDAO.getSupplierByID(po.getSupplierId());
                                 if (supplier != null && supplier.getEmail() != null && !supplier.getEmail().trim().isEmpty()) {
                                     String subject = "[Notification] Purchase Order Sent";
                                     String content = "Dear Supplier,<br><br>You have a new purchase order (PO Code: " + po.getPoCode() + ") sent to you. Please log in to the system to view details.<br><br>Thank you.";
@@ -213,6 +219,8 @@ public class PurchaseOrderListServlet extends HttpServlet {
                             }
                         } catch (Exception e) {
                             LOGGER.log(Level.WARNING, "[MAIL] Error when sending email to supplier for PO {0}: {1}", new Object[]{poId, e.getMessage()});
+                        } finally {
+                            if (supplierDAO != null) supplierDAO.close();
                         }
                     }
                     response.sendRedirect(request.getContextPath() + "/PurchaseOrderList?success=Status updated successfully");

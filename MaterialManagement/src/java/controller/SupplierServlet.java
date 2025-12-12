@@ -16,15 +16,18 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 
 @WebServlet(name = "SupplierServlet", urlPatterns = {"/Supplier"})
-public class SupplierServlet extends HttpServlet {
+public class SupplierServlet extends BaseServlet {
     private SupplierDAO supplierDAO;
     private RolePermissionDAO rolePermissionDAO;
     private static final int PAGE_SIZE = 5;
 
     @Override
     public void init() throws ServletException {
+        super.init();
         supplierDAO = new SupplierDAO();
         rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(supplierDAO);
+        registerDAO(rolePermissionDAO);
     }
 
     @Override

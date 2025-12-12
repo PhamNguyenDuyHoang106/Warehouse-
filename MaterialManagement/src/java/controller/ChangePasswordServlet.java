@@ -56,8 +56,10 @@ public class ChangePasswordServlet extends HttpServlet {
         String confirmPassword = request.getParameter("confirmPassword");
         String error = null;
         String message = null;
-        UserDAO userDAO = new UserDAO();
-        if (oldPassword == null || newPassword == null || confirmPassword == null
+        UserDAO userDAO = null;
+        try {
+            userDAO = new UserDAO();
+            if (oldPassword == null || newPassword == null || confirmPassword == null
                 || oldPassword.isEmpty() || newPassword.isEmpty() || confirmPassword.isEmpty()) {
             error = "All fields are required.";
         } else if (!PasswordHasher.verifyPassword(oldPassword, user.getPassword())) {
@@ -83,6 +85,8 @@ public class ChangePasswordServlet extends HttpServlet {
             } else {
                 error = "Failed to change password. Please try again.";
             }
+        } finally {
+            if (userDAO != null) userDAO.close();
         }
         request.setAttribute("error", error);
         request.setAttribute("message", message);

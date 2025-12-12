@@ -24,6 +24,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @WebServlet(name = "EditMaterialServlet", urlPatterns = {"/editmaterial"})
 @MultipartConfig(
@@ -32,7 +34,7 @@ import java.util.Map;
         maxRequestSize = 1024 * 1024 * 100
 )
 public class EditMaterialServlet extends HttpServlet {
-
+    private static final Logger LOGGER = Logger.getLogger(EditMaterialServlet.class.getName());
     private static final String UPLOAD_DIRECTORY = "images/material";
     private RolePermissionDAO rolePermissionDAO;
 
@@ -69,32 +71,24 @@ public class EditMaterialServlet extends HttpServlet {
             return;
         }
 
-        MaterialDAO materialDAO = new MaterialDAO();
+        MaterialDAO materialDAO = null;
+        CategoryDAO categoryDAO = null;
+        UnitDAO unitDAO = null;
         Material material = null;
         try {
+            materialDAO = new MaterialDAO();
             int id = Integer.parseInt(materialId);
             material = materialDAO.getInformation(id);
-        } catch (NumberFormatException e) {
-            System.out.println("❌ [EditMaterialServlet] Invalid materialId: " + materialId);
-            response.sendRedirect("dashboardmaterial");
-            return;
-        } catch (Exception e) {
-            System.out.println("❌ [EditMaterialServlet] Error getting material: " + e.getMessage());
-            e.printStackTrace();
-            response.sendRedirect("dashboardmaterial");
-            return;
-        }
+            
+            if (material == null) {
+                response.sendRedirect("dashboardmaterial");
+                return;
+            }
 
-        if (material == null) {
-            response.sendRedirect("dashboardmaterial");
-            return;
-        }
-
-        request.setAttribute("m", material);
-        
-        try {
-            CategoryDAO categoryDAO = new CategoryDAO();
-            UnitDAO unitDAO = new UnitDAO();
+            request.setAttribute("m", material);
+            
+            categoryDAO = new CategoryDAO();
+            unitDAO = new UnitDAO();
             
             List<Category> categories = categoryDAO.getAllCategories();
             List<Unit> units = unitDAO.getAllUnits();
@@ -111,11 +105,16 @@ public class EditMaterialServlet extends HttpServlet {
             request.setAttribute("units", units);
             
             request.getRequestDispatcher("EditMaterial.jsp").forward(request, response);
+        } catch (NumberFormatException e) {
+            response.sendRedirect("dashboardmaterial");
         } catch (Exception e) {
-            System.out.println("❌ [EditMaterialServlet] Error loading categories/units: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error loading material/categories/units", e);
             request.setAttribute("error", "Đã xảy ra lỗi khi tải dữ liệu: " + e.getMessage());
             request.getRequestDispatcher("error.jsp").forward(request, response);
+        } finally {
+            if (materialDAO != null) materialDAO.close();
+            if (categoryDAO != null) categoryDAO.close();
+            if (unitDAO != null) unitDAO.close();
         }
     }
 
@@ -168,69 +167,83 @@ public class EditMaterialServlet extends HttpServlet {
             BigDecimal volumePerUnit = parseDecimal(volumePerUnitStr, "volumePerUnit", errors, "Thể tích/đơn vị");
             Integer shelfLifeDays = parseInteger(shelfLifeDaysStr, "shelfLifeDays", errors, "Hạn sử dụng (ngày)");
 
-            MaterialDAO materialDAO = new MaterialDAO();
-            Material existingMaterial = materialDAO.getInformation(Integer.parseInt(materialId));
-            if (existingMaterial == null) {
-                request.setAttribute("error", "Vật tư không tồn tại.");
-                request.getRequestDispatcher("error.jsp").forward(request, response);
-                return;
-            }
+            MaterialDAO materialDAO = null;
+            CategoryDAO categoryDAO = null;
+            UnitDAO unitDAO = null;
+            try {
+                materialDAO = new MaterialDAO();
+                Material existingMaterial = materialDAO.getInformation(Integer.parseInt(materialId));
+                if (existingMaterial == null) {
+                    request.setAttribute("error", "Vật tư không tồn tại.");
+                    request.getRequestDispatcher("error.jsp").forward(request, response);
+                    return;
+                }
 
-            Material material = new Material();
-            material.setMaterialId(Integer.parseInt(materialId));
-            material.setMaterialCode(materialCode != null ? materialCode.trim() : "");
-            material.setMaterialName(materialName != null ? materialName.trim() : "");
-            material.setMaterialStatus(materialStatus != null ? materialStatus.trim() : "");
-            material.setBarcode(barcode != null ? barcode.trim() : null);
-            material.setMinStock(minStock);
-            material.setMaxStock(maxStock);
-            material.setWeightPerUnit(weightPerUnit);
-            material.setVolumePerUnit(volumePerUnit);
-            material.setShelfLifeDays(shelfLifeDays);
-            material.setSerialized(isSerialized);
-            material.setBatchControlled(isBatchControlled);
+                Material material = new Material();
+                material.setMaterialId(Integer.parseInt(materialId));
+                material.setMaterialCode(materialCode != null ? materialCode.trim() : "");
+                material.setMaterialName(materialName != null ? materialName.trim() : "");
+                material.setMaterialStatus(materialStatus != null ? materialStatus.trim() : "");
+                material.setBarcode(barcode != null ? barcode.trim() : null);
+                material.setMinStock(minStock);
+                material.setMaxStock(maxStock);
+                material.setWeightPerUnit(weightPerUnit);
+                material.setVolumePerUnit(volumePerUnit);
+                material.setShelfLifeDays(shelfLifeDays);
+                material.setSerialized(isSerialized);
+                material.setBatchControlled(isBatchControlled);
 
-            Category category = new Category();
-            category.setCategory_id(categoryId != null && !categoryId.isEmpty() ? Integer.parseInt(categoryId) : 0);
-            material.setCategory(category);
+                Category category = new Category();
+                category.setCategory_id(categoryId != null && !categoryId.isEmpty() ? Integer.parseInt(categoryId) : 0);
+                material.setCategory(category);
 
-            Unit unit = new Unit();
-            unit.setId(unitId != null && !unitId.isEmpty() ? Integer.parseInt(unitId) : 0);
-            material.setUnit(unit);
+                Unit unit = new Unit();
+                unit.setId(unitId != null && !unitId.isEmpty() ? Integer.parseInt(unitId) : 0);
+                material.setUnit(unit);
 
-            material.setUrl(urlInput.isEmpty() ? existingMaterial.getUrl() : urlInput);
+                material.setUrl(urlInput.isEmpty() ? existingMaterial.getUrl() : urlInput);
 
-            errors.putAll(MaterialValidator.validateMaterialUpdate(material));
+                errors.putAll(MaterialValidator.validateMaterialUpdate(material));
 
-            if (!errors.isEmpty()) {
-                request.setAttribute("errors", errors);
-                request.setAttribute("m", material);
-                request.setAttribute("categories", new CategoryDAO().getAllCategories());
-                request.setAttribute("units", new UnitDAO().getAllUnits());
-                request.setAttribute("barcode", barcode);
-                request.setAttribute("materialsUrl", urlInput);
-                request.setAttribute("minStock", minStockStr);
-                request.setAttribute("maxStock", maxStockStr);
-                request.setAttribute("weightPerUnit", weightPerUnitStr);
-                request.setAttribute("volumePerUnit", volumePerUnitStr);
-                request.setAttribute("shelfLifeDays", shelfLifeDaysStr);
+                if (!errors.isEmpty()) {
+                    categoryDAO = new CategoryDAO();
+                    unitDAO = new UnitDAO();
+                    request.setAttribute("errors", errors);
+                    request.setAttribute("m", material);
+                    request.setAttribute("categories", categoryDAO.getAllCategories());
+                    request.setAttribute("units", unitDAO.getAllUnits());
+                    request.setAttribute("barcode", barcode);
+                    request.setAttribute("materialsUrl", urlInput);
+                    request.setAttribute("minStock", minStockStr);
+                    request.setAttribute("maxStock", maxStockStr);
+                    request.setAttribute("weightPerUnit", weightPerUnitStr);
+                    request.setAttribute("volumePerUnit", volumePerUnitStr);
+                    request.setAttribute("shelfLifeDays", shelfLifeDaysStr);
+                    request.getRequestDispatcher("EditMaterial.jsp").forward(request, response);
+                    return;
+                }
+
+                String uploadedImage = handleImageUpload(request.getPart("imageFile"));
+                String finalUrl = uploadedImage != null
+                        ? uploadedImage
+                        : (!urlInput.isEmpty() ? urlInput : existingMaterial.getRawUrl());
+                material.setUrl(finalUrl);
+
+                material.setUpdatedBy(user.getUserId());
+
+                materialDAO.updateMaterial(material);
+                response.sendRedirect("dashboardmaterial?success=Material updated successfully");
+            } catch (Exception e) {
+                LOGGER.log(Level.SEVERE, "Error in doPost", e);
+                request.setAttribute("error", "Đã xảy ra lỗi: " + e.getMessage());
                 request.getRequestDispatcher("EditMaterial.jsp").forward(request, response);
-                return;
+            } finally {
+                if (materialDAO != null) materialDAO.close();
+                if (categoryDAO != null) categoryDAO.close();
+                if (unitDAO != null) unitDAO.close();
             }
-
-            String uploadedImage = handleImageUpload(request.getPart("imageFile"));
-            String finalUrl = uploadedImage != null
-                    ? uploadedImage
-                    : (!urlInput.isEmpty() ? urlInput : existingMaterial.getRawUrl());
-            material.setUrl(finalUrl);
-
-            material.setUpdatedBy(user.getUserId());
-
-            materialDAO.updateMaterial(material);
-            response.sendRedirect("dashboardmaterial?success=Material updated successfully");
         } catch (Exception e) {
-            System.out.println("❌ [EditMaterialServlet] Error: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error in doPost outer", e);
             request.setAttribute("error", "Đã xảy ra lỗi: " + e.getMessage());
             request.getRequestDispatcher("EditMaterial.jsp").forward(request, response);
         }

@@ -305,9 +305,6 @@ public class ImportMaterialServlet extends HttpServlet {
         String[] batchCodes = request.getParameterValues("batchCode[]");
         String[] expiryDates = request.getParameterValues("expiryDate[]");
 
-        LOGGER.log(Level.INFO, "Import form submitted - Code: {0}, PO ID: {1}, Warehouse ID: {2}, Date: {3}, Materials: {4}",
-                new Object[]{importCode, poIdStr, warehouseIdStr, importDateStr,
-                    materialIds != null ? materialIds.length : 0});
 
         Map<String, String> errors = new HashMap<>();
 
@@ -348,7 +345,6 @@ public class ImportMaterialServlet extends HttpServlet {
             return;
         }
 
-        LOGGER.log(Level.INFO, "Validation passed, proceeding to create import");
 
         ImportDAO importDAO = null;
         ImportDetailDAO detailDAO = null;
@@ -568,10 +564,8 @@ public class ImportMaterialServlet extends HttpServlet {
             importObj.setTotalAmount(totalAmount);
 
             int importId = importDAO.createImport(importObj);
-            LOGGER.log(Level.INFO, "Import created with ID: {0}", importId);
 
             if (importId > 0) {
-                LOGGER.log(Level.INFO, "Creating {0} import details", payloads.size());
                 boolean allDetailsAdded = true;
                 Timestamp now = Timestamp.valueOf(LocalDateTime.now());
 

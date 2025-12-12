@@ -49,27 +49,32 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
             return;
         }
 
-        UserDAO userDAO = new UserDAO();
-        CategoryDAO categoryDAO = new CategoryDAO();
-        RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
-        MaterialDAO materialDAO = new MaterialDAO();
-
-        // Admin (roleId == 1) has full access - check first before permission check
-        boolean hasPermission;
-        if (currentUser.getRoleId() == 1) {
-            hasPermission = true;
-            LOGGER.log(Level.INFO, "✅ CreatePurchaseRequestServlet doGet - User {0} is ADMIN (roleId=1), granting full access", currentUser.getUsername());
-        } else {
-            hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PR");
-        }
-        if (!hasPermission) {
-            request.setAttribute("error", "You do not have permission to create purchase requests.");
-            request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
-            return;
-        }
+        UserDAO userDAO = null;
+        CategoryDAO categoryDAO = null;
+        RolePermissionDAO rolePermissionDAO = null;
+        MaterialDAO materialDAO = null;
+        PurchaseRequestDAO prd = null;
 
         try {
-            PurchaseRequestDAO prd = new PurchaseRequestDAO();
+            userDAO = new UserDAO();
+            categoryDAO = new CategoryDAO();
+            rolePermissionDAO = new RolePermissionDAO();
+            materialDAO = new MaterialDAO();
+
+            // Admin (roleId == 1) has full access - check first before permission check
+            boolean hasPermission;
+            if (currentUser.getRoleId() == 1) {
+                hasPermission = true;
+            } else {
+                hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PR");
+            }
+            if (!hasPermission) {
+                request.setAttribute("error", "You do not have permission to create purchase requests.");
+                request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
+                return;
+            }
+
+            prd = new PurchaseRequestDAO();
             List<User> users = userDAO.getAllUsers();
             List<Category> categories = categoryDAO.getAllCategories();
             List<Material> materials = materialDAO.getAllProducts();
@@ -92,6 +97,12 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
         } catch (Exception e) {
             request.setAttribute("error", "An error occurred: " + e.getMessage());
             request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
+        } finally {
+            if (userDAO != null) userDAO.close();
+            if (categoryDAO != null) categoryDAO.close();
+            if (rolePermissionDAO != null) rolePermissionDAO.close();
+            if (materialDAO != null) materialDAO.close();
+            if (prd != null) prd.close();
         }
     }
 
@@ -107,27 +118,31 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
             return;
         }
 
-        PurchaseRequestDAO prd = new PurchaseRequestDAO();
-        CategoryDAO categoryDAO = new CategoryDAO();
-        RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
-        MaterialDAO materialDAO = new MaterialDAO();
-        UserDAO userDAO = new UserDAO();
-
-        // Admin (roleId == 1) has full access - check first before permission check
-        boolean hasPermission;
-        if (currentUser.getRoleId() == 1) {
-            hasPermission = true;
-            LOGGER.log(Level.INFO, "✅ CreatePurchaseRequestServlet doGet - User {0} is ADMIN (roleId=1), granting full access", currentUser.getUsername());
-        } else {
-            hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PR");
-        }
-        if (!hasPermission) {
-            request.setAttribute("error", "You do not have permission to create purchase requests.");
-            request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
-            return;
-        }
+        PurchaseRequestDAO prd = null;
+        CategoryDAO categoryDAO = null;
+        RolePermissionDAO rolePermissionDAO = null;
+        MaterialDAO materialDAO = null;
+        UserDAO userDAO = null;
 
         try {
+            prd = new PurchaseRequestDAO();
+            categoryDAO = new CategoryDAO();
+            rolePermissionDAO = new RolePermissionDAO();
+            materialDAO = new MaterialDAO();
+            userDAO = new UserDAO();
+
+            // Admin (roleId == 1) has full access - check first before permission check
+            boolean hasPermission;
+            if (currentUser.getRoleId() == 1) {
+                hasPermission = true;
+            } else {
+                hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PR");
+            }
+            if (!hasPermission) {
+                request.setAttribute("error", "You do not have permission to create purchase requests.");
+                request.getRequestDispatcher("PurchaseRequestList.jsp").forward(request, response);
+                return;
+            }
             String reason = request.getParameter("reason");
             String expectedDateStr = request.getParameter("expectedDate");
 
@@ -320,6 +335,12 @@ public class CreatePurchaseRequestServlet extends HttpServlet {
             LOGGER.log(Level.SEVERE, "Error creating purchase request", e);
             request.setAttribute("error", "System error: " + e.getMessage());
             request.getRequestDispatcher("PurchaseRequestForm.jsp").forward(request, response);
+        } finally {
+            if (prd != null) prd.close();
+            if (categoryDAO != null) categoryDAO.close();
+            if (rolePermissionDAO != null) rolePermissionDAO.close();
+            if (materialDAO != null) materialDAO.close();
+            if (userDAO != null) userDAO.close();
         }
     }
 

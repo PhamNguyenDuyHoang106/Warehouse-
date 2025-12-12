@@ -16,7 +16,6 @@ import dal.DashboardDAO;
 import entity.User;
 import java.math.BigDecimal;
 import java.io.IOException;
-import java.io.PrintWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -42,33 +41,6 @@ public class HomeServlet extends HttpServlet {
     private static final Logger LOGGER = Logger.getLogger(HomeServlet.class.getName());
 
     /**
-     * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
-     * methods.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
-    protected void processRequest(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        response.setContentType("text/html;charset=UTF-8");
-        try (PrintWriter out = response.getWriter()) {
-            /* TODO output your page here. You may use following sample code. */
-            out.println("<!DOCTYPE html>");
-            out.println("<html>");
-            out.println("<head>");
-            out.println("<title>Servlet HomeServlet</title>");
-            out.println("</head>");
-            out.println("<body>");
-            out.println("<h1>Servlet HomeServlet at " + request.getContextPath() + "</h1>");
-            out.println("</body>");
-            out.println("</html>");
-        }
-    }
-
-    // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
-    /**
      * Handles the HTTP <code>GET</code> method.
      *
      * @param request servlet request
@@ -82,14 +54,10 @@ public class HomeServlet extends HttpServlet {
         HttpSession session = request.getSession(false);
         User user = (User) session.getAttribute("user");
         
-        // Kiểm tra đăng nhập - nếu chưa đăng nhập thì redirect về trang login
         if (user == null) {
-            LOGGER.log(Level.INFO, "User not logged in, redirecting to Login.jsp");
             response.sendRedirect("Login.jsp");
             return;
         }
-        
-        LOGGER.log(Level.INFO, "User logged in: " + user.getUsername() + ", role: " + user.getRoleId());
         int roleId = user.getRoleId();
         request.setAttribute("roleId", roleId);
         request.setAttribute("isAdmin", roleId == 1);
@@ -144,7 +112,6 @@ public class HomeServlet extends HttpServlet {
             int pendingRepairRequestCount = 0;
             try {
                 pendingRepairRequestCount = repairRequestDAO.getTotalRepairRequestCount(null, "Pending", null, null);
-                LOGGER.log(Level.INFO, "Pending repair requests count: " + pendingRepairRequestCount);
             } catch (Exception e) {
                 pendingRepairRequestCount = 0;
                 LOGGER.log(Level.SEVERE, "Failed to get pending repair requests: " + e.getMessage(), e);
@@ -156,7 +123,6 @@ public class HomeServlet extends HttpServlet {
             int repairInProgressCount = 0;
             try {
                 repairInProgressCount = repairRequestDAO.getTotalRepairRequestCount(null, "In Progress", null, null);
-                LOGGER.log(Level.INFO, "Repair requests in progress: " + repairInProgressCount);
             } catch (Exception e) {
                 repairInProgressCount = 0;
                 LOGGER.log(Level.WARNING, "Failed to get in-progress repair requests: " + e.getMessage(), e);
@@ -298,9 +264,6 @@ public class HomeServlet extends HttpServlet {
             if (roleDAO != null) roleDAO.close();
         }
 
-        // TODO: Lấy thêm các số liệu dashboard khác nếu cần (yêu cầu mua, sửa chữa, ...)
-
-        LOGGER.log(Level.INFO, "Forwarding to HomePage.jsp");
         request.getRequestDispatcher("HomePage.jsp").forward(request, response);
     }
 

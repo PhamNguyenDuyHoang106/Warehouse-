@@ -9,7 +9,6 @@ import entity.Role;
 import utils.PermissionHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -17,9 +16,16 @@ import java.io.IOException;
 import java.util.List;
 
 @WebServlet(name = "UserListServlet", urlPatterns = {"/UserList"})
-public class UserListServlet extends HttpServlet {
+public class UserListServlet extends BaseServlet {
 
-    private RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
+    private RolePermissionDAO rolePermissionDAO;
+    
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(rolePermissionDAO);
+    }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -71,29 +77,36 @@ public class UserListServlet extends HttpServlet {
             }
         }
 
-        UserDAO userDAO = new UserDAO();
-        RoleDAO roleDAO = new RoleDAO();
+        UserDAO userDAO = null;
+        RoleDAO roleDAO = null;
+        try {
+            userDAO = new UserDAO();
+            roleDAO = new RoleDAO();
 
-        List<Department> departmentList = userDAO.getActiveDepartments(); 
-        List<Role> roleList = roleDAO.getAllRoles();
-        request.setAttribute("departmentList", departmentList);
-        request.setAttribute("roleList", roleList);
+            List<Department> departmentList = userDAO.getActiveDepartments(); 
+            List<Role> roleList = roleDAO.getAllRoles();
+            request.setAttribute("departmentList", departmentList);
+            request.setAttribute("roleList", roleList);
 
-        List<User> userList = userDAO.getUsersByPageAndFilter(page, pageSize, usernameFilter, statusFilter, roleIdFilter, departmentIdFilter);
+            List<User> userList = userDAO.getUsersByPageAndFilter(page, pageSize, usernameFilter, statusFilter, roleIdFilter, departmentIdFilter);
 
-        int totalUsers = userDAO.getUserCountByFilter(usernameFilter, statusFilter, roleIdFilter, departmentIdFilter);
-        int totalPages = (int) Math.ceil((double) totalUsers / pageSize);
+            int totalUsers = userDAO.getUserCountByFilter(usernameFilter, statusFilter, roleIdFilter, departmentIdFilter);
+            int totalPages = (int) Math.ceil((double) totalUsers / pageSize);
 
-        request.setAttribute("userList", userList);
-        request.setAttribute("currentPage", page);
-        request.setAttribute("totalPages", totalPages);
-        request.setAttribute("usernameFilter", usernameFilter);
-        request.setAttribute("statusFilter", statusFilter);
-        request.setAttribute("roleIdFilter", roleIdFilter);
-        request.setAttribute("departmentIdFilter", departmentIdFilter);
-        request.setAttribute("rolePermissionDAO", rolePermissionDAO);
+            request.setAttribute("userList", userList);
+            request.setAttribute("currentPage", page);
+            request.setAttribute("totalPages", totalPages);
+            request.setAttribute("usernameFilter", usernameFilter);
+            request.setAttribute("statusFilter", statusFilter);
+            request.setAttribute("roleIdFilter", roleIdFilter);
+            request.setAttribute("departmentIdFilter", departmentIdFilter);
+            request.setAttribute("rolePermissionDAO", rolePermissionDAO);
 
-        request.getRequestDispatcher("UserList.jsp").forward(request, response);
+            request.getRequestDispatcher("UserList.jsp").forward(request, response);
+        } finally {
+            if (userDAO != null) userDAO.close();
+            if (roleDAO != null) roleDAO.close();
+        }
     }
 
     @Override
@@ -114,7 +127,7 @@ public class UserListServlet extends HttpServlet {
 
         String action = request.getParameter("action");
         String userIdStr = request.getParameter("userId");
-        UserDAO userDAO = new UserDAO();
+        UserDAO userDAO = null;
 
         String usernameFilter = request.getParameter("usernameFilter");
         String statusFilter = request.getParameter("statusFilter");
@@ -146,6 +159,7 @@ public class UserListServlet extends HttpServlet {
         }
 
         try {
+            userDAO = new UserDAO();
             int userId = Integer.parseInt(userIdStr);
             if ("delete".equals(action)) {
                 // Admin có toàn quyền - PermissionHelper đã xử lý
@@ -239,6 +253,8 @@ public class UserListServlet extends HttpServlet {
             request.getSession().setAttribute("error", "Invalid data.");
         } catch (Exception e) {
             request.getSession().setAttribute("error", "Error: " + e.getMessage());
+        } finally {
+            if (userDAO != null) userDAO.close();
         }
 
         response.sendRedirect(queryString.toString());

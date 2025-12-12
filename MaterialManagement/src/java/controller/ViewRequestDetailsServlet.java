@@ -35,13 +35,16 @@ public class ViewRequestDetailsServlet extends HttpServlet {
         }
 
         User user = (User) session.getAttribute("user");
+        RequestDAO requestDAO = null;
+        DepartmentDAO departmentDAO = null;
+        CategoryDAO categoryDAO = null;
         try {
             int requestId = Integer.parseInt(request.getParameter("id"));
             String type = request.getParameter("type");
             int page = request.getParameter("page") != null ? Integer.parseInt(request.getParameter("page")) : 1;
             Object requestObj = null;
 
-            RequestDAO requestDAO = new RequestDAO();
+            requestDAO = new RequestDAO();
 
             switch (type.toLowerCase()) {
                 case "export":
@@ -77,13 +80,13 @@ public class ViewRequestDetailsServlet extends HttpServlet {
             // Fetch materials for Export, Purchase, and Repair requests (not needed for Purchase Orders)
             List<Material> materials = new ArrayList<>();
             if (!type.equalsIgnoreCase("purchase_order")) {
-                DepartmentDAO departmentDAO = new DepartmentDAO();
+                departmentDAO = new DepartmentDAO();
                 materials = departmentDAO.getMaterials();
             }
             request.setAttribute("materials", materials);
 
             // Fetch categories
-            CategoryDAO categoryDAO = new CategoryDAO();
+            categoryDAO = new CategoryDAO();
             List<Category> categories = categoryDAO.getAllCategories();
             request.setAttribute("categories", categories);
 
@@ -110,6 +113,10 @@ public class ViewRequestDetailsServlet extends HttpServlet {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid request ID or page number");
         } catch (SQLException e) {
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error");
+        } finally {
+            if (requestDAO != null) requestDAO.close();
+            if (departmentDAO != null) departmentDAO.close();
+            if (categoryDAO != null) categoryDAO.close();
         }
     }
 
@@ -123,6 +130,7 @@ public class ViewRequestDetailsServlet extends HttpServlet {
         }
 
         User user = (User) session.getAttribute("user");
+        RequestDAO requestDAO = null;
         try {
             int requestId = Integer.parseInt(request.getParameter("id"));
             String action = request.getParameter("action");
@@ -130,7 +138,7 @@ public class ViewRequestDetailsServlet extends HttpServlet {
             int page = request.getParameter("page") != null ? Integer.parseInt(request.getParameter("page")) : 1;
             Object requestObj = null;
 
-            RequestDAO requestDAO = new RequestDAO();
+            requestDAO = new RequestDAO();
 
             // Fetch the request based on type
             switch (type.toLowerCase()) {
@@ -199,23 +207,28 @@ public class ViewRequestDetailsServlet extends HttpServlet {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid request ID or page number");
         } catch (SQLException e) {
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Database error");
+        } finally {
+            if (requestDAO != null) requestDAO.close();
         }
     }
 
     private void setRequestAttributes(HttpServletRequest request, HttpServletResponse response, Object requestObj, String type, int page)
             throws ServletException, IOException, SQLException {
-        // Fetch materials for Export, Purchase, and Repair requests (not needed for Purchase Orders)
-        List<Material> materials = new ArrayList<>();
-        if (!type.equalsIgnoreCase("purchase_order")) {
-            DepartmentDAO departmentDAO = new DepartmentDAO();
-            materials = departmentDAO.getMaterials();
-        }
-        request.setAttribute("materials", materials);
+        DepartmentDAO departmentDAO = null;
+        CategoryDAO categoryDAO = null;
+        try {
+            // Fetch materials for Export, Purchase, and Repair requests (not needed for Purchase Orders)
+            List<Material> materials = new ArrayList<>();
+            if (!type.equalsIgnoreCase("purchase_order")) {
+                departmentDAO = new DepartmentDAO();
+                materials = departmentDAO.getMaterials();
+            }
+            request.setAttribute("materials", materials);
 
-        // Fetch categories
-        CategoryDAO categoryDAO = new CategoryDAO();
-        List<Category> categories = categoryDAO.getAllCategories();
-        request.setAttribute("categories", categories);
+            // Fetch categories
+            categoryDAO = new CategoryDAO();
+            List<Category> categories = categoryDAO.getAllCategories();
+            request.setAttribute("categories", categories);
 
         // Paginate details
         List<?> details = getRequestDetails(requestObj);
@@ -231,6 +244,10 @@ public class ViewRequestDetailsServlet extends HttpServlet {
         request.setAttribute("currentPage", page);
         request.setAttribute("totalPages", totalPages);
         request.getRequestDispatcher("/ViewRequestDetails.jsp").forward(request, response);
+        } finally {
+            if (departmentDAO != null) departmentDAO.close();
+            if (categoryDAO != null) categoryDAO.close();
+        }
     }
 
     private List<?> getRequestDetails(Object request) {

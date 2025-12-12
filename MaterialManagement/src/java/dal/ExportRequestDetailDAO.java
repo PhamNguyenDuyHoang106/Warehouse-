@@ -9,8 +9,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ExportRequestDetailDAO extends DBContext {
+    private static final Logger LOGGER = Logger.getLogger(ExportRequestDetailDAO.class.getName());
     
     public List<ExportRequestDetail> getByRequestId(int requestId) {
         connection = getConnection();
@@ -49,8 +52,7 @@ public class ExportRequestDetailDAO extends DBContext {
                 }
             }
         } catch (SQLException e) {
-            System.out.println("Error in getByRequestId: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error in getByRequestId", e);
         }
         return details;
     }
@@ -85,8 +87,7 @@ public class ExportRequestDetailDAO extends DBContext {
             int[] results = ps.executeBatch();
             return results.length == details.size();
         } catch (SQLException e) {
-            System.out.println("Error adding export request details: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error adding export request details", e);
             return false;
         }
     }

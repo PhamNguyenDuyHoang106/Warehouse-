@@ -17,11 +17,20 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @WebServlet(name = "ExportRequestListServlet", urlPatterns = {"/ExportRequestList"})
-public class ExportRequestListServlet extends HttpServlet {
+public class ExportRequestListServlet extends BaseServlet {
 
     private static final Logger LOGGER = Logger.getLogger(ExportRequestListServlet.class.getName());
-    private final ExportRequestDAO exportRequestDAO = new ExportRequestDAO();
-    private final RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
+    private ExportRequestDAO exportRequestDAO;
+    private RolePermissionDAO rolePermissionDAO;
+
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        exportRequestDAO = new ExportRequestDAO();
+        rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(exportRequestDAO);
+        registerDAO(rolePermissionDAO);
+    }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)

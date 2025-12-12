@@ -17,14 +17,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 @WebServlet(urlPatterns = {"/editdepartment"})
-public class EditDepartmentServlet extends HttpServlet {
+public class EditDepartmentServlet extends BaseServlet {
     private DepartmentDAO departmentDAO;
     private RolePermissionDAO rolePermissionDAO;
 
     @Override
     public void init() throws ServletException {
+        super.init();
         departmentDAO = new DepartmentDAO();
         rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(departmentDAO);
+        registerDAO(rolePermissionDAO);
     }
 
     @Override

@@ -43,7 +43,6 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        LOGGER.log(Level.INFO, "doGet method accessed.");
         request.setCharacterEncoding("UTF-8");
 
         HttpSession session = request.getSession(false);
@@ -55,28 +54,34 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
             return;
         }
 
-        PurchaseRequestDAO purchaseRequestDAO = new PurchaseRequestDAO();
-        MaterialDAO materialDAO = new MaterialDAO();
-        SupplierDAO supplierDAO = new SupplierDAO();
-        RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
-
-        // Admin (roleId == 1) has full access - check first before permission check
-        boolean hasPermission;
-        if (currentUser.getRoleId() == 1) {
-            hasPermission = true;
-            LOGGER.log(Level.INFO, "✅ CreatePurchaseOrderServlet - User {0} is ADMIN (roleId=1), granting full access", currentUser.getUsername());
-        } else {
-            hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PO");
-        }
-        if (!hasPermission) {
-            request.setAttribute("error", "Bạn không có quyền tạo đơn đặt hàng.");
-            request.getRequestDispatcher("PurchaseOrderList.jsp").forward(request, response);
-            return;
-        }
+        PurchaseRequestDAO purchaseRequestDAO = null;
+        MaterialDAO materialDAO = null;
+        SupplierDAO supplierDAO = null;
+        RolePermissionDAO rolePermissionDAO = null;
+        PurchaseOrderDAO purchaseOrderDAO = null;
+        PurchaseRequestDetailDAO purchaseRequestDetailDAO = null;
 
         try {
+            purchaseRequestDAO = new PurchaseRequestDAO();
+            materialDAO = new MaterialDAO();
+            supplierDAO = new SupplierDAO();
+            rolePermissionDAO = new RolePermissionDAO();
+
+            // Admin (roleId == 1) has full access - check first before permission check
+            boolean hasPermission;
+            if (currentUser.getRoleId() == 1) {
+                hasPermission = true;
+            } else {
+                hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PO");
+            }
+            if (!hasPermission) {
+                request.setAttribute("error", "Bạn không có quyền tạo đơn đặt hàng.");
+                request.getRequestDispatcher("PurchaseOrderList.jsp").forward(request, response);
+                return;
+            }
+
             // Generate proper PO code using DAO method
-            PurchaseOrderDAO purchaseOrderDAO = new PurchaseOrderDAO();
+            purchaseOrderDAO = new PurchaseOrderDAO();
             String poCode = purchaseOrderDAO.generateNextPOCode();
             List<PurchaseRequest> purchaseRequests = purchaseRequestDAO.getApprovedPurchaseRequests();
             
@@ -96,7 +101,7 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
             String purchaseRequestIdStr = request.getParameter("purchaseRequestId");
             if (purchaseRequestIdStr != null && !purchaseRequestIdStr.isEmpty()) {
                 int purchaseRequestId = Integer.parseInt(purchaseRequestIdStr);
-                PurchaseRequestDetailDAO purchaseRequestDetailDAO = new PurchaseRequestDetailDAO();
+                purchaseRequestDetailDAO = new PurchaseRequestDetailDAO();
                 List<entity.PurchaseRequestDetail> purchaseRequestDetailList = purchaseRequestDetailDAO.paginationOfDetails(purchaseRequestId, 1, 1000);
                 if (purchaseRequestDetailList == null) purchaseRequestDetailList = new ArrayList<>();
                 request.setAttribute("purchaseRequestDetailList", purchaseRequestDetailList);
@@ -133,13 +138,19 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
             LOGGER.log(Level.SEVERE, "Error in doGet for CreatePurchaseOrderServlet", e);
             request.setAttribute("error", "An unexpected error occurred. Please try again later.");
             request.getRequestDispatcher("PurchaseOrderList.jsp").forward(request, response);
+        } finally {
+            if (purchaseRequestDAO != null) purchaseRequestDAO.close();
+            if (materialDAO != null) materialDAO.close();
+            if (supplierDAO != null) supplierDAO.close();
+            if (rolePermissionDAO != null) rolePermissionDAO.close();
+            if (purchaseOrderDAO != null) purchaseOrderDAO.close();
+            if (purchaseRequestDetailDAO != null) purchaseRequestDetailDAO.close();
         }
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        LOGGER.log(Level.INFO, "doPost method accessed.");
         request.setCharacterEncoding("UTF-8");
 
         HttpSession session = request.getSession(false);
@@ -149,28 +160,34 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
             return;
         }
 
-        PurchaseOrderDAO purchaseOrderDAO = new PurchaseOrderDAO();
-        PurchaseRequestDAO purchaseRequestDAO = new PurchaseRequestDAO();
-        MaterialDAO materialDAO = new MaterialDAO();
-        SupplierDAO supplierDAO = new SupplierDAO();
-        RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
-        UserDAO userDAO = new UserDAO();
-
-        // Admin (roleId == 1) has full access - check first before permission check
-        boolean hasPermission;
-        if (currentUser.getRoleId() == 1) {
-            hasPermission = true;
-            LOGGER.log(Level.INFO, "✅ CreatePurchaseOrderServlet - User {0} is ADMIN (roleId=1), granting full access", currentUser.getUsername());
-        } else {
-            hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PO");
-        }
-        if (!hasPermission) {
-            request.setAttribute("error", "Bạn không có quyền tạo đơn đặt hàng.");
-            request.getRequestDispatcher("PurchaseOrderList.jsp").forward(request, response);
-            return;
-        }
+        PurchaseOrderDAO purchaseOrderDAO = null;
+        PurchaseRequestDAO purchaseRequestDAO = null;
+        MaterialDAO materialDAO = null;
+        SupplierDAO supplierDAO = null;
+        RolePermissionDAO rolePermissionDAO = null;
+        UserDAO userDAO = null;
+        PurchaseRequestDetailDAO purchaseRequestDetailDAO = null;
 
         try {
+            purchaseOrderDAO = new PurchaseOrderDAO();
+            purchaseRequestDAO = new PurchaseRequestDAO();
+            materialDAO = new MaterialDAO();
+            supplierDAO = new SupplierDAO();
+            rolePermissionDAO = new RolePermissionDAO();
+            userDAO = new UserDAO();
+
+            // Admin (roleId == 1) has full access - check first before permission check
+            boolean hasPermission;
+            if (currentUser.getRoleId() == 1) {
+                hasPermission = true;
+            } else {
+                hasPermission = PermissionHelper.hasPermission(currentUser, "Tạo PO");
+            }
+            if (!hasPermission) {
+                request.setAttribute("error", "Bạn không có quyền tạo đơn đặt hàng.");
+                request.getRequestDispatcher("PurchaseOrderList.jsp").forward(request, response);
+                return;
+            }
             String poCode = request.getParameter("poCode");
             String purchaseRequestIdStr = request.getParameter("purchaseRequestId");
             String note = request.getParameter("note");
@@ -217,7 +234,7 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
                 if (purchaseRequestIdStr != null && !purchaseRequestIdStr.isEmpty()) {
                     try {
                         int purchaseRequestId = Integer.parseInt(purchaseRequestIdStr);
-                        PurchaseRequestDetailDAO purchaseRequestDetailDAO = new PurchaseRequestDetailDAO();
+                        purchaseRequestDetailDAO = new PurchaseRequestDetailDAO();
                         List<entity.PurchaseRequestDetail> purchaseRequestDetailList = purchaseRequestDetailDAO.paginationOfDetails(purchaseRequestId, 1, 1000);
                         if (purchaseRequestDetailList == null) purchaseRequestDetailList = new ArrayList<>();
                         request.setAttribute("purchaseRequestDetailList", purchaseRequestDetailList);
@@ -339,7 +356,6 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
                     LOGGER.log(Level.SEVERE, "Error sending purchase order notification for PO " + purchaseOrder.getPoCode() + ": " + e.getMessage(), e);
                 }
                 
-                LOGGER.log(Level.INFO, "Successfully created purchase order: " + purchaseOrder.getPoCode());
                 response.sendRedirect(request.getContextPath() + "/PurchaseOrderList");
                 return;
             } else {
@@ -352,6 +368,14 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
             LOGGER.log(Level.SEVERE, "Error in doPost for CreatePurchaseOrderServlet", e);
             request.setAttribute("error", "Error creating purchase order: " + e.getMessage());
             doGet(request, response);
+        } finally {
+            if (purchaseOrderDAO != null) purchaseOrderDAO.close();
+            if (purchaseRequestDAO != null) purchaseRequestDAO.close();
+            if (materialDAO != null) materialDAO.close();
+            if (supplierDAO != null) supplierDAO.close();
+            if (rolePermissionDAO != null) rolePermissionDAO.close();
+            if (userDAO != null) userDAO.close();
+            if (purchaseRequestDetailDAO != null) purchaseRequestDetailDAO.close();
         }
     }
 
@@ -359,8 +383,11 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
                                             List<entity.PurchaseOrderDetail> details, 
                                             PurchaseRequest purchaseRequest, 
                                             User creator) {
+        UserDAO userDAO = null;
+        SupplierDAO supplierDAO = null;
+        MaterialDAO materialDAO = null;
         try {
-            UserDAO userDAO = new UserDAO();
+            userDAO = new UserDAO();
             List<User> allUsers = userDAO.getAllUsers();
             List<User> directors = new ArrayList<>();
             
@@ -371,7 +398,7 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
             }
             
             // Get supplier information from first detail (all details have same supplier)
-            SupplierDAO supplierDAO = new SupplierDAO();
+            supplierDAO = new SupplierDAO();
             Supplier supplier = null;
             if (!details.isEmpty()) {
                 supplier = supplierDAO.getSupplierByID(details.get(0).getSupplierId());
@@ -429,7 +456,7 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
             content.append("<tbody>");
             
             BigDecimal totalAmount = BigDecimal.ZERO;
-            MaterialDAO materialDAO = new MaterialDAO();
+            materialDAO = new MaterialDAO();
             
             for (entity.PurchaseOrderDetail detail : details) {
                 BigDecimal lineTotal = detail.getUnitPrice().multiply(detail.getQuantityOrdered());
@@ -485,6 +512,10 @@ public class CreatePurchaseOrderServlet extends HttpServlet {
         } catch (Exception e) {
             // Log notification errors but don't crash the application
             LOGGER.log(Level.WARNING, "Error in sendPurchaseOrderNotification: " + e.getMessage());
+        } finally {
+            if (userDAO != null) userDAO.close();
+            if (supplierDAO != null) supplierDAO.close();
+            if (materialDAO != null) materialDAO.close();
         }
     }
 

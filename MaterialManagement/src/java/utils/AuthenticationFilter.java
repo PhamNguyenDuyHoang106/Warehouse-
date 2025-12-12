@@ -69,7 +69,52 @@ public class AuthenticationFilter implements Filter {
             return;
         }
         
-        // Nếu đã đăng nhập, tiếp tục xử lý request
+        // Check session validity and timeout
+        if (session != null) {
+            String sessionId = session.getId();
+            dal.SessionDAO sessionDAO = null;
+            try {
+                sessionDAO = new dal.SessionDAO();
+                
+                // Check if session is valid (not expired)
+                if (!sessionDAO.isValid(sessionId)) {
+                    // Session expired - invalidate HTTP session and redirect to login
+                    session.invalidate();
+                    
+                    // Delete expired session from database
+                    sessionDAO.deactivate(sessionId);
+                    
+                    // Redirect to login
+                    String currentURL = httpRequest.getRequestURL().toString();
+                    String queryString = httpRequest.getQueryString();
+                    if (queryString != null && !queryString.isEmpty()) {
+                        currentURL += "?" + queryString;
+                    }
+                    
+                    HttpSession newSession = httpRequest.getSession();
+                    newSession.setAttribute("redirectURL", currentURL);
+                    newSession.setAttribute("sessionExpired", true);
+                    
+                    httpResponse.sendRedirect(httpRequest.getContextPath() + "/Login.jsp");
+                    return;
+                }
+                
+                // Update last_activity in database session
+                sessionDAO.updateActivity(sessionId);
+            } catch (Exception e) {
+                // Log but don't throw - continue with request
+            } finally {
+                if (sessionDAO != null) {
+                    try {
+                        sessionDAO.close();
+                    } catch (Exception e) {
+                        // Log but don't throw
+                    }
+                }
+            }
+        }
+        
+        // Nếu đã đăng nhập và session còn hợp lệ, tiếp tục xử lý request
         chain.doFilter(request, response);
     }
     

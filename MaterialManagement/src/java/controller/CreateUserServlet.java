@@ -30,7 +30,7 @@ import java.util.Random;
 @MultipartConfig
 public class CreateUserServlet extends HttpServlet {
 
-    private UserDAO userDAO = new UserDAO();
+    private UserDAO userDAO;
     private static final String LETTERS = "abcdefghijklmnopqrstuvwxyz";
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -50,6 +50,9 @@ public class CreateUserServlet extends HttpServlet {
             return;
         }
 
+        if (userDAO == null) {
+            userDAO = new UserDAO();
+        }
         List<Department> departments = userDAO.getActiveDepartments();
         request.setAttribute("departments", departments);
 
@@ -248,9 +251,20 @@ public class CreateUserServlet extends HttpServlet {
         } catch (Exception e) {
             request.setAttribute("error", "System error: " + e.getMessage());
             e.printStackTrace();
-            List<Department> departments = userDAO.getActiveDepartments();
-            request.setAttribute("departments", departments);
+            if (userDAO != null) {
+                List<Department> departments = userDAO.getActiveDepartments();
+                request.setAttribute("departments", departments);
+            }
             request.getRequestDispatcher("/CreateUser.jsp").forward(request, response);
+        } finally {
+            if (userDAO != null) {
+                try {
+                    userDAO.close();
+                } catch (Exception e) {
+                    // Ignore
+                }
+                userDAO = null;
+            }
         }
     }
 

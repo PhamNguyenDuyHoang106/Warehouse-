@@ -18,9 +18,16 @@ import java.util.List;
 import java.util.Map;
 
 @WebServlet(name = "PurchaseOrderDetailServlet", urlPatterns = {"/PurchaseOrderDetail"})
-public class PurchaseOrderDetailServlet extends HttpServlet {
+public class PurchaseOrderDetailServlet extends BaseServlet {
 
-    private final RolePermissionDAO rolePermissionDAO = new RolePermissionDAO();
+    private RolePermissionDAO rolePermissionDAO;
+    
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        rolePermissionDAO = new RolePermissionDAO();
+        registerDAO(rolePermissionDAO);
+    }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -36,7 +43,6 @@ public class PurchaseOrderDetailServlet extends HttpServlet {
         boolean hasListPermission;
         if (user.getRoleId() == 1) {
             hasListPermission = true;
-            System.out.println("✅ PurchaseOrderDetailServlet - User " + user.getUsername() + " is ADMIN (roleId=1), granting full access");
         } else {
             hasListPermission = PermissionHelper.hasPermission(user, "DS đơn đặt hàng");
         }
@@ -53,9 +59,11 @@ public class PurchaseOrderDetailServlet extends HttpServlet {
         boolean hasSendToSupplierPermission = PermissionHelper.hasPermission(user, "Gửi PO");
         request.setAttribute("hasSendToSupplierPermission", hasSendToSupplierPermission);
 
+        PurchaseOrderDAO purchaseOrderDAO = null;
+        UserDAO userDAO = null;
         try {
             int poId = Integer.parseInt(request.getParameter("id"));
-            PurchaseOrderDAO purchaseOrderDAO = new PurchaseOrderDAO();
+            purchaseOrderDAO = new PurchaseOrderDAO();
             PurchaseOrder purchaseOrder = purchaseOrderDAO.getPurchaseOrderById(poId);
 
             if (purchaseOrder == null) {
@@ -63,7 +71,7 @@ public class PurchaseOrderDetailServlet extends HttpServlet {
                 return;
             }
 
-            UserDAO userDAO = new UserDAO();
+            userDAO = new UserDAO();
             User creator = userDAO.getUserById(purchaseOrder.getCreatedBy());
             request.setAttribute("creator", creator);
 
@@ -116,6 +124,9 @@ public class PurchaseOrderDetailServlet extends HttpServlet {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid Purchase Order ID");
         } catch (Exception e) {
             throw new ServletException("Error fetching purchase order details", e);
+        } finally {
+            if (purchaseOrderDAO != null) purchaseOrderDAO.close();
+            if (userDAO != null) userDAO.close();
         }
     }
 
@@ -129,8 +140,9 @@ public class PurchaseOrderDetailServlet extends HttpServlet {
         }
 
         User user = (User) session.getAttribute("user");
-        PurchaseOrderDAO purchaseOrderDAO = new PurchaseOrderDAO();
+        PurchaseOrderDAO purchaseOrderDAO = null;
         try {
+            purchaseOrderDAO = new PurchaseOrderDAO();
             String action = request.getParameter("action");
             int poId = Integer.parseInt(request.getParameter("poId"));
             String status = request.getParameter("status");
@@ -178,6 +190,8 @@ public class PurchaseOrderDetailServlet extends HttpServlet {
             }
         } catch (Exception e) {
             response.sendRedirect(request.getContextPath() + "/PurchaseOrderDetail?id=" + request.getParameter("poId") + "&message=Error: " + e.getMessage());
+        } finally {
+            if (purchaseOrderDAO != null) purchaseOrderDAO.close();
         }
     }
 
