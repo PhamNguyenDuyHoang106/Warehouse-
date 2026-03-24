@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.logging.Level;
@@ -26,6 +25,7 @@ import java.util.logging.Logger;
 public class RolePermissionServlet extends BaseServlet {
 
     private static final Logger LOGGER = Logger.getLogger(RolePermissionServlet.class.getName());
+    private static final String CONFIG_PERMISSION = "Cấu hình hệ thống";
     private RoleDAO roleDAO;
     private PermissionDAO permissionDAO;
     private RolePermissionDAO rolePermissionDAO;
@@ -55,7 +55,7 @@ public class RolePermissionServlet extends BaseServlet {
         }
         // Admin có toàn quyền - PermissionHelper đã xử lý
         // Chỉ check permission nếu không phải admin
-        if (currentUser.getRoleId() != 1 && !utils.PermissionHelper.hasPermission(currentUser, "Xem danh sách phân quyền")) {
+        if (currentUser.getRoleId() != 1 && !utils.PermissionHelper.hasPermission(currentUser, CONFIG_PERMISSION)) {
             request.setAttribute("error", "You do not have permission to view permission list.");
             request.getRequestDispatcher("error.jsp").forward(request, response);
             return;
@@ -178,7 +178,7 @@ public class RolePermissionServlet extends BaseServlet {
             throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
         User currentUser = (User) request.getSession().getAttribute("user");
-        if (currentUser == null || !utils.PermissionHelper.hasPermission(currentUser, "Cập nhật phân quyền")) {
+        if (currentUser == null || !utils.PermissionHelper.hasPermission(currentUser, CONFIG_PERMISSION)) {
             response.sendRedirect("Login.jsp");
             return;
         }

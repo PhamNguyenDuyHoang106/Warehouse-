@@ -64,7 +64,9 @@ public class LoginServlet extends HttpServlet {
                 sessionDAO = new SessionDAO();
                 String sessionId = session.getId();
                 String token = generateToken();
+                String refreshToken = generateToken();
                 String tokenHash = hashToken(token);
+                String refreshTokenHash = hashToken(refreshToken);
                 LocalDateTime now = LocalDateTime.now();
                 LocalDateTime expiresAt = now.plusHours(24); // 24 hours session
                 
@@ -72,6 +74,7 @@ public class LoginServlet extends HttpServlet {
                 dbSession.setSessionId(sessionId);
                 dbSession.setUserId(user.getUserId());
                 dbSession.setToken(tokenHash);
+                dbSession.setRefreshToken(refreshTokenHash);
                 dbSession.setExpiresAt(expiresAt);
                 dbSession.setCreatedAt(now);
                 dbSession.setIpAddress(getClientIpAddress(request));
@@ -80,6 +83,7 @@ public class LoginServlet extends HttpServlet {
                 
                 sessionDAO.create(dbSession);
                 session.setAttribute("sessionToken", token); // Store plain token in session for reference
+                session.setAttribute("refreshToken", refreshToken);
                 
                 String redirectURL = (String) session.getAttribute("redirectURL");
                 session.removeAttribute("redirectURL");

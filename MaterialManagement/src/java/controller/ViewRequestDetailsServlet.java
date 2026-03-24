@@ -39,14 +39,23 @@ public class ViewRequestDetailsServlet extends HttpServlet {
         DepartmentDAO departmentDAO = null;
         CategoryDAO categoryDAO = null;
         try {
-            int requestId = Integer.parseInt(request.getParameter("id"));
+            String idRaw = request.getParameter("id");
             String type = request.getParameter("type");
-            int page = request.getParameter("page") != null ? Integer.parseInt(request.getParameter("page")) : 1;
+            String pageRaw = request.getParameter("page");
+            if (idRaw == null || idRaw.trim().isEmpty() || type == null || type.trim().isEmpty()) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing request id or type");
+                return;
+            }
+            int requestId = Integer.parseInt(idRaw.trim());
+            int page = pageRaw != null ? Integer.parseInt(pageRaw) : 1;
+            if (page <= 0) {
+                page = 1;
+            }
             Object requestObj = null;
 
             requestDAO = new RequestDAO();
 
-            switch (type.toLowerCase()) {
+            switch (type.trim().toLowerCase()) {
                 case "export":
                     requestObj = requestDAO.getExportRequestById(requestId);
                     break;
@@ -94,6 +103,12 @@ public class ViewRequestDetailsServlet extends HttpServlet {
             List<?> details = getRequestDetails(requestObj);
             int totalDetails = details.size();
             int totalPages = (int) Math.ceil((double) totalDetails / PAGE_SIZE);
+            if (totalPages == 0) {
+                totalPages = 1;
+            }
+            if (page > totalPages) {
+                page = totalPages;
+            }
             int start = (page - 1) * PAGE_SIZE;
             int end = Math.min(start + PAGE_SIZE, totalDetails);
             List<?> paginatedDetails = details.subList(start, end);
@@ -132,16 +147,25 @@ public class ViewRequestDetailsServlet extends HttpServlet {
         User user = (User) session.getAttribute("user");
         RequestDAO requestDAO = null;
         try {
-            int requestId = Integer.parseInt(request.getParameter("id"));
+            String idRaw = request.getParameter("id");
             String action = request.getParameter("action");
             String type = request.getParameter("type");
-            int page = request.getParameter("page") != null ? Integer.parseInt(request.getParameter("page")) : 1;
+            String pageRaw = request.getParameter("page");
+            if (idRaw == null || idRaw.trim().isEmpty() || type == null || type.trim().isEmpty()) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing request id or type");
+                return;
+            }
+            int requestId = Integer.parseInt(idRaw.trim());
+            int page = pageRaw != null ? Integer.parseInt(pageRaw) : 1;
+            if (page <= 0) {
+                page = 1;
+            }
             Object requestObj = null;
 
             requestDAO = new RequestDAO();
 
             // Fetch the request based on type
-            switch (type.toLowerCase()) {
+            switch (type.trim().toLowerCase()) {
                 case "export":
                     requestObj = requestDAO.getExportRequestById(requestId);
                     break;
@@ -234,6 +258,12 @@ public class ViewRequestDetailsServlet extends HttpServlet {
         List<?> details = getRequestDetails(requestObj);
         int totalDetails = details.size();
         int totalPages = (int) Math.ceil((double) totalDetails / PAGE_SIZE);
+        if (totalPages == 0) {
+            totalPages = 1;
+        }
+        if (page > totalPages) {
+            page = totalPages;
+        }
         int start = (page - 1) * PAGE_SIZE;
         int end = Math.min(start + PAGE_SIZE, totalDetails);
         List<?> paginatedDetails = details.subList(start, end);

@@ -209,6 +209,18 @@ public class DBContext {
         }
     }
 
+    /**
+     * Quietly close DAO connection, suppressing any unexpected runtime errors.
+     * Controllers often call this in finally blocks to avoid masking business errors.
+     */
+    public void closeQuietly() {
+        try {
+            close();
+        } catch (Exception ex) {
+            LOGGER.log(Level.FINE, "Ignored error while closing DB context quietly", ex);
+        }
+    }
+
     public static void main(String[] args) {
         new DBContext();
     }

@@ -60,31 +60,34 @@ public class ChangePasswordServlet extends HttpServlet {
         try {
             userDAO = new UserDAO();
             if (oldPassword == null || newPassword == null || confirmPassword == null
-                || oldPassword.isEmpty() || newPassword.isEmpty() || confirmPassword.isEmpty()) {
-            error = "All fields are required.";
-        } else if (!PasswordHasher.verifyPassword(oldPassword, user.getPassword())) {
-            // Use PasswordHasher to verify (supports both MD5 and BCrypt)
-            error = "Current password is incorrect.";
-        } else if (!newPassword.equals(confirmPassword)) {
-            error = "New password and confirmation do not match.";
-        } else if (newPassword.length() < 6) {
-            error = "New password must be at least 6 characters.";
-        } else if (!newPassword.matches("^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[^a-zA-Z0-9]).{6,}$")) {
-            error = "Password must contain letters, numbers, and special characters.";
-        } else if (PasswordHasher.verifyPassword(newPassword, user.getPassword())) {
-            // Check if new password is same as old (supports both MD5 and BCrypt)
-            error = "New password must be different from the old password.";
-        } else {
-            // Hash new password with BCrypt
-            String hashedNewPassword = PasswordHasher.hashPassword(newPassword);
-            user.setPassword(hashedNewPassword);
-            boolean updated = userDAO.updateUser(user);
-            if (updated) {
-                session.setAttribute("user", user);
-                message = "Password changed successfully.";
+                    || oldPassword.isEmpty() || newPassword.isEmpty() || confirmPassword.isEmpty()) {
+                error = "All fields are required.";
+            } else if (!PasswordHasher.verifyPassword(oldPassword, user.getPassword())) {
+                // Use PasswordHasher to verify (supports both MD5 and BCrypt)
+                error = "Current password is incorrect.";
+            } else if (!newPassword.equals(confirmPassword)) {
+                error = "New password and confirmation do not match.";
+            } else if (newPassword.length() < 6) {
+                error = "New password must be at least 6 characters.";
+            } else if (!newPassword.matches("^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[^a-zA-Z0-9]).{6,}$")) {
+                error = "Password must contain letters, numbers, and special characters.";
+            } else if (PasswordHasher.verifyPassword(newPassword, user.getPassword())) {
+                // Check if new password is same as old (supports both MD5 and BCrypt)
+                error = "New password must be different from the old password.";
             } else {
-                error = "Failed to change password. Please try again.";
+                // Hash new password with BCrypt
+                String hashedNewPassword = PasswordHasher.hashPassword(newPassword);
+                user.setPassword(hashedNewPassword);
+                boolean updated = userDAO.updateUser(user);
+                if (updated) {
+                    session.setAttribute("user", user);
+                    message = "Password changed successfully.";
+                } else {
+                    error = "Failed to change password. Please try again.";
+                }
             }
+        } catch (Exception ex) {
+            error = "Failed to change password. Please try again.";
         } finally {
             if (userDAO != null) userDAO.close();
         }

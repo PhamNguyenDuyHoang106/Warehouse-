@@ -2,6 +2,9 @@ package dal;
 
 import entity.DBContext;
 import entity.Export;
+import entity.ExportDetail;
+import java.math.BigDecimal;
+import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -574,6 +577,123 @@ public class ExportDAO extends DBContext {
             LOGGER.log(Level.SEVERE, "Error generating export code", e);
         }
         return "EXP0001";
+    }
+
+    /**
+     * Create export and details in one transaction.
+     * If allocateOnCreate=true, each created detail is allocated immediately.
+     */
+    public int createExportWithDetails(Export export, List<ExportDetail> details, boolean allocateOnCreate, int performedBy) {
+        String insertExportSql = "INSERT INTO Exports (export_code, so_id, er_id, warehouse_id, export_date, exported_by, status, note, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String insertDetailSql = "INSERT INTO Export_Details (export_id, material_id, export_request_detail_id, rack_id, quantity, unit_price_export, status, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String allocateSql = "{CALL SP_Allocate_Export_Detail_V8(?, ?)}";
+
+        try {
+            connection.setAutoCommit(false);
+
+            int exportId;
+            try (PreparedStatement ps = connection.prepareStatement(insertExportSql, Statement.RETURN_GENERATED_KEYS)) {
+                ps.setString(1, export.getExportCode());
+                if (export.getSoId() != null) {
+                    ps.setInt(2, export.getSoId());
+                } else {
+                    ps.setNull(2, java.sql.Types.INTEGER);
+                }
+                if (export.getErId() != null) {
+                    ps.setInt(3, export.getErId());
+                } else {
+                    ps.setNull(3, java.sql.Types.INTEGER);
+                }
+                ps.setInt(4, export.getWarehouseId());
+                ps.setTimestamp(5, export.getExportDate() != null ? Timestamp.valueOf(export.getExportDate()) : Timestamp.valueOf(LocalDateTime.now()));
+                ps.setInt(6, export.getExportedBy());
+                ps.setString(7, export.getStatus() != null ? export.getStatus() : "draft");
+                ps.setString(8, export.getNote());
+                ps.setInt(9, export.getCreatedBy() != null ? export.getCreatedBy() : export.getExportedBy());
+
+                if (ps.executeUpdate() <= 0) {
+                    connection.rollback();
+                    return -1;
+                }
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (!rs.next()) {
+                        connection.rollback();
+                        return -1;
+                    }
+                    exportId = rs.getInt(1);
+                }
+            }
+
+            if (details != null && !details.isEmpty()) {
+                try (PreparedStatement detailPs = connection.prepareStatement(insertDetailSql, Statement.RETURN_GENERATED_KEYS);
+                     CallableStatement allocateCs = connection.prepareCall(allocateSql)) {
+                    for (ExportDetail detail : details) {
+                        detailPs.setInt(1, exportId);
+                        detailPs.setInt(2, detail.getMaterialId());
+
+                        if (detail.getExportRequestDetailId() != null) {
+                            detailPs.setInt(3, detail.getExportRequestDetailId());
+                        } else {
+                            detailPs.setNull(3, java.sql.Types.INTEGER);
+                        }
+
+                        if (detail.getRackId() != null) {
+                            detailPs.setInt(4, detail.getRackId());
+                        } else {
+                            detailPs.setNull(4, java.sql.Types.INTEGER);
+                        }
+
+                        detailPs.setBigDecimal(5, detail.getQuantity());
+                        BigDecimal unitPrice = detail.getUnitPriceExport();
+                        if (unitPrice != null) {
+                            detailPs.setBigDecimal(6, unitPrice);
+                        } else {
+                            detailPs.setNull(6, java.sql.Types.DECIMAL);
+                        }
+
+                        detailPs.setString(7, detail.getStatus() != null ? detail.getStatus() : "pending");
+                        detailPs.setString(8, detail.getNote());
+
+                        if (detailPs.executeUpdate() <= 0) {
+                            connection.rollback();
+                            return -1;
+                        }
+
+                        int exportDetailId;
+                        try (ResultSet rs = detailPs.getGeneratedKeys()) {
+                            if (!rs.next()) {
+                                connection.rollback();
+                                return -1;
+                            }
+                            exportDetailId = rs.getInt(1);
+                        }
+
+                        if (allocateOnCreate) {
+                            allocateCs.setInt(1, exportDetailId);
+                            allocateCs.setInt(2, performedBy);
+                            allocateCs.execute();
+                        }
+                    }
+                }
+            }
+
+            connection.commit();
+            return exportId;
+        } catch (SQLException e) {
+            try {
+                connection.rollback();
+            } catch (SQLException rollbackEx) {
+                LOGGER.log(Level.SEVERE, "Error rolling back export transaction", rollbackEx);
+            }
+            LOGGER.log(Level.SEVERE, "Error creating export with details", e);
+            return -1;
+        } finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException e) {
+                LOGGER.log(Level.WARNING, "Could not reset auto-commit", e);
+            }
+        }
     }
 
     /**

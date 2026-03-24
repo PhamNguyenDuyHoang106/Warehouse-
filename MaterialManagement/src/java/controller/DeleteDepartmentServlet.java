@@ -6,12 +6,10 @@ import entity.User;
 import utils.PermissionHelper;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
-import java.sql.SQLException;
 
 @WebServlet(urlPatterns = {"/deletedepartment"})
 public class DeleteDepartmentServlet extends BaseServlet {
@@ -45,10 +43,19 @@ public class DeleteDepartmentServlet extends BaseServlet {
         }
 
         try {
-            int deleteId = Integer.parseInt(request.getParameter("id"));
+            String idRaw = request.getParameter("id");
+            if (idRaw == null || idRaw.trim().isEmpty()) {
+                request.setAttribute("error", "Thiếu ID phòng ban.");
+                request.getRequestDispatcher("depairmentlist").forward(request, response);
+                return;
+            }
+            int deleteId = Integer.parseInt(idRaw.trim());
             departmentDAO.deleteDepartment(deleteId);
             request.setAttribute("message", "Department deleted successfully!");
             response.sendRedirect("depairmentlist");
+        } catch (NumberFormatException ex) {
+            request.setAttribute("error", "ID phòng ban không hợp lệ.");
+            request.getRequestDispatcher("depairmentlist").forward(request, response);
         } catch (Exception e) {
             request.setAttribute("error", "Error when deleting department: " + e.getMessage());
             request.getRequestDispatcher("depairmentlist").forward(request, response);

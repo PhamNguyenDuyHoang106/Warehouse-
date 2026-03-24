@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -55,7 +56,18 @@ public class ViewRequestsServlet extends HttpServlet {
             }
             Integer userId = user.getUserId();
 
-            int page = request.getParameter("page") != null ? Integer.parseInt(request.getParameter("page")) : 1;
+            int page = 1;
+            String pageRaw = request.getParameter("page");
+            if (pageRaw != null && !pageRaw.trim().isEmpty()) {
+                try {
+                    page = Integer.parseInt(pageRaw.trim());
+                    if (page < 1) {
+                        page = 1;
+                    }
+                } catch (NumberFormatException ex) {
+                    page = 1;
+                }
+            }
             int pageSize = 10;
             String status = request.getParameter("status");
             String searchTerm = request.getParameter("searchTerm");
@@ -65,11 +77,15 @@ public class ViewRequestsServlet extends HttpServlet {
             LocalDate endDate = null;
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-            if (request.getParameter("startDate") != null && !request.getParameter("startDate").isEmpty()) {
-                startDate = LocalDate.parse(request.getParameter("startDate"), formatter);
-            }
-            if (request.getParameter("endDate") != null && !request.getParameter("endDate").isEmpty()) {
-                endDate = LocalDate.parse(request.getParameter("endDate"), formatter);
+            try {
+                if (request.getParameter("startDate") != null && !request.getParameter("startDate").isEmpty()) {
+                    startDate = LocalDate.parse(request.getParameter("startDate"), formatter);
+                }
+                if (request.getParameter("endDate") != null && !request.getParameter("endDate").isEmpty()) {
+                    endDate = LocalDate.parse(request.getParameter("endDate"), formatter);
+                }
+            } catch (DateTimeParseException ex) {
+                request.setAttribute("error", "Định dạng ngày không hợp lệ.");
             }
 
             List<ExportRequest> exportRequests = requestDAO.getExportRequestsByUser(userId, page, pageSize, status, startDate, endDate, materialName, materialCode);
@@ -137,7 +153,14 @@ public class ViewRequestsServlet extends HttpServlet {
             String action = request.getParameter("action");
             if ("cancel".equalsIgnoreCase(action)) {
                 String type = request.getParameter("type");
-                int id = Integer.parseInt(request.getParameter("id"));
+                String idRaw = request.getParameter("id");
+                int id;
+                try {
+                    id = Integer.parseInt(idRaw);
+                } catch (NumberFormatException ex) {
+                    response.sendRedirect(request.getContextPath() + "/ViewRequests?message=Error: Invalid request ID.");
+                    return;
+                }
                 boolean success = false;
 
                 if ("export".equalsIgnoreCase(type)) {
@@ -161,8 +184,7 @@ public class ViewRequestsServlet extends HttpServlet {
                 doGet(request, response);
             }
         } catch (Exception e) {
-            response.sendRedirect(request.getContextPath() + "/ViewRequests?message=Error: " + e.getMessage());
-            throw new ServletException("Error processing request", e);
+            response.sendRedirect(request.getContextPath() + "/ViewRequests?message=Error processing request.");
         } finally {
             if (requestDAO != null) requestDAO.close();
         }

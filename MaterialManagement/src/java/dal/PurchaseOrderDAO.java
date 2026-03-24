@@ -239,15 +239,8 @@ public class PurchaseOrderDAO extends DBContext {
         Timestamp confirmedAt = (isConfirmedStatus && approvedBy != null)
                 ? new Timestamp(System.currentTimeMillis())
                 : null;
-        // Note: Purchase_Orders table doesn't have 'note' column in V12 schema
-        // Decision note should be logged in Activity_Log instead
-        // Keeping decisionNote for potential Activity_Log logging in the future
-        String decisionNote = null;
-        if (approvalReason != null && !approvalReason.trim().isEmpty()) {
-            decisionNote = approvalReason.trim();
-        } else if (rejectionReason != null && !rejectionReason.trim().isEmpty()) {
-            decisionNote = rejectionReason.trim();
-        }
+        // Note: Purchase_Orders table doesn't have 'note' column in V12 schema.
+        // approvalReason/rejectionReason are received for compatibility and audit extension points.
         String sql = "UPDATE Purchase_Orders SET status = ?, confirmed_by = ?, confirmed_at = ?, updated_at = CURRENT_TIMESTAMP "
                 + "WHERE po_id = ? AND deleted_at IS NULL";
 
@@ -383,6 +376,36 @@ public class PurchaseOrderDAO extends DBContext {
                     LOGGER.log(Level.SEVERE, "Error resetting auto-commit for connection", e);
                 }
             }
+        }
+    }
+
+    public boolean updatePurchaseOrderHeader(PurchaseOrder purchaseOrder) {
+        Connection conn = getConnection();
+        if (conn == null) {
+            return false;
+        }
+
+        String sql = "UPDATE Purchase_Orders SET po_code = ?, supplier_id = ?, currency_id = ?, order_date = ?, " +
+                "expected_delivery_date = ?, delivery_address = ?, payment_term_id = ?, total_amount = ?, tax_amount = ?, " +
+                "discount_amount = ?, updated_at = CURRENT_TIMESTAMP " +
+                "WHERE po_id = ? AND deleted_at IS NULL";
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, purchaseOrder.getPoCode());
+            ps.setObject(2, purchaseOrder.getSupplierId(), java.sql.Types.INTEGER);
+            ps.setObject(3, purchaseOrder.getCurrencyId(), java.sql.Types.INTEGER);
+            ps.setDate(4, purchaseOrder.getOrderDate());
+            ps.setDate(5, purchaseOrder.getExpectedDeliveryDate());
+            ps.setString(6, purchaseOrder.getDeliveryAddress());
+            ps.setObject(7, purchaseOrder.getPaymentTermId(), java.sql.Types.INTEGER);
+            ps.setBigDecimal(8, purchaseOrder.getTotalAmount());
+            ps.setBigDecimal(9, purchaseOrder.getTaxAmount());
+            ps.setBigDecimal(10, purchaseOrder.getDiscountAmount());
+            ps.setInt(11, purchaseOrder.getPoId());
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            LOGGER.log(Level.SEVERE, "Error updating purchase order header: " + purchaseOrder.getPoId(), e);
+            return false;
         }
     }
 
